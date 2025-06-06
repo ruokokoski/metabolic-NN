@@ -4,14 +4,19 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import seaborn as sns
+
+datafile = "./data/simple_training_data_943_samples.csv"
 
 def load_and_preprocess_data(filename):
     """Load and preprocess the training data"""
     df = pd.read_csv(filename)
     print(f"\nLoaded data with {len(df)} samples from {filename}")
+    print(df[['glucose_uptake', 'oxygen_uptake']].describe())
     
     # Inputs: glucose and oxygen uptake rates
     X = df[['glucose_uptake', 'oxygen_uptake']].values
@@ -52,9 +57,70 @@ class MetabolicNN(nn.Module):
     def forward(self, x):
         return self.model(x)
     
+def plot_loss_curves(train_losses, test_losses, save_path="./pics/training_curve.png"):
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label="Training Loss")
+    plt.plot(test_losses, label="Test Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE Loss")
+    plt.title("Training and Test Loss")
+    plt.legend()
+    plt.savefig(save_path)
+    plt.close()
+    print(f"\nTraining curve saved to {save_path}")
+    
+def plot_actual_vs_predicted(y_true, y_pred, title, filename):
+    """Scatter plot of actual vs predicted values"""
+    plt.figure(figsize=(8, 6))
+    plt.scatter(y_true, y_pred, alpha=0.2, s=10)
+    plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)
+    plt.xlabel('Actual Biomass Flux')
+    plt.ylabel('Predicted Biomass Flux')
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.close()
 
-filename = "./data/simple_training_data_9514_samples.csv"
-X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, x_scaler, y_scaler = load_and_preprocess_data(filename)
+def plot_residuals(y_true, y_pred, title, filename):
+    """Plot residuals (errors) vs actual values"""
+    residuals = y_true - y_pred
+    plt.figure(figsize=(8, 6))
+    plt.scatter(y_true, residuals, alpha=0.5)
+    plt.axhline(y=0, color='r', linestyle='-')
+    plt.xlabel('Actual Biomass Flux')
+    plt.ylabel('Residuals (Actual - Predicted)')
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.close()
+
+def plot_error_distribution(y_true, y_pred, title, filename):
+    """Histogram of prediction errors"""
+    errors = y_true - y_pred
+    plt.figure(figsize=(8, 6))
+    sns.histplot(errors, kde=True, legend=False)
+    plt.xlabel('Prediction Error')
+    plt.ylabel('Frequency')
+    plt.title(title)
+    plt.grid(True)
+    plt.savefig(filename)
+    plt.close()
+
+def plot_feature_importance(model, feature_names):
+    """Visualize feature importance using first-layer weights"""
+    weights = model.model[0].weight.data.numpy()
+    importance = np.mean(np.abs(weights), axis=0)
+    
+    plt.figure(figsize=(8, 5))
+    plt.bar(feature_names, importance)
+    plt.xlabel('Features')
+    plt.ylabel('Average Absolute Weight')
+    plt.title('Feature Importance from First Layer Weights')
+    plt.savefig('./pics/feature_importance.png')
+    plt.close()
+
+X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, x_scaler, y_scaler = load_and_preprocess_data(datafile)
 
 model = MetabolicNN()
 criterion = nn.MSELoss()
@@ -87,17 +153,32 @@ for epoch in range(epochs):
     if (epoch+1) % 10 == 0:
         print(f"Epoch {epoch+1}/{epochs}, Train Loss: {loss.item():.4f}, Test Loss: {test_loss:.4f}")
 
-# Plot training curves
-plt.figure(figsize=(10, 5))
-plt.plot(train_losses, label='Training Loss')
-plt.plot(test_losses, label='Test Loss')
-plt.xlabel('Epoch')
-plt.ylabel('MSE Loss')
-plt.title('Training and Test Loss')
-plt.legend()
-plt.show()
-plt.savefig('./models/training_curve.png')
-print("\nTraining curve saved to ./models/training_curve.png")
+with torch.no_grad():
+    test_preds_scaled = model(X_test_tensor).numpy()
+    test_preds = y_scaler.inverse_transform(test_preds_scaled)
+    test_true = y_scaler.inverse_transform(y_test_tensor.numpy())
+
+r2 = r2_score(test_true, test_preds)
+print(f"R² Score (Test): {r2:.4f}")
+
+# 1. Plot training curves
+plot_loss_curves(train_losses, test_losses, './pics/training_curve.png')
+
+# 2. Plot Actual vs Predicted (Test set)
+plot_actual_vs_predicted(test_true, test_preds, 'Actual vs Predicted Biomass Flux on Test Set', './pics/true_vs_predicted_test.png')
+
+# 3. Residual plot (Test set)
+plot_residuals(test_true, test_preds, 
+               'Residuals vs True Values (Test Set)',
+               './pics/residuals_test.png')
+
+# 4. Error distribution (Test set)
+plot_error_distribution(test_true, test_preds, 
+                        'Prediction Error Distribution (Test Set)',
+                        './pics/error_distribution_test.png')
+
+# 5. Plot feature importance
+plot_feature_importance(model, ['Glucose Uptake', 'Oxygen Uptake'])
 
 torch.save(model.state_dict(), "./models/metabolic_nn.pth")
 import joblib

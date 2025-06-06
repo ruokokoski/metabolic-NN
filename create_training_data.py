@@ -34,7 +34,7 @@ def generate_training_example(glc_rate, o2_rate):
 np.random.seed(42)
 
 training_data = []
-num_samples = 10000
+num_samples = 1000
 
 print(f"Generating {num_samples} random FBA samples...\n")
 for i in range(num_samples):

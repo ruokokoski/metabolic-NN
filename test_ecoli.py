@@ -62,7 +62,6 @@ print(f"\nDefault growth rate: {default_solution.objective_value:.4f}")
 print(f"Growth rate with less glucose: {less_glucose_solution.objective_value:.4f}")
 print(f"Growth rate with less oxygen: {less_oxygen_solution.objective_value:.4f}")
 
-
 '''
 # Set the objective to lactate production
 model.objective = "EX_lac__D_e"
