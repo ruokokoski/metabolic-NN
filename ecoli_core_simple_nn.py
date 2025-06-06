@@ -5,12 +5,13 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
+from sklearn.linear_model import LinearRegression
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 
-datafile = "./data/simple_training_data_943_samples.csv"
+datafile = "./data/simple_training_data_9514_samples.csv"
 
 def load_and_preprocess_data(filename):
     """Load and preprocess the training data"""
@@ -18,6 +19,23 @@ def load_and_preprocess_data(filename):
     print(f"\nLoaded data with {len(df)} samples from {filename}")
     print(df[['glucose_uptake', 'oxygen_uptake']].describe())
     
+    '''
+    input_cols = [
+        'glucose_uptake',
+        'oxygen_uptake',
+        'EX_nh4_e,
+        'EX_pi_e'
+    ]
+    output_cols = [
+        'EX_nh4_e',
+        'EX_pi_e',
+        'Biomass_Ecoli_core_flux'
+    ]
+
+    X = df[input_cols].values.astype(np.float32)
+    y = df[output_cols].values.astype(np.float32)
+
+    '''
     # Inputs: glucose and oxygen uptake rates
     X = df[['glucose_uptake', 'oxygen_uptake']].values
     # Output: biomass flux (can be extended to multiple outputs)
@@ -158,9 +176,6 @@ with torch.no_grad():
     test_preds = y_scaler.inverse_transform(test_preds_scaled)
     test_true = y_scaler.inverse_transform(y_test_tensor.numpy())
 
-r2 = r2_score(test_true, test_preds)
-print(f"R² Score (Test): {r2:.4f}")
-
 # 1. Plot training curves
 plot_loss_curves(train_losses, test_losses, './pics/training_curve.png')
 
@@ -188,3 +203,12 @@ joblib.dump(y_scaler, "./models/output_scaler.pkl")
 print("Model and scalers saved.")
 
 
+# Compare to simple linear model
+linear_model = LinearRegression()
+linear_model.fit(X_train_tensor.numpy(), y_train_tensor.numpy())
+linear_r2 = r2_score(y_test_tensor.numpy(), linear_model.predict(X_test_tensor.numpy()))
+nn_r2 = r2_score(test_true, test_preds)
+
+print(f"\nPerformance Comparison:")
+print(f"Linear Regression R²: {linear_r2:.4f}")
+print(f"Neural Network R²:    {nn_r2:.4f}")

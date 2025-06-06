@@ -24,6 +24,16 @@ print("\nAll reaction IDs:")
 for reaction in model.reactions:
     print(reaction.id)
 '''
+for rxn in model.reactions:
+    if rxn.id.startswith('EX'):
+        print(f"Reaction ID:   {rxn.id}")
+        print(f"  Name:        {rxn.name}")
+        print(f"  Bounds:      {rxn.bounds}")          # (lower_bound, upper_bound)
+        print(f"  Equation:    {rxn.reaction}")
+        # print(f"  Subsystem:   {rxn.subsystem}")
+        # genes = [g.id for g in rxn.genes]
+        # print(f"  Genes:       {genes}")
+        print("-" * 60)
 
 # Key fluxes (consumes glucose and oxygen -> produces biomass)
 reaction_ids = ['EX_glc__D_e', 'EX_o2_e', 'EX_nh4_e', 'EX_pi_e', 'Biomass_Ecoli_core']
