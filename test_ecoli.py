@@ -24,8 +24,12 @@ print("\nAll reaction IDs:")
 for reaction in model.reactions:
     print(reaction.id)
 '''
+
+print("\nExchange reactions:")
+exchange_count = 0
 for rxn in model.reactions:
     if rxn.id.startswith('EX'):
+        exchange_count += 1
         print(f"Reaction ID:   {rxn.id}")
         print(f"  Name:        {rxn.name}")
         print(f"  Bounds:      {rxn.bounds}")          # (lower_bound, upper_bound)
@@ -33,46 +37,63 @@ for rxn in model.reactions:
         # print(f"  Subsystem:   {rxn.subsystem}")
         # genes = [g.id for g in rxn.genes]
         # print(f"  Genes:       {genes}")
+        print(f"  Flux:        {default_solution.fluxes[rxn.id]:.4f}")
         print("-" * 60)
+print(f"Number of exchange reactions: {exchange_count}")
 
-# Key fluxes (consumes glucose and oxygen -> produces biomass)
-reaction_ids = ['EX_glc__D_e', 'EX_o2_e', 'EX_nh4_e', 'EX_pi_e', 'Biomass_Ecoli_core']
-
-# Inspect lower and upper bounds
-print('\nLower and upper bounds for glucose and oxygen:')
-print(f'EX_glc__D_e:\t{model.reactions.get_by_id("EX_glc__D_e").bounds}')
-print(f'EX_o2_e:\t{model.reactions.get_by_id("EX_o2_e").bounds}')
-
-# Inspect reaction descriptions
-print('\nReaction descriptions:')
-for rxn_id in reaction_ids:
-    if rxn_id in model.reactions:
-        rxn = model.reactions.get_by_id(rxn_id)
-        print(f"{rxn.id} — {rxn.name}")
-        print(f"  Equation: {rxn.reaction}")
-        #print(f"  Subsystem: {rxn.subsystem}")
+# Key fluxes (consumes glucose and oxygen -> produces biomass + byproducts)
+reaction_ids = [
+    'EX_glc__D_e',     # D-Glucose uptake
+    'EX_o2_e',         # O2 uptake
+    'EX_nh4_e',        # Ammonia uptake
+    'EX_pi_e',         # Phosphate uptake
+    'EX_h_e',          # Proton exchange
+    'EX_co2_e',        # CO2 secretion
+    'EX_h2o_e',        # H2O secretion
+    'Biomass_Ecoli_core'  # Biomass production (growth)
+]
 
 print("\nKey reaction fluxes:")
 for rxn_id in reaction_ids:
-    if rxn_id in model.reactions:
-        rxn = model.reactions.get_by_id(rxn_id)
-        print(f"{rxn.id}: {default_solution.fluxes[rxn.id]:.4f}")
-    else:
-        print(f"Reaction {rxn_id} not found in the model.")
+    rxn = model.reactions.get_by_id(rxn_id)
+    print(f"{rxn.id}: {default_solution.fluxes[rxn.id]:.4f}")
 
-# Test with less glucose and oxygen uptake
-model.reactions.get_by_id("EX_glc__D_e").lower_bound = -1
-less_glucose_solution = model.optimize()
+# Define sugars to test
+sugar_ids = [
+    'glc__D_e',  # Glucose
+    'fru_e',     # Fructose
+    'lac__D_e',  # D-Lactate (often usable)
+    'pyr_e',     # Pyruvate (intermediate, not a sugar but a carbon source)
+    'ac_e',      # Acetate
+    'akg_e',     # Alpha-ketoglutarate
+    'succ_e',    # Succinate
+    'fum_e',     # Fumarate
+    'mal__L_e'   # L-Malate
+]
+sugar_ex_ids = [f'EX_{sugar}' for sugar in sugar_ids]
 
-model.reactions.get_by_id("EX_glc__D_e").lower_bound = -10 # back to default
-model.reactions.get_by_id("EX_o2_e").lower_bound = -1
-less_oxygen_solution = model.optimize()
+print("\n=== Testing growth on different sugars ===")
+for sugar_ex in sugar_ex_ids:
+    if sugar_ex not in model.reactions:
+        print(f"{sugar_ex} not in model, skipping...")
+        continue
 
-print(f"\nDefault growth rate: {default_solution.objective_value:.4f}")
-print(f"Growth rate with less glucose: {less_glucose_solution.objective_value:.4f}")
-print(f"Growth rate with less oxygen: {less_oxygen_solution.objective_value:.4f}")
+    for ex in sugar_ex_ids:
+        if ex in model.reactions:
+            model.reactions.get_by_id(ex).lower_bound = 0
+
+    model.reactions.get_by_id(sugar_ex).lower_bound = -10
+
+    sol = model.optimize()
+    print(f"\nSugar: {sugar_ex}")
+    print(f"  Max growth rate: {sol.objective_value:.4f}")
+
+    print(f"  {sugar_ex} flux: {sol.fluxes[sugar_ex]:.4f}")
+    print(f"  Biomass flux: {sol.fluxes['Biomass_Ecoli_core']:.4f}")
 
 '''
+
+
 # Set the objective to lactate production
 model.objective = "EX_lac__D_e"
 print('\nObjective set to lactate production')
