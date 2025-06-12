@@ -62,7 +62,7 @@ for rxn_id in reaction_ids:
 sugar_ids = [
     'glc__D_e',  # Glucose
     'fru_e',     # Fructose
-    'lac__D_e',  # D-Lactate (often usable)
+    'lac__D_e',  # D-Lactate
     'pyr_e',     # Pyruvate (intermediate, not a sugar but a carbon source)
     'ac_e',      # Acetate
     'akg_e',     # Alpha-ketoglutarate
@@ -86,14 +86,10 @@ for sugar_ex in sugar_ex_ids:
 
     sol = model.optimize()
     print(f"\nSugar: {sugar_ex}")
-    print(f"  Max growth rate: {sol.objective_value:.4f}")
-
     print(f"  {sugar_ex} flux: {sol.fluxes[sugar_ex]:.4f}")
     print(f"  Biomass flux: {sol.fluxes['Biomass_Ecoli_core']:.4f}")
 
 '''
-
-
 # Set the objective to lactate production
 model.objective = "EX_lac__D_e"
 print('\nObjective set to lactate production')

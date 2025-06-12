@@ -11,37 +11,32 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 
-datafile = "./data/simple_training_data_9527_samples.csv"
+datafile = "./data/training_data_18264_samples.csv"
 
 def load_and_preprocess_data(filename):
     """Load and preprocess the training data"""
     df = pd.read_csv(filename)
     print(f"\nLoaded data with {len(df)} samples from {filename}")
     print(df[['glucose_uptake', 'oxygen_uptake', 'ammonia_uptake', 'phosphate_uptake']].describe())
+    print(df[['EX_co2_e_flux', 'EX_h2o_e_flux', 'EX_h_e_flux', 'Biomass_Ecoli_core_flux']].describe())
+    print()
     
-    '''
     input_cols = [
         'glucose_uptake',
         'oxygen_uptake',
-        'ammonia_uptake,
+        'ammonia_uptake',
         'phosphate_uptake',
 
     ]
     output_cols = [
-        'EX_co2_e',
-        'EX_h2o_e',
-        'EX_h_e',
+        'EX_co2_e_flux',
+        'EX_h2o_e_flux',
+        'EX_h_e_flux',
         'Biomass_Ecoli_core_flux'
     ]
 
     X = df[input_cols].values.astype(np.float32)
     y = df[output_cols].values.astype(np.float32)
-
-    '''
-    # Inputs: Key uptake rates
-    X = df[['glucose_uptake', 'oxygen_uptake', 'ammonia_uptake', 'phosphate_uptake']].values
-    # Output: biomass flux (can be extended to multiple outputs)
-    y = df['Biomass_Ecoli_core_flux'].values.reshape(-1, 1)
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -64,7 +59,7 @@ def load_and_preprocess_data(filename):
 
 class MetabolicNN(nn.Module):
     """Neural network to predict metabolic fluxes"""
-    def __init__(self, input_size=4, hidden_size=64, output_size=1):
+    def __init__(self, input_size=4, hidden_size=256, output_size=4):
         super(MetabolicNN, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_size, hidden_size),
@@ -90,41 +85,46 @@ def plot_loss_curves(train_losses, test_losses, save_path="./pics/training_curve
     plt.close()
     print(f"\nTraining curve saved to {save_path}")
     
-def plot_actual_vs_predicted(y_true, y_pred, title, filename):
-    """Scatter plot of actual vs predicted values"""
-    plt.figure(figsize=(8, 6))
-    plt.scatter(y_true, y_pred, alpha=0.2, s=10)
-    plt.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)
-    plt.xlabel('Actual Biomass Flux')
-    plt.ylabel('Predicted Biomass Flux')
-    plt.title(title)
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.close()
-
-def plot_residuals(y_true, y_pred, title, filename):
-    """Plot residuals (errors) vs actual values"""
+def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
+    """Creates a 2x2 matrix of plots: actual vs predicted, residuals, error distribution, and histogram of actuals"""
     residuals = y_true - y_pred
-    plt.figure(figsize=(8, 6))
-    plt.scatter(y_true, residuals, alpha=0.5)
-    plt.axhline(y=0, color='r', linestyle='-')
-    plt.xlabel('Actual Biomass Flux')
-    plt.ylabel('Residuals (Actual - Predicted)')
-    plt.title(title)
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.close()
+    errors = residuals
 
-def plot_error_distribution(y_true, y_pred, title, filename):
-    """Histogram of prediction errors"""
-    errors = y_true - y_pred
-    plt.figure(figsize=(8, 6))
-    sns.histplot(errors, kde=True, legend=False)
-    plt.xlabel('Prediction Error')
-    plt.ylabel('Frequency')
-    plt.title(title)
-    plt.grid(True)
-    plt.savefig(filename)
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    
+    # Actual vs Predicted
+    axs[0, 0].scatter(y_true, y_pred, alpha=0.2, s=10)
+    axs[0, 0].plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)
+    axs[0, 0].set_title(f'Actual vs Predicted: {label}')
+    axs[0, 0].set_xlabel('Actual')
+    axs[0, 0].set_ylabel('Predicted')
+    axs[0, 0].grid(True)
+
+    # Residuals plot
+    axs[0, 1].scatter(y_true, residuals, alpha=0.5)
+    axs[0, 1].axhline(y=0, color='r', linestyle='-')
+    axs[0, 1].set_title(f'Residuals: {label}')
+    axs[0, 1].set_xlabel('Actual')
+    axs[0, 1].set_ylabel('Residuals')
+    axs[0, 1].grid(True)
+
+    # Error distribution
+    sns.histplot(errors, kde=True, ax=axs[1, 0], legend=False)
+    axs[1, 0].set_title(f'Prediction Error Distribution: {label}')
+    axs[1, 0].set_xlabel('Prediction Error')
+    axs[1, 0].set_ylabel('Frequency')
+    axs[1, 0].grid(True)
+
+    # Histogram of actual values
+    sns.histplot(y_true, kde=True, ax=axs[1, 1], color='g', legend=False)
+    axs[1, 1].set_title(f'Actual Value Distribution: {label}')
+    axs[1, 1].set_xlabel('Actual Value')
+    axs[1, 1].set_ylabel('Frequency')
+    axs[1, 1].grid(True)
+
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path)
     plt.close()
 
 def plot_feature_importance(model, feature_names):
@@ -153,7 +153,7 @@ os.makedirs("./models", exist_ok=True)
 train_losses = []
 test_losses = []
 
-epochs = 1000
+epochs = 500
 for epoch in range(epochs):
     model.train()
     optimizer.zero_grad()
@@ -178,39 +178,30 @@ with torch.no_grad():
     test_preds = y_scaler.inverse_transform(test_preds_scaled)
     test_true = y_scaler.inverse_transform(y_test_tensor.numpy())
 
-# 1. Plot training curves
+output_labels = ['EX_co2_e_flux', 'EX_h2o_e_flux', 'EX_h_e_flux', 'Biomass_Ecoli_core_flux']
+
+# Plot training curves
 plot_loss_curves(train_losses, test_losses, './pics/training_curve.png')
 
-# 2. Plot Actual vs Predicted (Test set)
-plot_actual_vs_predicted(test_true, test_preds, 'Actual vs Predicted Biomass Flux on Test Set', './pics/true_vs_predicted_test.png')
+for i, label in enumerate(output_labels):
+    actual = test_true[:, i]
+    predicted = test_preds[:, i]
 
-# 3. Residual plot (Test set)
-plot_residuals(test_true, test_preds, 
-               'Residuals vs True Values (Test Set)',
-               './pics/residuals_test.png')
-
-# 4. Error distribution (Test set)
-plot_error_distribution(test_true, test_preds, 
-                        'Prediction Error Distribution (Test Set)',
-                        './pics/error_distribution_test.png')
+    plot_diagnostics_2x2(actual, predicted,
+                         label,
+                         f'./pics/diagnostics_{label}.png')
 
 # 5. Plot feature importance
 plot_feature_importance(model, ['Glucose Uptake', 'Oxygen Uptake', 'Ammonia Uptake', 'Phosphate Uptake'])
 
-torch.save(model.state_dict(), "./models/simple_metabolic_nn.pth")
+torch.save(model.state_dict(), "./models/metabolic_nn.pth")
 import joblib
-joblib.dump(x_scaler, "./models/simple_input_scaler.pkl")
-joblib.dump(y_scaler, "./models/simple_output_scaler.pkl")
+joblib.dump(x_scaler, "./models/input_scaler.pkl")
+joblib.dump(y_scaler, "./models/output_scaler.pkl")
 
 print("Model and scalers saved.")
 
+for i, label in enumerate(output_labels):
+    r2 = r2_score(test_true[:, i], test_preds[:, i])
+    print(f"{label}: R² = {r2:.4f}")
 
-# Compare to simple linear model
-linear_model = LinearRegression()
-linear_model.fit(X_train_tensor.numpy(), y_train_tensor.numpy())
-linear_r2 = r2_score(y_test_tensor.numpy(), linear_model.predict(X_test_tensor.numpy()))
-nn_r2 = r2_score(test_true, test_preds)
-
-print(f"\nPerformance Comparison:")
-print(f"Linear Regression R²: {linear_r2:.4f}")
-print(f"Neural Network R²:    {nn_r2:.4f}")
