@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import date
 
 import numpy as np
@@ -7,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch.utils.data import TensorDataset, DataLoader
 
 from sklearn.model_selection import train_test_split
@@ -16,72 +18,162 @@ from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-10_full_training_data_49773_samples.csv"
+DATA_PATH = "./data/2025-07-11_full_training_data_9_samples.csv"
 
-'''
-class FluxTransformer(nn.Module):
-    def __init__(self, vocab_size=115, d_model=64, nhead=4, 
-                 num_layers=3, dim_feedforward=256, dropout=0.1):
+class AttentionBlock(nn.Module):
+    """Custom attention block for metabolic modeling"""
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
         super().__init__()
+
+        assert d_model%n_heads==0, "Model dimension must be divisible by number of heads!"
+
         self.vocab_size = vocab_size
         self.d_model = d_model
         
-        # Embedding layer for reaction IDs
-        self.reaction_embedding = nn.Embedding(vocab_size, d_model)
+        self.layer_norm = nn.LayerNorm(d_model)
         
-        # Projection for flux values
-        self.flux_projection = nn.Linear(1, d_model)
-        
-        # Transformer Encoder Layers
-        encoder_layer = TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=nhead,
-            dim_feedforward=dim_feedforward,
-            dropout=dropout,
-            batch_first=True
-        )
-        self.transformer_encoder = TransformerEncoder(encoder_layer, num_layers=num_layers)
-        
-        # Output layer
-        self.output_layer = nn.Linear(d_model, 1)
-        
-        self._init_weights()
+        self.head_dim = d_model // n_heads  # d_model split evenly across heads
 
-    def _init_weights(self):
-        for module in self.modules():
-            if isinstance(module, nn.Linear):
-                nn.init.normal_(module.weight, mean=0.0, std=0.02)
-                if module.bias is not None:
-                    nn.init.zeros_(module.bias)
-            elif isinstance(module, nn.Embedding):
-                nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        self.W_k = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_q = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_v = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_o = nn.Linear(self.head_dim, d_model, bias=False)
+        #self.W_c = nn.Linear(vocab_size, vocab_size, bias=False)
 
+    def scaled_dot_product_attention(self, queries, keys, values):    
+        '''
+        Compute scaled dot-product attention.
+        Args:
+            queries, keys, values: tensors of shape (batch, seq_len, head_dim)
+        Returns:
+            output: weighted sum of values
+            weights: attention weights
+        '''
+
+        # b = batch, q = query pos, k = key pos, d = head dimension
+        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / np.sqrt(self.d_model)
+        weights = torch.softmax(scores, dim=-1)
+        output = torch.einsum('bqk, bkd -> bqd', weights, values)
+
+        return output, weights
+
+    def forward(self, x, c):
+        '''
+        Forward pass of the attention block.
+        Args:
+            x: input tensor of shape (batch, seq_len, d_model)
+            c: consentrations tensor of shape (batch, seq_len, vocab_size)
+        Returns:
+            output_x: updated x after attention and residual connection
+            output_c: updated c after attention
+        '''
+        norm_x = self.layer_norm(x)
+
+        # Optional transformation of c:
+        #modified_c = self.W_c(c.transpose(-2,-1)).transpose(-2,-1)
+        modified_c = c
+
+        Q = self.W_q(norm_x)
+        K = self.W_k(norm_x)
+        V = self.W_v(norm_x)
+
+        attention_output, attention_weights = self.scaled_dot_product_attention(Q, K, V)
+
+        #print(attention_weights.size(),modified_c.size())
+
+        attended_c = torch.einsum('bqk, bkv -> bqv', attention_weights, modified_c)
+        
+        #print(c.size(),attended_c.size())
+
+        # Residual connections
+        output_x = self.W_o(attention_output) + x * (1 / self.n_heads)
+        output_c = (attended_c + c) * (1 / self.n_heads)
+
+        return output_x, output_c
+
+class MultiHeadAttentionBlock(nn.Module):
+    """Multi-Head Attention layer for metabolic modeling"""
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
+        super().__init__()
+
+        self.attention_blocks = nn.ModuleList([AttentionBlock(vocab_size, d_model, n_heads) for _ in range(n_heads)])
+
+    def forward(self,x,c):
+        output_x = torch.zeros_like(x)
+        output_c = torch.zeros_like(c)
+
+        for attention_block in self.attention_blocks:
+            o_x, o_c = attention_block(x, c)
+            output_x += o_x
+            output_c += o_c
+
+        return output_x, output_c
+    
+class FeedForwardBlock(nn.Module):
+    def __init__(self, d_model, inner_dim_multiplier, dropout=0.1):
+        super().__init__()
+
+        self.d_model = d_model + 1
+        self.inner_dim = inner_dim_multiplier * (d_model + 1)
+
+        self.layer_norm = nn.LayerNorm(self.d_model)
+
+        self.linear_layer_1 = nn.Linear(self.d_model, self.inner_dim)
+        self.linear_layer_2 = nn.Linear(self.inner_dim, self.d_model)
+        self.dropout = nn.Dropout(dropout)
+    
+    def forward(self, x, c):
+        y = torch.cat((x, c), 2)
+        
+        norm_y = self.layer_norm(y)    
+        norm_y = self.linear_layer_1(norm_y)
+        norm_y = F.relu(norm_y)
+        norm_y = self.linear_layer_2(norm_y)
+
+        return norm_y + y
+
+class TransformerBlock(nn.Module):
+    """Embedding layer + Attention Block + FeedForward Layer"""
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2, inner_dim_multiplier=5):
+        super().__init__()
+
+        self.d_model = d_model
+        self.vocab_size = vocab_size
+
+        self.inp_embedding = nn.Embedding(vocab_size, d_model)
+
+        self.attention_block = MultiHeadAttentionBlock(vocab_size, d_model, n_heads)
+
+        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier)
+
+        self.linear_layer_1 = nn.Linear(vocab_size, vocab_size)
+
+        self.apply(self._init_weights)
+    
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+      
     def forward(self, c):
-        # c shape: (batch_size, vocab_size, 1)
-        batch_size = c.size(0)
+        batch_size, vocab_size, _ = c.size()
+
+        # y = torch.randint(0, vocab_size, (batch_size, vocab_size))
+        # for k in range(vocab_size):
+        #     y[:,k] = k
+
+        y = torch.arange(vocab_size, device=device).unsqueeze(0).expand(batch_size, -1)
+        x = self.inp_embedding(y)
+        # print(x.size())
         
-        # Create reaction IDs tensor
-        reaction_ids = torch.arange(self.vocab_size, device=c.device)
-        reaction_ids = reaction_ids.unsqueeze(0).expand(batch_size, -1)  # (batch_size, vocab_size)
-        
-        # Get reaction embeddings
-        reaction_emb = self.reaction_embedding(reaction_ids)  # (batch_size, vocab_size, d_model)
-        
-        # Project flux values
-        flux_emb = self.flux_projection(c)  # (batch_size, vocab_size, d_model)
-        
-        # Combine embeddings
-        x = reaction_emb + flux_emb
-        
-        # Process through transformer
-        x = self.transformer_encoder(x)  # (batch_size, vocab_size, d_model)
-        
-        # Generate output predictions
-        output = self.output_layer(x)  # (batch_size, vocab_size, 1)
-        
-        return output
-'''
-        
+        output_x, output_c = self.attention_block(x,c)
+        output_y = self.feedforward_block(output_x,output_c)
+
+        return output_y[:,:,-1].unsqueeze(-1)
+    
 def load_data(filepath):
     """
     Load and preprocess metabolic flux training data
@@ -141,43 +233,121 @@ def load_data(filepath):
 
     return X_combined, y_combined, all_columns
 
-def prepare_dataloaders(X, y, test_size=0.4, batch_size=64, device="cpu"):
+def prepare_tensors(X, y, test_size=0.4, device="cpu"):
     """
-    Splits the dataset and returns DataLoaders for training and testing.
-
+    Split data into train/test and convert to PyTorch tensors.
+    
     Parameters:
-        X (ndarray): Input matrix.
-        y (ndarray): Output matrix.
-        test_size (float): Fraction of test data.
-        batch_size (int): Mini-batch size for training/testing.
-        device (str or torch.device): Where to send the data.
-
+        X (ndarray): Input features.
+        y (ndarray): Output targets.
+        test_size (float): Fraction of data to reserve for testing.
+        device (str or torch.device): Device to move tensors to.
+    
     Returns:
-        train_loader (DataLoader)
-        test_loader (DataLoader)
-        total_size (int): Total number of features per sample
+        X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor (torch.Tensor)
     """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
-    # Convert to tensors
+    print(f"Training samples: {len(X_train)}")
+    print(f"Test samples: {len(X_test)}")
+
+    # Optional: standardize inputs (only input features, i.e., first 20 columns)
+    # scaler = StandardScaler()
+    # X_train[:, :20] = scaler.fit_transform(X_train[:, :20])
+    # X_test[:, :20] = scaler.transform(X_test[:, :20])
+
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
     y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
 
-    # Wrap tensors in TensorDataset
-    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
-    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+    return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-    # Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+def train_model(dmodel=6,num_heads=2,inner_dim_multiplier=5):
+    total_size = X_train.size(1)
+    start_time = time.time()
 
-    total_size = X_train_tensor.size(1)
+    average_losses = []
+    test_losses = []
+    vocab_size = 115
+    d_model = dmodel
+    
+    batch_size = 10
+    learning_rate = 1e-3
+    num_epochs = 2200
+    num_batches = 30
 
-    return train_loader, test_loader, total_size
+    model = TransformerBlock(vocab_size,d_model,num_heads,inner_dim_multiplier)
+    model = model.to(device)
 
-def plot_loss(loss_per_epoch,test_loss_per_epoch, d_model, title="Training and Test Losses",save_path=None):
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    if device.type == 'mps':
+        # Reduce batch size slightly for Mac GPU memory
+        batch_size = min(batch_size, 12)  # Conservative for Mac GPU
+        print(f"Adjusted batch size for Mac GPU: {batch_size}")
+
+    model.train()
+
+    for epoch in range(num_epochs):
+        total_loss = 0
+
+        for batch_idx in range(num_batches):
+
+            idxs = torch.randint(0,total_size,(batch_size,),device=device)
+
+            batch_inps = X_train[idxs,:].unsqueeze(-1)
+            batch_targets = y_train[idxs,:].unsqueeze(-1)
+
+
+            optimizer.zero_grad()
+
+            # print(batch_inps.size(),batch_targets.size())
+            # print(batch_inps.dtype, batch_targets.dtype)
+            batch_outs = model(batch_inps)
+
+            # print(batch_outs.size(),batch_targets.size())
+
+            loss = criterion(batch_outs,batch_targets)
+
+            loss.backward()
+
+            optimizer.step()
+
+            total_loss += loss.item()
+
+            if (batch_idx + 1) % 15 == 0 and (epoch+1)%4400==0:
+                avg_loss = total_loss / (batch_idx + 1)
+
+                print(f"Epoch [{epoch+1}/{num_epochs}], Batch [{batch_idx+1}/{num_batches}]",
+                      f"Avg Loss: {avg_loss:.4f}")
+        
+        avg_epoch_loss = total_loss / num_batches
+        average_losses.append(avg_epoch_loss)
+
+        # Validation on test set
+        model.eval()
+        with torch.no_grad():
+            test_outputs = model(X_test_)
+            test_loss = criterion(test_outputs, y_test_).item()
+            test_losses.append(test_loss)
+        
+        # if test_loss < best_test_loss:
+        #     best_test_loss = test_loss
+        #     best_epoch = epoch
+
+        if (epoch+1)%440==0:
+            print(f"Epoch [{epoch+1}/{num_epochs}] completed. Average Training Loss: {avg_epoch_loss: .4f}, Test Loss: {test_loss: .4f}")
+    
+    print('Training Completed.')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    mins, secs = divmod(elapsed_time, 60)
+    print(f"Training took {int(mins)} min {secs:.1f} sec.")
+    return average_losses, test_losses, model
+
+def plot_loss(loss_per_epoch, test_loss_per_epoch, d_model, title="Training and Test Losses", save_path=None):
     """
     Plot loss per epoch
     
@@ -209,47 +379,28 @@ def plot_loss(loss_per_epoch,test_loss_per_epoch, d_model, title="Training and T
 
 if __name__ == "__main__":
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    print(f"Using device: {device}")
 
     X, y, columns = load_data(DATA_PATH)
-    train_loader, test_loader, total_size = prepare_dataloaders(X, y, device=device)
+    X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
+
+    X_test_ = X_test.unsqueeze(-1)
+    y_test_ = y_test.unsqueeze(-1)
+
+    #average_losses, test_losses, trained_model = train_model()
+    #plot_loss(average_losses, test_losses, 6)
 
 '''
-    model = FluxTransformer(seq_len=115).to(device)
+    model = FluxTransformer(
+        vocab_size=115,
+        d_model=64,
+        nhead=4,
+        num_layers=3,
+        dim_feedforward=256
+    ).to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
 
-    epochs = 10
-
-    for epoch in range(epochs):
-        model.train()
-        train_losses = []
-
-        for X_batch, y_batch in train_loader:
-            optimizer.zero_grad()
-            preds = model(X_batch)
-            loss = criterion(preds, y_batch)
-            loss.backward()
-            optimizer.step()
-            train_losses.append(loss.item())
-
-        avg_train_loss = np.mean(train_losses)
-
-        # Evaluate on test set
-        model.eval()
-        test_preds, test_targets = [], []
-
-        with torch.no_grad():
-            for X_batch, y_batch in test_loader:
-                preds = model(X_batch)
-                test_preds.append(preds.cpu())
-                test_targets.append(y_batch.cpu())
-
-        test_preds = torch.cat(test_preds).numpy()
-        test_targets = torch.cat(test_targets).numpy()
-
-        test_r2 = r2_score(test_targets, test_preds)
-        test_mse = np.mean((test_targets - test_preds) ** 2)
-
-        print(f"Epoch {epoch+1:02d}/{num_epochs} | Train Loss: {avg_train_loss:.4f} | Test MSE: {test_mse:.4f} | R²: {test_r2:.4f}")
+    epochs = 500
 '''
