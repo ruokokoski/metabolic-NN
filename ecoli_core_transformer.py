@@ -18,7 +18,7 @@ from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-11_full_training_data_9_samples.csv"
+DATA_PATH = "./data/2025-07-11_full_training_data_99548_samples.csv"
 
 class AttentionBlock(nn.Module):
     """Custom attention block for metabolic modeling"""
@@ -29,6 +29,7 @@ class AttentionBlock(nn.Module):
 
         self.vocab_size = vocab_size
         self.d_model = d_model
+        self.n_heads = n_heads
         
         self.layer_norm = nn.LayerNorm(d_model)
         
@@ -283,11 +284,6 @@ def train_model(dmodel=6,num_heads=2,inner_dim_multiplier=5):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    if device.type == 'mps':
-        # Reduce batch size slightly for Mac GPU memory
-        batch_size = min(batch_size, 12)  # Conservative for Mac GPU
-        print(f"Adjusted batch size for Mac GPU: {batch_size}")
-
     model.train()
 
     for epoch in range(num_epochs):
@@ -387,8 +383,8 @@ if __name__ == "__main__":
     X_test_ = X_test.unsqueeze(-1)
     y_test_ = y_test.unsqueeze(-1)
 
-    #average_losses, test_losses, trained_model = train_model()
-    #plot_loss(average_losses, test_losses, 6)
+    average_losses, test_losses, trained_model = train_model()
+    plot_loss(average_losses, test_losses, 6)
 
 '''
     model = FluxTransformer(
