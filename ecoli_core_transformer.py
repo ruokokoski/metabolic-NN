@@ -1,4 +1,5 @@
 import os
+import random
 import time
 from datetime import date
 
@@ -19,6 +20,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 DATA_PATH = "./data/2025-07-11_full_training_data_99548_samples.csv"
+
+# Set all random seeds for reproducibility
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 class AttentionBlock(nn.Module):
     """Custom attention block for metabolic modeling"""
@@ -373,8 +384,23 @@ def plot_loss(loss_per_epoch, test_loss_per_epoch, d_model, title="Training and 
     
     plt.show()
 
+def plot_prediction_sample(X_test_, y_test_, model):
+    j = np.random.randint(0, X_test_.size(0), 1)[0]
+    pred = model(X_test_[j].unsqueeze(0))
+    true = y_test_[j].unsqueeze(0)
+    plt.plot(pred[0,:,0].cpu().detach().numpy(), label='Predicted')
+    plt.plot(true[0,:,0].cpu().detach().numpy(), label='Actual')
+    plt.legend()
+    plt.title(f"Sample index {j}")
+    plt.xlabel("Reaction ID")
+    plt.ylabel("Concentration")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == "__main__":
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    set_seed()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     X, y, columns = load_data(DATA_PATH)
@@ -384,7 +410,13 @@ if __name__ == "__main__":
     y_test_ = y_test.unsqueeze(-1)
 
     average_losses, test_losses, trained_model = train_model()
+    average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
+
     plot_loss(average_losses, test_losses, 6)
+    plot_prediction_sample(X_test_, y_test_, trained_model)
+
+    plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
+    plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
 
 '''
     model = FluxTransformer(

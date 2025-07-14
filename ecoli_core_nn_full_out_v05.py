@@ -13,7 +13,8 @@ import os
 import seaborn as sns
 from datetime import date
 
-datafile = "./data/2025-07-08_full_training_data_497743_samples.csv"
+datafile = "./data/2025-07-11_full_training_data_99548_samples.csv"
+#datafile = "./data/2025-07-14_full_training_data_99973_samples.csv"
 
 class MetabolicNN(nn.Module):
     """Neural network to predict metabolic fluxes"""
@@ -322,7 +323,7 @@ def preprocess_data(X, y, output_cols):
 
 def train_model(model, X_train, y_train, X_test, y_test, epochs=1000):
     """Train the model with GPU support if available"""
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
     model = model.to(device)
@@ -402,7 +403,7 @@ if __name__ == "__main__":
         y_train=y_train_tensor,
         X_test=X_test_tensor,
         y_test=y_test_tensor,
-        epochs=5000
+        epochs=2200
     )
 
     # Evaluate model
