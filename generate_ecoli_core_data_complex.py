@@ -88,7 +88,7 @@ if __name__ == "__main__":
         'EX_mal__L_e',   # L-Malate
         'EX_etoh_e',     # Ethanol
         'EX_acald_e',    # Acetaldehyde
-        'EX_for_e'       # Formate (byproduct of anaerobic fermentation)
+        'EX_for_e',      # Formate (byproduct of anaerobic fermentation)
     ]
 
     # In natural environments, microbes usually access a dominant nitrogen source at a time
@@ -102,6 +102,7 @@ if __name__ == "__main__":
         'EX_co2_e',
         'EX_h_e',
         'EX_h2o_e',
+        'EX_nh4_e',      # Ammonia
         'EX_o2_e',
         'EX_pi_e',       # Phosphate (essential)
     ]
@@ -131,7 +132,7 @@ if __name__ == "__main__":
 
     input_cols = (
         carbon_exchanges + 
-        nitrogen_exchanges + 
+        ['EX_gln__L_e', 'EX_glu__L_e'] +
         base_exchanges
     )
     output_cols = [f"{rxn}_flux" for rxn in outputs]

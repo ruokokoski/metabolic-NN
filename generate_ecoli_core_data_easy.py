@@ -33,7 +33,7 @@ def generate_training_sample(carbon_subset, outputs):
         # Set base exchange rates
         # Leave CO2, H+, Pi, O2, NH4 and H2O unconstrained
         # Constraining or varying them can cause infeasible or biologically unrealistic fluxes
-        for ex in ['EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_pi_e', 'EX_o2_e', 'EX_nh4_e']:
+        for ex in ['EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_nh4_e', 'EX_o2_e', 'EX_pi_e']:
             model.reactions.get_by_id(ex).lower_bound = -default_rate
             data[ex] = default_rate
 
@@ -49,7 +49,7 @@ def generate_training_sample(carbon_subset, outputs):
 
 if __name__ == "__main__":
     np.random.seed(42)
-    default_rate = 100
+    default_rate = 50
     n_samples = 100000
 
     # Load the simplified E. coli metabolic model
@@ -73,10 +73,10 @@ if __name__ == "__main__":
     ]
 
     base_exchanges = [
-        'EX_nh4_e',
         'EX_co2_e',
         'EX_h_e',
         'EX_h2o_e',
+        'EX_nh4_e',
         'EX_o2_e',
         'EX_pi_e',       # Phosphate (essential)
     ]

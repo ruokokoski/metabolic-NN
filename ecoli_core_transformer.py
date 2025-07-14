@@ -19,7 +19,8 @@ from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-11_full_training_data_99548_samples.csv"
+#DATA_PATH = "./data/2025-07-14_full_training_data_99548_samples.csv"
+DATA_PATH = "./data/2025-07-14_full_training_data_99973_easy_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -201,8 +202,8 @@ def load_data(filepath):
     inputs = [
         'EX_glc__D_e', 'EX_fru_e', 'EX_lac__D_e', 'EX_pyr_e', 'EX_ac_e', 'EX_akg_e', 
         'EX_succ_e', 'EX_fum_e', 'EX_mal__L_e', 'EX_etoh_e', 'EX_acald_e', 'EX_for_e',
-        'EX_gln__L_e', 'EX_glu__L_e', 'EX_nh4_e',
-        'EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_o2_e', 'EX_pi_e',
+        'EX_gln__L_e', 'EX_glu__L_e',
+        'EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_nh4_e', 'EX_o2_e', 'EX_pi_e',
     ]
 
     outputs = [
@@ -410,13 +411,13 @@ if __name__ == "__main__":
     y_test_ = y_test.unsqueeze(-1)
 
     average_losses, test_losses, trained_model = train_model()
-    average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
+    #average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
 
     plot_loss(average_losses, test_losses, 6)
     plot_prediction_sample(X_test_, y_test_, trained_model)
 
-    plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
-    plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
+    #plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
+    #plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
 
 '''
     model = FluxTransformer(

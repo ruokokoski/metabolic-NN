@@ -13,8 +13,8 @@ import os
 import seaborn as sns
 from datetime import date
 
-datafile = "./data/2025-07-11_full_training_data_99548_samples.csv"
-#datafile = "./data/2025-07-14_full_training_data_99973_samples.csv"
+datafile = "./data/2025-07-14_full_training_data_99548_samples.csv"
+#datafile = "./data/2025-07-14_full_training_data_99973_easy_samples.csv"
 
 class MetabolicNN(nn.Module):
     """Neural network to predict metabolic fluxes"""
@@ -40,8 +40,8 @@ def load_data(filename):
     input_cols = [
         'EX_glc__D_e', 'EX_fru_e', 'EX_lac__D_e', 'EX_pyr_e', 'EX_ac_e', 'EX_akg_e', 
         'EX_succ_e', 'EX_fum_e', 'EX_mal__L_e', 'EX_etoh_e', 'EX_acald_e', 'EX_for_e',
-        'EX_gln__L_e', 'EX_glu__L_e', 'EX_nh4_e',
-        'EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_o2_e', 'EX_pi_e',
+        'EX_gln__L_e', 'EX_glu__L_e',
+        'EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_nh4_e', 'EX_o2_e', 'EX_pi_e',
     ]
 
     output_cols = [
