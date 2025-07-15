@@ -16,10 +16,22 @@ def draw_nitrogen(nitrogen_exchanges):
     """Draw one nitrogen source"""
     return np.random.choice(nitrogen_exchanges)
 
-def random_rate(min_val=0.01, max_val=10.0):
-    """Draw uptake rate between min and max."""
-    return round(np.random.uniform(min_val, max_val), 2) # uniform
-    # return round(float(10 ** np.random.uniform(np.log10(min_val), np.log10(max_val))), 2)
+def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
+    """Draw uptake rate between min and max.
+    
+    Args:
+        min_val: Minimum uptake rate
+        max_val: Maximum uptake rate
+        log_uniform: If True, sample log-uniformly; else sample uniformly
+    """
+    if log_uniform:
+        # Log-uniform sampling in [min_val, max_val]
+        log_min = np.log10(min_val)
+        log_max = np.log10(max_val)
+        return round(float(10 ** np.random.uniform(log_min, log_max)), 2)
+    else:
+        # Uniform sampling
+        return round(np.random.uniform(min_val, max_val), 2)
 
 def generate_training_sample(carbon_subset, nitrogen_subset, outputs):
     data = {}
@@ -30,7 +42,7 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs):
 
         # Set uptake rates for selected carbon sources
         for ex in carbon_subset:
-            rate = random_rate()
+            rate = random_rate(log_uniform=True)
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 

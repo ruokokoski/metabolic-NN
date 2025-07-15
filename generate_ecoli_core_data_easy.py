@@ -14,15 +14,18 @@ def draw_subset(exchanges, selection_rate=0.5):
 
 def random_rate(min_val=0.1, max_val=10.0):
     """Draw uptake rate between min and max."""
-    return round(np.random.uniform(min_val, max_val), 2) # uniform
-    # return round(float(10 ** np.random.uniform(np.log10(min_val), np.log10(max_val))), 2)
+    # return round(np.random.uniform(min_val, max_val), 2) # uniform
+    return round(float(10 ** np.random.uniform(np.log10(min_val), np.log10(max_val))), 2)
 
 def generate_training_sample(carbon_subset, outputs):
     data = {}
     with model:
         # Reset all exchanges
-        for rxn in model.exchanges:
-            rxn.lower_bound = 0.0
+        #for rxn in model.exchanges:
+        #    rxn.lower_bound = 0.0
+        for rxn in carbon_exchanges:
+            if rxn in model.reactions:
+                model.reactions.get_by_id(rxn).lower_bound = 0.0
 
         # Set uptake rates for selected carbon sources
         for ex in carbon_subset:
@@ -30,11 +33,8 @@ def generate_training_sample(carbon_subset, outputs):
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 
-        # Set base exchange rates
-        # Leave CO2, H+, Pi, O2, NH4 and H2O unconstrained
-        # Constraining or varying them can cause infeasible or biologically unrealistic fluxes
-        for ex in ['EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_nh4_e', 'EX_o2_e', 'EX_pi_e']:
-            model.reactions.get_by_id(ex).lower_bound = -default_rate
+        # Add base exchange uptakes with default_rate to data dict
+        for ex in base_exchanges:
             data[ex] = default_rate
 
         # Run FBA
@@ -84,6 +84,12 @@ if __name__ == "__main__":
     outputs = [rxn.id for rxn in model.reactions]
     #print([rxn.id for rxn in model.reactions])
     #print(len(model.reactions))
+
+    # Set base exchange rates
+    # Leave CO2, H+, Pi, O2, NH4 and H2O unconstrained
+    # Constraining or varying them can cause infeasible or biologically unrealistic fluxes
+    for ex in base_exchanges:
+        model.reactions.get_by_id(ex).lower_bound = -default_rate
 
     training_data = []
     start_time = time.time()
