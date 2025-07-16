@@ -36,7 +36,7 @@ class AttentionBlock(nn.Module):
     def __init__(self, vocab_size=115, d_model=6, n_heads=2):
         super().__init__()
 
-        assert d_model%n_heads==0, "Model dimension must be divisible by number of heads!"
+        assert d_model % n_heads==0, "Model dimension must be divisible by number of heads!"
 
         self.vocab_size = vocab_size
         self.d_model = d_model
@@ -61,9 +61,9 @@ class AttentionBlock(nn.Module):
             output: weighted sum of values
             weights: attention weights
         '''
-
+        scale_factor = self.head_dim ** 0.5  # Square root of head dimension
         # b = batch, q = query pos, k = key pos, d = head dimension
-        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / np.sqrt(self.d_model)
+        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / scale_factor
         weights = torch.softmax(scores, dim=-1)
         output = torch.einsum('bqk, bkd -> bqd', weights, values)
 
