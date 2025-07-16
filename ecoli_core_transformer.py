@@ -277,7 +277,6 @@ def prepare_tensors(X, y, test_size=0.4, device="cpu"):
 
 def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
     total_size = X_train.size(1)
-    print(f'Total size: {total_size}')
 
     start_time = time.time()
 
@@ -288,7 +287,7 @@ def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
     
     batch_size = 10
     learning_rate = 1e-3
-    num_epochs = 440
+    num_epochs = 2200
     num_batches = 30
 
     model = TransformerBlock(vocab_size,d_model,num_heads,inner_dim_multiplier)
@@ -483,6 +482,7 @@ if __name__ == "__main__":
     print(f"y_pred_outputs[:, biomass_idx] range:",
           y_pred_outputs[:, biomass_idx].min(), "to", y_pred_outputs[:, biomass_idx].max())
 
+    '''
     # Plot diagnostics specifically for biomass
     plot_diagnostics_2x2(
         y_true=y_true_outputs[:, biomass_idx],
@@ -499,7 +499,7 @@ if __name__ == "__main__":
             label=label,
             save_path=f'{pic_dir}/{model_name}_diagnostics_{label.replace("/", "_")}.png'
         )
-    '''
+    
 
     plot_prediction_sample(X_test_, y_test_, trained_model)
 
