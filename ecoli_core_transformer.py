@@ -19,8 +19,7 @@ from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#DATA_PATH = "./data/2025-07-14_full_training_data_99548_samples.csv"
-DATA_PATH = "./data/2025-07-14_full_training_data_99973_easy_samples.csv"
+DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -411,13 +410,13 @@ if __name__ == "__main__":
     y_test_ = y_test.unsqueeze(-1)
 
     average_losses, test_losses, trained_model = train_model()
-    #average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
+    average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
 
     plot_loss(average_losses, test_losses, 6)
     plot_prediction_sample(X_test_, y_test_, trained_model)
 
-    #plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
-    #plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
+    plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
+    plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
 
 '''
     model = FluxTransformer(

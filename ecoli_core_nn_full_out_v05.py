@@ -13,7 +13,7 @@ import os
 import seaborn as sns
 from datetime import date
 
-datafile = "./data/2025-07-14_full_training_data_99548_samples.csv"
+datafile = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
 #datafile = "./data/2025-07-14_full_training_data_99973_easy_samples.csv"
 
 class MetabolicNN(nn.Module):
