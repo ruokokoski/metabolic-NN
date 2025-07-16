@@ -275,8 +275,10 @@ def prepare_tensors(X, y, test_size=0.4, device="cpu"):
 
     return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-def train_model(dmodel=6,num_heads=2,inner_dim_multiplier=5):
+def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
     total_size = X_train.size(1)
+    print(f'Total size: {total_size}')
+
     start_time = time.time()
 
     average_losses = []
@@ -286,7 +288,7 @@ def train_model(dmodel=6,num_heads=2,inner_dim_multiplier=5):
     
     batch_size = 10
     learning_rate = 1e-3
-    num_epochs = 2200
+    num_epochs = 440
     num_batches = 30
 
     model = TransformerBlock(vocab_size,d_model,num_heads,inner_dim_multiplier)
@@ -354,35 +356,64 @@ def train_model(dmodel=6,num_heads=2,inner_dim_multiplier=5):
     print(f"Training took {int(mins)} min {secs:.1f} sec.")
     return average_losses, test_losses, model
 
-def plot_loss(loss_per_epoch, test_loss_per_epoch, d_model, title="Training and Test Losses", save_path=None):
-    """
-    Plot loss per epoch
+def plot_loss_curves(train_losses, test_losses, save_path, log_scale=True):
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.figure(figsize=(14, 10))
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.plot(train_losses, label="Training Loss")
+    plt.plot(test_losses, label="Test Loss")
+    if log_scale:
+        plt.yscale('log')
+    plt.xlabel("Epoch", fontsize=18)
+    plt.ylabel("Loss", fontsize=18)
+    plt.title("Training and Test Loss", fontsize=20)
+    plt.grid(True)
+    plt.legend(fontsize=16)
+    plt.savefig(save_path)
+    plt.close()
+    #print(f"\nTraining curve saved to {save_path}")
+
+def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
+    """Creates a 2x2 matrix of plots: true vs predicted, residuals, error distribution, and histogram of actuals"""
+    residuals = y_true - y_pred
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
     
-    Args:
-        loss_per_epoch (list): List of loss values for each epoch
-        title (str): Plot title
-        save_path (str, optional): Path to save the plot
-    """
-    epochs = range(1, len(loss_per_epoch) + 1)
-    
-    plt.figure(figsize=(10, 6))
-    plt.semilogy(epochs, loss_per_epoch, 'b-', linewidth=2, marker='o', markersize=4,label='Training Loss')
-    plt.semilogy(epochs, test_loss_per_epoch, 'r-', linewidth=2, marker='o', markersize=4,label='Testing Loss')
-    plt.title(title + f" for model dimension = {d_model}", fontsize=16, fontweight='bold')
-    plt.legend()
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('Loss', fontsize=12)
-    plt.grid(True, alpha=0.3)
+    # True vs Predicted
+    axs[0, 0].scatter(y_true, y_pred, alpha=0.2, s=5, color='royalblue')
+    axs[0, 0].plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--', lw=2)
+    axs[0, 0].set_title(f'True vs Predicted: {label}')
+    axs[0, 0].set_xlabel('True value')
+    axs[0, 0].set_ylabel('Predicted')
+    axs[0, 0].grid(True)
+
+    # Residuals plot
+    axs[0, 1].scatter(y_true, residuals, alpha=0.15, color='darkorange')
+    axs[0, 1].axhline(y=0, color='r', linestyle='-')
+    axs[0, 1].set_title(f'Residuals: {label}')
+    axs[0, 1].set_xlabel('True value')
+    axs[0, 1].set_ylabel('Residuals')
+    axs[0, 1].grid(True)
+
+    # Error distribution
+    sns.histplot(residuals, kde=True, ax=axs[1, 0], legend=False, color='indianred')
+    axs[1, 0].set_title(f'Prediction Error Distribution: {label}')
+    axs[1, 0].set_xlabel('Prediction Error')
+    axs[1, 0].set_ylabel('Frequency')
+    axs[1, 0].grid(True)
+
+    # Histogram of actual values
+    sns.histplot(y_true, kde=True, bins=100, ax=axs[1, 1], legend=False, color='mediumseagreen')
+    axs[1, 1].set_title(f'True Value Distribution: {label}')
+    axs[1, 1].set_xlabel('True Value')
+    axs[1, 1].set_ylabel('Frequency')
+    axs[1, 1].grid(True)
+
     plt.tight_layout()
-    
-    # Add some styling
-    plt.gca().spines['top'].set_visible(False)
-    plt.gca().spines['right'].set_visible(False)
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    
-    plt.show()
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
 
 def plot_prediction_sample(X_test_, y_test_, model):
     j = np.random.randint(0, X_test_.size(0), 1)[0]
@@ -409,14 +440,68 @@ if __name__ == "__main__":
     X_test_ = X_test.unsqueeze(-1)
     y_test_ = y_test.unsqueeze(-1)
 
+    input_cols = columns[:20]
+    output_cols = columns[20:]
+
     average_losses, test_losses, trained_model = train_model()
-    average_losses_12_3_5, test_losses_12_3_5, trained_model_12_3_5 = train_model(12,3,5)
 
-    plot_loss(average_losses, test_losses, 6)
+    today = date.today().isoformat()
+    pic_dir = f"./pics/{today}"
+    os.makedirs(pic_dir, exist_ok=True)
+    model_name = "ecoli_core_t"
+
+    plot_loss_curves(average_losses, test_losses, f'{pic_dir}/{model_name}_training_curve.png')
+
+    trained_model.eval()
+    with torch.no_grad():
+        y_pred_tensor = trained_model(X_test_.to(device))  # shape: [n_samples, vocab_size, 1]
+    print("y_pred_tensor.shape:", y_pred_tensor.shape)
+
+    y_pred_full = y_pred_tensor.squeeze(-1).cpu().numpy()  # shape: [n_samples, 115]
+    print("y_pred_full.shape:", y_pred_full.shape,
+          "min/max:", y_pred_full.min(), y_pred_full.max())
+    
+    y_true_full = y_test.cpu().numpy()                     # shape: [n_samples, 115]
+    print("y_true_full.shape:", y_true_full.shape,
+          "min/max:", y_true_full.min(), y_true_full.max())
+
+    # Extract only the output predictions (last 95 columns)
+    y_pred_outputs = y_pred_full[:, 20:]
+    y_true_outputs = y_true_full[:, 20:]
+    print("y_pred_outputs.shape:", y_pred_outputs.shape,
+          "min/max:", y_pred_outputs.min(), y_pred_outputs.max())
+    print("y_true_outputs.shape:", y_true_outputs.shape,
+          "min/max:", y_true_outputs.min(), y_true_outputs.max())
+
+    # Find the index of biomass in the output columns
+    biomass_idx = output_cols.index('Biomass_Ecoli_core_flux')
+    
+    # Verify we have the correct column
+    print(f"Biomass column index in outputs: {biomass_idx}")
+    print(f"y_true_outputs[:, biomass_idx] range:",
+          y_true_outputs[:, biomass_idx].min(), "to", y_true_outputs[:, biomass_idx].max())
+    print(f"y_pred_outputs[:, biomass_idx] range:",
+          y_pred_outputs[:, biomass_idx].min(), "to", y_pred_outputs[:, biomass_idx].max())
+
+    # Plot diagnostics specifically for biomass
+    plot_diagnostics_2x2(
+        y_true=y_true_outputs[:, biomass_idx],
+        y_pred=y_pred_outputs[:, biomass_idx],
+        label='Biomass_Ecoli_core_flux',
+        save_path=f'{pic_dir}/{model_name}_diagnostics_Biomass_Ecoli_core_flux.png'
+    )
+    '''
+    # Plot diagnostics for all outputs (optional)
+    for i, label in enumerate(output_cols):
+        plot_diagnostics_2x2(
+            y_true=y_true_outputs[:, i],
+            y_pred=y_pred_outputs[:, i],
+            label=label,
+            save_path=f'{pic_dir}/{model_name}_diagnostics_{label.replace("/", "_")}.png'
+        )
+    '''
+
     plot_prediction_sample(X_test_, y_test_, trained_model)
-
-    plot_loss(average_losses_12_3_5, test_losses_12_3_5, 12)
-    plot_prediction_sample(X_test_, y_test_, trained_model_12_3_5)
 
 '''
     model = FluxTransformer(
