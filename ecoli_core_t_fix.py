@@ -31,142 +31,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-class AttentionBlock(nn.Module):
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2, dropout=0.1):
-        super().__init__()
-        assert d_model % n_heads == 0
 
-        self.d_model = d_model
-        self.n_heads = n_heads
-        self.head_dim = d_model // n_heads
-
-        self.layer_norm = nn.LayerNorm(d_model)
-
-        # Project to d_model so we can split into heads
-        self.W_qkv = nn.Linear(d_model, 3 * d_model, bias=False)
-        self.W_o = nn.Linear(d_model, d_model, bias=True)
-
-        self.attn_dropout = nn.Dropout(dropout)
-
-    def scaled_dot_product(self, Q, K, V):
-        scale_factor = self.head_dim ** 0.5  # Square root of head dimension
-        scores = torch.einsum('bhqd, bhkd -> bhqk', Q, K) / scale_factor
-        weights = torch.softmax(scores, dim=-1)
-        weights = self.attn_dropout(weights)
-        out = torch.einsum('bhqk, bhkd -> bhqd', weights, V)
-        return out, weights
-
-    def forward(self, x, c):
-        # x: (b, seq, d_model), c: (b, seq, vocab_size)
-        b, seq, _ = x.size()
-
-        # 1. Pre-Norm
-        x_norm = self.layer_norm(x)
-
-        # 2. Linear and split heads
-        qkv = self.W_qkv(x_norm)  # (b, seq, 3*d_model)
-        qkv = qkv.view(b, seq, 3, self.n_heads, self.head_dim)
-        Q, K, V = qkv.unbind(dim=2)  # each (b, seq, heads, head_dim)
-        Q, K, V = [t.transpose(1, 2) for t in (Q, K, V)]
-        # now shapes = (b, heads, seq, head_dim)
-
-        # 3. Scaled dot-product attention
-        attn_out, attn_weights = self.scaled_dot_product(Q, K, V)
-
-        # 4. Merge heads
-        attn_out = attn_out.transpose(1, 2).contiguous().view(b, seq, self.d_model)
-
-        # 5. Output projection + residual
-        x_out = self.W_o(attn_out) + x
-
-        # 6. Concentration update
-        #    Attn weights: (b, heads, q, k) -> average over heads or sum?
-        avg_weights = attn_weights.mean(dim=1)
-        c_out = torch.einsum('bqk, bkv -> bqv', avg_weights, c) + c
-
-        return x_out, c_out
-
-class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, vocab_size, inner_multiplier=4, dropout=0.1):
-        super().__init__()
-        self.d_model     = d_model
-        self.vocab_size  = vocab_size
-        self.input_dim   = d_model + vocab_size
-        self.hidden_dim  = inner_multiplier * self.input_dim
-
-        # Pre-Norm on the concatenated features
-        self.layer_norm  = nn.LayerNorm(self.input_dim)
-
-        # Two-layer MLP
-        self.fc1         = nn.Linear(self.input_dim, self.hidden_dim)
-        self.fc2         = nn.Linear(self.hidden_dim, self.input_dim)
-        self.dropout     = nn.Dropout(dropout)
-
-    def forward(self, x, c):
-        # x: (batch, seq, d_model)
-        # c: (batch, seq, vocab_size)
-        y = torch.cat((x, c), dim=-1)                   # → (batch, seq, d_model+vocab_size)
-        y_norm = self.layer_norm(y)                     # Pre-Norm
-        y_hidden = F.relu(self.fc1(y_norm))
-        y_hidden = self.dropout(y_hidden)
-        y_out    = self.fc2(y_hidden)                   
-
-        # Residual connection
-        y_res    = y + y_out                            
-
-        # Split back into x and c
-        x_new, c_new = y_res.split([self.d_model, self.vocab_size], dim=-1)
-        return x_new, c_new
-    
-class FluxEncoderLayer(nn.Module):
-    """One Transformer encoder layer over streams x & c."""
-    def __init__(self, vocab_size, d_model, n_heads, inner_multiplier, dropout=0.1):
-        super().__init__()
-        self.attn = AttentionBlock(vocab_size, d_model, n_heads, dropout)
-        self.ffn  = FeedForwardBlock(d_model, vocab_size, inner_multiplier, dropout)
-
-    def forward(self, x, c, mask=None):
-        x1, c1 = self.attn(x, c, mask)
-        x2, c2 = self.ffn(x1, c1)
-        return x2, c2
-
-class FluxModel(nn.Module):
-    def __init__(self, vocab_size, d_model, n_heads, inner_multiplier, num_layers, dropout=0.1):
-        super(FluxModel, self).__init__()
-        self.vocab_size = vocab_size
-        self.d_model = d_model
-        self.num_layers = num_layers
-        
-        # Embed scalar inputs into d_model dimension
-        self.x_embed = nn.Linear(1, d_model)
-        
-        # Stack multiple FluxEncoderLayers
-        self.layers = nn.ModuleList([
-            FluxEncoderLayer(
-                vocab_size=vocab_size,
-                d_model=d_model,
-                n_heads=n_heads,
-                inner_multiplier=inner_multiplier,
-                dropout=dropout
-            ) for _ in range(num_layers)
-        ])
-
-    def forward(self, input):
-        batch_size, seq_len = input.shape
-        
-        # Embed inputs: (batch, seq_len) -> (batch, seq_len, d_model)
-        x = self.x_embed(input.unsqueeze(-1))
-        
-        # Initialize c as diagonal matrix: (batch, seq_len, vocab_size)
-        c = torch.diag_embed(input)
-        
-        # Process through each layer
-        for layer in self.layers:
-            x, c = layer(x, c)
-        
-        # Extract diagonal as output predictions
-        output = torch.diagonal(c, dim1=1, dim2=2)
-        return output
 
 def train_model(X_train, X_test, y_train, y_test, model, device):
     start_time = time.time()
@@ -424,14 +289,7 @@ if __name__ == "__main__":
     X, y, columns = load_data(DATA_PATH)
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
 
-    model = FluxModel(
-        vocab_size=115,
-        d_model=6,
-        n_heads=2,
-        inner_multiplier=4,
-        num_layers=1,
-        dropout=0.1
-    ).to(device)
+    model = FluxTransformer().to(device)
 
     trained_model, train_losses, test_losses = train_model(X_train, X_test, y_train, y_test, model, device)
 
