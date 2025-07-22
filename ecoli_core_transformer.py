@@ -1,4 +1,5 @@
 import os
+import gc
 import random
 import time
 from datetime import date
@@ -264,78 +265,83 @@ def prepare_tensors(X, y, test_size=0.4, device="cpu"):
 
     return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-def train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5):
-    total_size = X_train.size(1)
-
+def train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5, 
+               batch_size=12, num_epochs=600, learning_rate=0.001):
     start_time = time.time()
 
-    average_losses = []
-    test_losses = []
-    vocab_size = 115
+    # Create datasets with correct dimensions
+    train_dataset = TensorDataset(X_train.unsqueeze(-1), y_train.unsqueeze(-1))
+    test_dataset = TensorDataset(X_test.unsqueeze(-1), y_test.unsqueeze(-1))
+
+    # Create DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # Initialize model (vocab_size=135 to match context length)
+    model = FluxTransformer(
+        vocab_size=115,
+        d_model=d_model,
+        n_heads=n_heads,
+        n_layers=n_layers,
+        inner_dim_multiplier=inner_dim_multiplier
+    ).to(device)
     
-    batch_size = 10
-    learning_rate = 1e-3
-    num_epochs = 600
-    num_batches = 30
-
-    model = FluxTransformer(vocab_size, d_model, n_heads, n_layers, inner_dim_multiplier)
-    model = model.to(device)
-
-    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.MSELoss()
 
-    model.train()
+    train_losses = []
+    test_losses = []
 
     for epoch in range(num_epochs):
-        total_loss = 0
-
-        for batch_idx in range(num_batches):
-
-            idxs = torch.randint(0,total_size,(batch_size,),device=device)
-
-            batch_inps = X_train[idxs,:].unsqueeze(-1)
-            batch_targets = y_train[idxs,:].unsqueeze(-1)
-
-
+        # Training
+        model.train()
+        epoch_train_loss = 0.0
+        for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
-
-            # print(batch_inps.size(),batch_targets.size())
-            # print(batch_inps.dtype, batch_targets.dtype)
-            batch_outs = model(batch_inps)
-
-            # print(batch_outs.size(),batch_targets.size())
-
-            loss = criterion(batch_outs,batch_targets)
-
+            predictions = model(batch_X)
+            loss = criterion(predictions, batch_y)
             loss.backward()
-
             optimizer.step()
+            epoch_train_loss += loss.item() * batch_X.size(0)
 
-            total_loss += loss.item()
+            # Explicitly free tensors
+            del predictions, loss
+            torch.cuda.empty_cache()
         
-        avg_epoch_loss = total_loss / num_batches
-        average_losses.append(avg_epoch_loss)
+        epoch_train_loss /= len(train_loader.dataset)
+        train_losses.append(epoch_train_loss)
 
-        # Validation on test set
+        # Evaluation
         model.eval()
+        epoch_test_loss = 0.0
         with torch.no_grad():
-            test_outputs = model(X_test_)
-            test_loss = criterion(test_outputs, y_test_).item()
-            test_losses.append(test_loss)
-        
-        # if test_loss < best_test_loss:
-        #     best_test_loss = test_loss
-        #     best_epoch = epoch
+            for batch_X, batch_y in test_loader:
+                predictions = model(batch_X)
+                loss = criterion(predictions, batch_y)
+                epoch_test_loss += loss.item() * batch_X.size(0)
 
-        if (epoch+1)%100==0:
-            print(f"Epoch [{epoch+1}/{num_epochs}] completed. Average Training Loss: {avg_epoch_loss: .4f}, Test Loss: {test_loss: .4f}")
+                # Explicitly free tensors
+                del predictions, loss
+                torch.cuda.empty_cache()
+        
+        epoch_test_loss /= len(test_loader.dataset)
+        test_losses.append(epoch_test_loss)
+
+        if (epoch+1) % 100 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs} | "
+                f"Train Loss: {epoch_train_loss:.6f} | "
+                f"Test Loss: {epoch_test_loss:.6f}")
+        
+        # Additional memory cleanup after epoch
+        torch.cuda.empty_cache()
+        gc.collect()
     
     print('Training Completed.')
     end_time = time.time()
     elapsed_time = end_time - start_time
     mins, secs = divmod(elapsed_time, 60)
     print(f"Training took {int(mins)} min {secs:.1f} sec.")
-    return average_losses, test_losses, model
+    return train_losses, test_losses, model
 
 def plot_loss_curves(train_losses, test_losses, save_path, log_scale=True):
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
