@@ -31,135 +31,85 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
 class AttentionBlock(nn.Module):
-    """Custom attention block for metabolic modeling"""
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
+    """Multi-head attention block for metabolic modeling with context """
+    def __init__(self, d_model=6, n_heads=2, dropout=0.1):
         super().__init__()
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
-        assert d_model % n_heads==0, "Model dimension must be divisible by number of heads!"
-
-        self.vocab_size = vocab_size
         self.d_model = d_model
         self.n_heads = n_heads
-        
         self.layer_norm = nn.LayerNorm(d_model)
-        
-        self.head_dim = d_model // n_heads  # d_model split evenly across heads
 
-        self.W_k = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_q = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_v = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_o = nn.Linear(self.head_dim, d_model, bias=False)
-        #self.W_c = nn.Linear(vocab_size, vocab_size, bias=False)
-
-    def scaled_dot_product_attention(self, queries, keys, values):    
-        '''
-        Compute scaled dot-product attention.
-        Args:
-            queries, keys, values: tensors of shape (batch, seq_len, head_dim)
-        Returns:
-            output: weighted sum of values
-            weights: attention weights
-        '''
-        scale_factor = self.head_dim ** 0.5  # Square root of head dimension
-        # b = batch, q = query pos, k = key pos, d = head dimension
-        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / scale_factor
-        weights = torch.softmax(scores, dim=-1)
-        output = torch.einsum('bqk, bkd -> bqd', weights, values)
-
-        return output, weights
+        self.mha = nn.MultiheadAttention(
+            embed_dim=d_model,
+            num_heads=n_heads,
+            dropout=dropout,
+            batch_first=True,
+            # return averaged attention weights
+        )
+        # c projection to match d_model
+        self.Wc_proj = nn.Linear(1, d_model, bias=False)
+        # Project back to original c_dim=1
+        self.Wc_out = nn.Linear(d_model, 1, bias=False)
 
     def forward(self, x, c):
-        '''
-        Forward pass of the attention block.
-        Args:
-            x: input tensor of shape (batch, seq_len, d_model)
-            c: consentrations tensor of shape (batch, seq_len, vocab_size)
-        Returns:
-            output_x: updated x after attention and residual connection
-            output_c: updated c after attention
-        '''
-        norm_x = self.layer_norm(x)
+        # x: (batch, seq_len, d_model)
+        # c: (batch, seq_len, 1)
 
-        # Optional transformation of c:
-        #modified_c = self.W_c(c.transpose(-2,-1)).transpose(-2,-1)
-        modified_c = c
+        # Normalize and self-attend x
+        x_norm = self.layer_norm(x)
+        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True)
+        # attn_out: (B, S, d_model)
+        # attn_weights: (B, S, S) averaged over heads
 
-        Q = self.W_q(norm_x)
-        K = self.W_k(norm_x)
-        V = self.W_v(norm_x)
+        x_out = attn_out + x
 
-        attention_output, attention_weights = self.scaled_dot_product_attention(Q, K, V)
+        # Cross-attend concentrations c using same attention weights
+        # Project c into d_model space
+        c_proj = self.Wc_proj(c)            # (B, S, d_model)
+        # Apply attention weights: (B, S, S) @ (B, S, d_model) -> (B, S, d_model)
+        # need to batch-matmul with proper dims
+        c_att = torch.bmm(attn_weights, c_proj)
+        # Project back to scalar per position
+        c_out = self.Wc_out(c_att) + c      # (B, S, 1)
 
-        #print(attention_weights.size(),modified_c.size())
+        return x_out, c_out
 
-        attended_c = torch.einsum('bqk, bkv -> bqv', attention_weights, modified_c)
-        
-        #print(c.size(),attended_c.size())
-
-        # Residual connections
-        output_x = self.W_o(attention_output) + x * (1 / self.n_heads)
-        output_c = (attended_c + c) * (1 / self.n_heads)
-
-        return output_x, output_c
-
-class MultiHeadAttentionBlock(nn.Module):
-    """Multi-Head Attention layer for metabolic modeling"""
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
-        super().__init__()
-
-        self.attention_blocks = nn.ModuleList([AttentionBlock(vocab_size, d_model, n_heads) for _ in range(n_heads)])
-
-    def forward(self,x,c):
-        output_x = torch.zeros_like(x)
-        output_c = torch.zeros_like(c)
-
-        for attention_block in self.attention_blocks:
-            o_x, o_c = attention_block(x, c)
-            output_x += o_x
-            output_c += o_c
-
-        return output_x, output_c
-    
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model, inner_dim_multiplier, dropout=0.1):
-        super().__init__()
+        super(FeedForwardBlock, self).__init__()
 
         self.d_model = d_model + 1
         self.inner_dim = inner_dim_multiplier * (d_model + 1)
 
         self.layer_norm = nn.LayerNorm(self.d_model)
-
-        self.linear_layer_1 = nn.Linear(self.d_model, self.inner_dim)
-        self.linear_layer_2 = nn.Linear(self.inner_dim, self.d_model)
+        self.linear1 = nn.Linear(self.d_model, self.inner_dim)
+        #self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU(0.01)
+        self.linear2 = nn.Linear(self.inner_dim, self.d_model)
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, x, c):
-        y = torch.cat((x, c), 2)
+        y = torch.cat((x, c), dim=2)
         
-        norm_y = self.layer_norm(y)    
-        norm_y = self.linear_layer_1(norm_y)
-        norm_y = F.relu(norm_y)
-        norm_y = self.linear_layer_2(norm_y)
-
-        return norm_y + y
-
-class TransformerBlock(nn.Module):
-    """Embedding layer + Attention Block + FeedForward Layer"""
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2, inner_dim_multiplier=5):
+        norm_y = self.layer_norm(y)
+        hidden = self.linear1(norm_y)
+        hidden = self.activation(hidden)
+        #hidden = self.dropout(hidden)
+        output = self.linear2(hidden)
+        return output + y
+    
+class FluxTransformerBlock(nn.Module):
+    """Single transformer block without embedding layer"""
+    def __init__(self, d_model=6, n_heads=2, inner_dim_multiplier=5, dropout=0.1):
         super().__init__()
-
         self.d_model = d_model
-        self.vocab_size = vocab_size
-
-        self.inp_embedding = nn.Embedding(vocab_size, d_model)
-
-        self.attention_block = MultiHeadAttentionBlock(vocab_size, d_model, n_heads)
-
-        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier)
-
-        self.linear_layer_1 = nn.Linear(vocab_size, vocab_size)
-
+        
+        self.attention_block = AttentionBlock(d_model, n_heads, dropout)
+        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier, dropout)
+        
         self.apply(self._init_weights)
     
     def _init_weights(self, module):
@@ -167,24 +117,63 @@ class TransformerBlock(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-      
-    def forward(self, c):
-        batch_size, vocab_size, _ = c.size()
-
-        # y = torch.randint(0, vocab_size, (batch_size, vocab_size))
-        # for k in range(vocab_size):
-        #     y[:,k] = k
-
-        y = torch.arange(vocab_size, device=device).unsqueeze(0).expand(batch_size, -1)
-        x = self.inp_embedding(y)
-        # print(x.size())
+    
+    def forward(self, x, c):
+        # Process through attention block
+        attn_x, attn_c = self.attention_block(x, c)
         
-        output_x, output_c = self.attention_block(x,c)
-        output_y = self.feedforward_block(output_x,output_c)
+        # Process through feedforward block
+        ff_output = self.feedforward_block(attn_x, attn_c)
+        
+        # Split the concatenated output
+        updated_x = ff_output[:, :, :-1]  # embeddings portion
+        updated_c = ff_output[:, :, -1:]  # context portion
+        
+        return updated_x, updated_c
+    
+class FluxTransformer(nn.Module):
+    def __init__(
+        self,
+        vocab_size=115,
+        d_model=6,
+        n_heads=2,
+        n_layers=4,
+        inner_dim_multiplier=5,
+        dropout=0.1
+    ):
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.d_model = d_model
+        
+        # Single shared embedding layer
+        self.input_embedding = nn.Embedding(vocab_size, d_model)
+        
+        # Create transformer blocks
+        self.blocks = nn.ModuleList([
+            FluxTransformerBlock(
+                d_model=d_model,
+                n_heads=n_heads,
+                inner_dim_multiplier=inner_dim_multiplier,
+                dropout=dropout
+            )
+            for _ in range(n_layers)
+        ])
 
-        return output_y[:,:,-1].unsqueeze(-1)
+    def forward(self, c):
+        batch_size = c.size(0)
+        
+        # Create token indices once
+        y = torch.arange(self.vocab_size, device=c.device)
+        y = y.unsqueeze(0).expand(batch_size, -1)  # (batch, seq)
+        
+        # Embed tokens once
+        x = self.input_embedding(y)  # (batch, seq, d_model)
+        
+        for block in self.blocks:
+            x, c = block(x, c)
+        
+        # Final output is the context vector
+        return c
     
 def load_data(filepath):
     """
@@ -275,7 +264,7 @@ def prepare_tensors(X, y, test_size=0.4, device="cpu"):
 
     return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
+def train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5):
     total_size = X_train.size(1)
 
     start_time = time.time()
@@ -283,14 +272,13 @@ def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
     average_losses = []
     test_losses = []
     vocab_size = 115
-    d_model = dmodel
     
     batch_size = 10
     learning_rate = 1e-3
-    num_epochs = 2200
+    num_epochs = 600
     num_batches = 30
 
-    model = TransformerBlock(vocab_size,d_model,num_heads,inner_dim_multiplier)
+    model = FluxTransformer(vocab_size, d_model, n_heads, n_layers, inner_dim_multiplier)
     model = model.to(device)
 
     criterion = nn.MSELoss()
@@ -324,12 +312,6 @@ def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
             optimizer.step()
 
             total_loss += loss.item()
-
-            if (batch_idx + 1) % 15 == 0 and (epoch+1)%4400==0:
-                avg_loss = total_loss / (batch_idx + 1)
-
-                print(f"Epoch [{epoch+1}/{num_epochs}], Batch [{batch_idx+1}/{num_batches}]",
-                      f"Avg Loss: {avg_loss:.4f}")
         
         avg_epoch_loss = total_loss / num_batches
         average_losses.append(avg_epoch_loss)
@@ -345,7 +327,7 @@ def train_model(dmodel=6, num_heads=2, inner_dim_multiplier=5):
         #     best_test_loss = test_loss
         #     best_epoch = epoch
 
-        if (epoch+1)%440==0:
+        if (epoch+1)%100==0:
             print(f"Epoch [{epoch+1}/{num_epochs}] completed. Average Training Loss: {avg_epoch_loss: .4f}, Test Loss: {test_loss: .4f}")
     
     print('Training Completed.')
@@ -430,6 +412,7 @@ def plot_prediction_sample(X_test_, y_test_, model):
 
 if __name__ == "__main__":
     set_seed()
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
@@ -442,15 +425,16 @@ if __name__ == "__main__":
     input_cols = columns[:20]
     output_cols = columns[20:]
 
-    average_losses, test_losses, trained_model = train_model()
+    train_loss, test_loss, trained_model = train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5)
 
     today = date.today().isoformat()
     pic_dir = f"./pics/{today}"
     os.makedirs(pic_dir, exist_ok=True)
     model_name = "ecoli_core_t"
 
-    plot_loss_curves(average_losses, test_losses, f'{pic_dir}/{model_name}_training_curve.png')
+    plot_loss_curves(train_loss, test_loss, f'{pic_dir}/{model_name}_training_curve.png')
 
+'''
     trained_model.eval()
     with torch.no_grad():
         y_pred_tensor = trained_model(X_test_.to(device))  # shape: [n_samples, vocab_size, 1]
@@ -482,7 +466,7 @@ if __name__ == "__main__":
     print(f"y_pred_outputs[:, biomass_idx] range:",
           y_pred_outputs[:, biomass_idx].min(), "to", y_pred_outputs[:, biomass_idx].max())
 
-    '''
+    
     # Plot diagnostics specifically for biomass
     plot_diagnostics_2x2(
         y_true=y_true_outputs[:, biomass_idx],
@@ -490,7 +474,8 @@ if __name__ == "__main__":
         label='Biomass_Ecoli_core_flux',
         save_path=f'{pic_dir}/{model_name}_diagnostics_Biomass_Ecoli_core_flux.png'
     )
-    '''
+    
+
     # Plot diagnostics for all outputs (optional)
     for i, label in enumerate(output_cols):
         plot_diagnostics_2x2(
@@ -502,18 +487,161 @@ if __name__ == "__main__":
     
 
     plot_prediction_sample(X_test_, y_test_, trained_model)
-
 '''
-    model = FluxTransformer(
-        vocab_size=115,
-        d_model=64,
-        nhead=4,
-        num_layers=3,
-        dim_feedforward=256
-    ).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
-    criterion = nn.MSELoss()
+"""
+class AttentionBlock(nn.Module):
+    '''Custom attention block for metabolic modeling'''
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
+        super().__init__()
 
-    epochs = 500
-'''
+        assert d_model % n_heads==0, "Model dimension must be divisible by number of heads!"
+
+        self.vocab_size = vocab_size
+        self.d_model = d_model
+        self.n_heads = n_heads
+        
+        self.layer_norm = nn.LayerNorm(d_model)
+        
+        self.head_dim = d_model // n_heads  # d_model split evenly across heads
+
+        self.W_k = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_q = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_v = nn.Linear(d_model, self.head_dim, bias=False)
+        self.W_o = nn.Linear(self.head_dim, d_model, bias=False)
+        #self.W_c = nn.Linear(vocab_size, vocab_size, bias=False)
+
+    def scaled_dot_product_attention(self, queries, keys, values):    
+        '''
+        Compute scaled dot-product attention.
+        Args:
+            queries, keys, values: tensors of shape (batch, seq_len, head_dim)
+        Returns:
+            output: weighted sum of values
+            weights: attention weights
+        '''
+        scale_factor = self.head_dim ** 0.5  # Square root of head dimension
+        # b = batch, q = query pos, k = key pos, d = head dimension
+        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / scale_factor
+        weights = torch.softmax(scores, dim=-1)
+        output = torch.einsum('bqk, bkd -> bqd', weights, values)
+
+        return output, weights
+
+    def forward(self, x, c):
+        '''
+        Forward pass of the attention block.
+        Args:
+            x: input tensor of shape (batch, seq_len, d_model)
+            c: consentrations tensor of shape (batch, seq_len, vocab_size)
+        Returns:
+            output_x: updated x after attention and residual connection
+            output_c: updated c after attention
+        '''
+        norm_x = self.layer_norm(x)
+
+        # Optional transformation of c:
+        #modified_c = self.W_c(c.transpose(-2,-1)).transpose(-2,-1)
+        modified_c = c
+
+        Q = self.W_q(norm_x)
+        K = self.W_k(norm_x)
+        V = self.W_v(norm_x)
+
+        attention_output, attention_weights = self.scaled_dot_product_attention(Q, K, V)
+
+        #print(attention_weights.size(),modified_c.size())
+
+        attended_c = torch.einsum('bqk, bkv -> bqv', attention_weights, modified_c)
+        
+        #print(c.size(),attended_c.size())
+
+        # Residual connections
+        output_x = self.W_o(attention_output) + x * (1 / self.n_heads)
+        output_c = (attended_c + c) * (1 / self.n_heads)
+
+        return output_x, output_c
+
+class MultiHeadAttentionBlock(nn.Module):
+    '''Multi-Head Attention layer for metabolic modeling'''
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
+        super().__init__()
+
+        self.attention_blocks = nn.ModuleList([AttentionBlock(vocab_size, d_model, n_heads) for _ in range(n_heads)])
+
+    def forward(self,x,c):
+        output_x = torch.zeros_like(x)
+        output_c = torch.zeros_like(c)
+
+        for attention_block in self.attention_blocks:
+            o_x, o_c = attention_block(x, c)
+            output_x += o_x
+            output_c += o_c
+
+        return output_x, output_c
+    
+class FeedForwardBlock(nn.Module):
+    def __init__(self, d_model, inner_dim_multiplier, dropout=0.1):
+        super().__init__()
+
+        self.d_model = d_model + 1
+        self.inner_dim = inner_dim_multiplier * (d_model + 1)
+
+        self.layer_norm = nn.LayerNorm(self.d_model)
+
+        self.linear_layer_1 = nn.Linear(self.d_model, self.inner_dim)
+        self.linear_layer_2 = nn.Linear(self.inner_dim, self.d_model)
+        self.dropout = nn.Dropout(dropout)
+    
+    def forward(self, x, c):
+        y = torch.cat((x, c), 2)
+        
+        norm_y = self.layer_norm(y)    
+        norm_y = self.linear_layer_1(norm_y)
+        norm_y = F.relu(norm_y)
+        norm_y = self.linear_layer_2(norm_y)
+
+        return norm_y + y
+
+class TransformerBlock(nn.Module):
+    '''Embedding layer + Attention Block + FeedForward Layer'''
+    def __init__(self, vocab_size=115, d_model=6, n_heads=2, inner_dim_multiplier=5):
+        super().__init__()
+
+        self.d_model = d_model
+        self.vocab_size = vocab_size
+
+        self.inp_embedding = nn.Embedding(vocab_size, d_model)
+
+        self.attention_block = MultiHeadAttentionBlock(vocab_size, d_model, n_heads)
+
+        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier)
+
+        self.linear_layer_1 = nn.Linear(vocab_size, vocab_size)
+
+        self.apply(self._init_weights)
+    
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+      
+    def forward(self, c):
+        batch_size, vocab_size, _ = c.size()
+
+        # y = torch.randint(0, vocab_size, (batch_size, vocab_size))
+        # for k in range(vocab_size):
+        #     y[:,k] = k
+
+        y = torch.arange(vocab_size, device=device).unsqueeze(0).expand(batch_size, -1)
+        x = self.inp_embedding(y)
+        # print(x.size())
+        
+        output_x, output_c = self.attention_block(x,c)
+        output_y = self.feedforward_block(output_x,output_c)
+
+        return output_y[:,:,-1].unsqueeze(-1)
+"""
