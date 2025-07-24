@@ -20,7 +20,7 @@ from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-22_full_training_data_29446_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -32,6 +32,19 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def print_gpu_memory():
+    """
+    Displays the current GPU memory usage by PyTorch on the active CUDA device.
+    Useful for monitoring GPU memory usage during training.
+    """
+    if torch.cuda.is_available():
+        device = torch.cuda.current_device()
+        allocated = torch.cuda.memory_allocated(device) / 1024**2
+        reserved = torch.cuda.memory_reserved(device) / 1024**2
+        print(f'Allocated memory: {allocated:.2f} MB')
+        print(f'Reserved memory: {reserved:.2f} MB')
+    else:
+        print("CUDA is not available.")
 
 class AttentionBlock(nn.Module):
     """Multi-head attention block for metabolic modeling with context """
@@ -48,7 +61,6 @@ class AttentionBlock(nn.Module):
             num_heads=n_heads,
             dropout=dropout,
             batch_first=True,
-            # return averaged attention weights
         )
         # c projection to match d_model
         self.Wc_proj = nn.Linear(1, d_model, bias=False)
@@ -79,17 +91,16 @@ class AttentionBlock(nn.Module):
         return x_out, c_out
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, inner_dim_multiplier, dropout=0.1):
-        super(FeedForwardBlock, self).__init__()
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super().__init__()
 
         self.d_model = d_model + 1
-        self.inner_dim = inner_dim_multiplier * (d_model + 1)
+        self.d_ff = d_ff
 
         self.layer_norm = nn.LayerNorm(self.d_model)
-        self.linear1 = nn.Linear(self.d_model, self.inner_dim)
-        #self.activation = nn.ReLU()
+        self.linear1 = nn.Linear(self.d_model, self.d_ff)
         self.activation = nn.LeakyReLU(0.01)
-        self.linear2 = nn.Linear(self.inner_dim, self.d_model)
+        self.linear2 = nn.Linear(self.d_ff, self.d_model)
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, x, c):
@@ -100,16 +111,17 @@ class FeedForwardBlock(nn.Module):
         hidden = self.activation(hidden)
         #hidden = self.dropout(hidden)
         output = self.linear2(hidden)
+
         return output + y
     
-class FluxTransformerBlock(nn.Module):
+class FluxTransformerLayer(nn.Module):
     """Single transformer block without embedding layer"""
-    def __init__(self, d_model=6, n_heads=2, inner_dim_multiplier=5, dropout=0.1):
+    def __init__(self, d_model=8, n_heads=2, d_ff=128, dropout=0.1):
         super().__init__()
         self.d_model = d_model
         
         self.attention_block = AttentionBlock(d_model, n_heads, dropout)
-        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier, dropout)
+        self.feedforward_block = FeedForwardBlock(d_model, d_ff, dropout)
         
         self.apply(self._init_weights)
     
@@ -120,15 +132,12 @@ class FluxTransformerBlock(nn.Module):
                 torch.nn.init.zeros_(module.bias)
     
     def forward(self, x, c):
-        # Process through attention block
         attn_x, attn_c = self.attention_block(x, c)
-        
-        # Process through feedforward block
         ff_output = self.feedforward_block(attn_x, attn_c)
         
         # Split the concatenated output
-        updated_x = ff_output[:, :, :-1]  # embeddings portion
-        updated_c = ff_output[:, :, -1:]  # context portion
+        updated_x = ff_output[:, :, :-1]
+        updated_c = ff_output[:, :, -1:]
         
         return updated_x, updated_c
     
@@ -136,25 +145,23 @@ class FluxTransformer(nn.Module):
     def __init__(
         self,
         vocab_size=115,
-        d_model=6,
+        d_model=8,
         n_heads=2,
-        n_layers=4,
-        inner_dim_multiplier=5,
+        n_layers=2,
+        d_ff=128,
         dropout=0.1
     ):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
         
-        # Single shared embedding layer
         self.input_embedding = nn.Embedding(vocab_size, d_model)
         
-        # Create transformer blocks
-        self.blocks = nn.ModuleList([
-            FluxTransformerBlock(
+        self.layers = nn.ModuleList([
+            FluxTransformerLayer(
                 d_model=d_model,
                 n_heads=n_heads,
-                inner_dim_multiplier=inner_dim_multiplier,
+                d_ff=d_ff,
                 dropout=dropout
             )
             for _ in range(n_layers)
@@ -170,10 +177,9 @@ class FluxTransformer(nn.Module):
         # Embed tokens once
         x = self.input_embedding(y)  # (batch, seq, d_model)
         
-        for block in self.blocks:
-            x, c = block(x, c)
+        for layer in self.layers:
+            x, c = layer(x, c)
         
-        # Final output is the context vector
         return c
     
 def load_data(filepath):
@@ -216,7 +222,7 @@ def load_data(filepath):
         'RPI_flux', 'SUCCt2_2_flux', 'SUCCt3_flux', 'SUCDi_flux', 'SUCOAS_flux',
         'TALA_flux', 'THD2_flux', 'TKT1_flux', 'TKT2_flux', 'TPI_flux'
     ]
-    all_columns = inputs + outputs
+    #all_columns = inputs + outputs
     
     df = pd.read_csv(filepath)
 
@@ -233,7 +239,7 @@ def load_data(filepath):
     X_combined = np.hstack([X, np.zeros_like(y)])
     y_combined = np.hstack([np.zeros_like(X), y])
 
-    return X_combined, y_combined, all_columns
+    return X_combined, y_combined, inputs, outputs
 
 def prepare_tensors(X, y, test_size=0.4, device="cpu"):
     """
@@ -265,35 +271,46 @@ def prepare_tensors(X, y, test_size=0.4, device="cpu"):
 
     return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-def train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5, 
-               batch_size=12, num_epochs=600, learning_rate=0.001):
-    start_time = time.time()
+def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
+    """
+    Create PyTorch DataLoaders for training and testing.
 
-    # Create datasets with correct dimensions
+    Parameters:
+        X_train, y_train (Tensor): Training data and labels.
+        X_test, y_test (Tensor): Test data and labels.
+        batch_size (int): Batch size for loading.
+
+    Returns:
+        train_loader, test_loader (DataLoader): PyTorch DataLoaders.
+    """
     train_dataset = TensorDataset(X_train.unsqueeze(-1), y_train.unsqueeze(-1))
     test_dataset = TensorDataset(X_test.unsqueeze(-1), y_test.unsqueeze(-1))
 
-    # Create DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # Initialize model (vocab_size=135 to match context length)
+    return train_loader, test_loader
+
+def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, learning_rate=0.001):
+    start_time = time.time()
+
     model = FluxTransformer(
         vocab_size=115,
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
-        inner_dim_multiplier=inner_dim_multiplier
+        d_ff=d_ff
     ).to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.MSELoss()
+    #optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    #criterion = nn.MSELoss()
+    criterion = nn.HuberLoss()
 
     train_losses = []
     test_losses = []
 
     for epoch in range(num_epochs):
-        # Training
         model.train()
         epoch_train_loss = 0.0
         for batch_X, batch_y in train_loader:
@@ -335,16 +352,16 @@ def train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5,
         # Additional memory cleanup after epoch
         torch.cuda.empty_cache()
         gc.collect()
-    
+
     print('Training Completed.')
     end_time = time.time()
     elapsed_time = end_time - start_time
     mins, secs = divmod(elapsed_time, 60)
     print(f"Training took {int(mins)} min {secs:.1f} sec.")
+    
     return train_losses, test_losses, model
 
-def plot_loss_curves(train_losses, test_losses, save_path, log_scale=True):
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
     plt.figure(figsize=(14, 10))
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
@@ -354,12 +371,16 @@ def plot_loss_curves(train_losses, test_losses, save_path, log_scale=True):
         plt.yscale('log')
     plt.xlabel("Epoch", fontsize=18)
     plt.ylabel("Loss", fontsize=18)
-    plt.title("Training and Test Loss", fontsize=20)
+    plt.title(f"Loss Curves (d={d_model}, h={n_heads}, l={n_layers}, ff={d_ff})", fontsize=20)
     plt.grid(True)
     plt.legend(fontsize=16)
-    plt.savefig(save_path)
-    plt.close()
-    #print(f"\nTraining curve saved to {save_path}")
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        print(f"\nTraining curve saved to {save_path}")
+        plt.close()
+    else:
+        plt.show()
 
 def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
     """Creates a 2x2 matrix of plots: true vs predicted, residuals, error distribution, and histogram of actuals"""
@@ -402,252 +423,57 @@ def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def plot_prediction_sample(X_test_, y_test_, model):
+def plot_prediction_sample(X_test, y_test, model):
+    X_test_ = X_test.unsqueeze(-1)
+    y_test_ = y_test.unsqueeze(-1)
     j = np.random.randint(0, X_test_.size(0), 1)[0]
     pred = model(X_test_[j].unsqueeze(0))
     true = y_test_[j].unsqueeze(0)
     plt.plot(pred[0,:,0].cpu().detach().numpy(), label='Predicted')
-    plt.plot(true[0,:,0].cpu().detach().numpy(), label='Actual')
+    plt.plot(true[0,:,0].cpu().detach().numpy(), label='True')
+
+    # add a red vertical line at index 32 (biomass)
+    plt.axvline(x=32, color='red', linestyle='--', linewidth=1)
+    
     plt.legend()
-    plt.title(f"Sample index {j}")
+    plt.title(f"Random sample: index {j}")
     plt.xlabel("Reaction ID")
-    plt.ylabel("Concentration")
+    plt.ylabel("Rate")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
     set_seed()
+
+    d_model = 8
+    n_heads = 2
+    n_layers = 2
+    d_ff = 128
+    batch_size = 128
+    num_epochs = 2000
+    learning_rate = 1e-3
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X, y, columns = load_data(DATA_PATH)
+    X, y, columns, input_cols, output_cols = load_data(DATA_PATH)
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
+    train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    X_test_ = X_test.unsqueeze(-1)
-    y_test_ = y_test.unsqueeze(-1)
-
-    input_cols = columns[:20]
-    output_cols = columns[20:]
-
-    train_loss, test_loss, trained_model = train_model(d_model=6, n_heads=2, n_layers=2, inner_dim_multiplier=5)
+    train_loss, test_loss, model_822 = train_model(d_model, n_heads, n_layers, d_ff, batch_size, num_epochs, learning_rate)
 
     today = date.today().isoformat()
     pic_dir = f"./pics/{today}"
     os.makedirs(pic_dir, exist_ok=True)
-    model_name = "ecoli_core_t"
+    model_name = f"ecoli_core_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
 
-    plot_loss_curves(train_loss, test_loss, f'{pic_dir}/{model_name}_training_curve.png')
-
-'''
-    trained_model.eval()
-    with torch.no_grad():
-        y_pred_tensor = trained_model(X_test_.to(device))  # shape: [n_samples, vocab_size, 1]
-    print("y_pred_tensor.shape:", y_pred_tensor.shape)
-
-    y_pred_full = y_pred_tensor.squeeze(-1).cpu().numpy()  # shape: [n_samples, 115]
-    print("y_pred_full.shape:", y_pred_full.shape,
-          "min/max:", y_pred_full.min(), y_pred_full.max())
-    
-    y_true_full = y_test.cpu().numpy()                     # shape: [n_samples, 115]
-    print("y_true_full.shape:", y_true_full.shape,
-          "min/max:", y_true_full.min(), y_true_full.max())
-
-    # Extract only the output predictions (last 95 columns)
-    y_pred_outputs = y_pred_full[:, 20:]
-    y_true_outputs = y_true_full[:, 20:]
-    print("y_pred_outputs.shape:", y_pred_outputs.shape,
-          "min/max:", y_pred_outputs.min(), y_pred_outputs.max())
-    print("y_true_outputs.shape:", y_true_outputs.shape,
-          "min/max:", y_true_outputs.min(), y_true_outputs.max())
-
-    # Find the index of biomass in the output columns
-    biomass_idx = output_cols.index('Biomass_Ecoli_core_flux')
-    
-    # Verify we have the correct column
-    print(f"Biomass column index in outputs: {biomass_idx}")
-    print(f"y_true_outputs[:, biomass_idx] range:",
-          y_true_outputs[:, biomass_idx].min(), "to", y_true_outputs[:, biomass_idx].max())
-    print(f"y_pred_outputs[:, biomass_idx] range:",
-          y_pred_outputs[:, biomass_idx].min(), "to", y_pred_outputs[:, biomass_idx].max())
-
-    
-    # Plot diagnostics specifically for biomass
-    plot_diagnostics_2x2(
-        y_true=y_true_outputs[:, biomass_idx],
-        y_pred=y_pred_outputs[:, biomass_idx],
-        label='Biomass_Ecoli_core_flux',
-        save_path=f'{pic_dir}/{model_name}_diagnostics_Biomass_Ecoli_core_flux.png'
+    plot_loss_curves(
+        train_loss, test_loss,
+        d_model=d_model,
+        n_heads=n_heads,
+        n_layers=n_layers,
+        d_ff=d_ff,
+        save_path=f"{pic_dir}/{model_name}_training_curve.png"
     )
-    
-
-    # Plot diagnostics for all outputs (optional)
-    for i, label in enumerate(output_cols):
-        plot_diagnostics_2x2(
-            y_true=y_true_outputs[:, i],
-            y_pred=y_pred_outputs[:, i],
-            label=label,
-            save_path=f'{pic_dir}/{model_name}_diagnostics_{label.replace("/", "_")}.png'
-        )
-    
-
-    plot_prediction_sample(X_test_, y_test_, trained_model)
-'''
-
-"""
-class AttentionBlock(nn.Module):
-    '''Custom attention block for metabolic modeling'''
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
-        super().__init__()
-
-        assert d_model % n_heads==0, "Model dimension must be divisible by number of heads!"
-
-        self.vocab_size = vocab_size
-        self.d_model = d_model
-        self.n_heads = n_heads
-        
-        self.layer_norm = nn.LayerNorm(d_model)
-        
-        self.head_dim = d_model // n_heads  # d_model split evenly across heads
-
-        self.W_k = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_q = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_v = nn.Linear(d_model, self.head_dim, bias=False)
-        self.W_o = nn.Linear(self.head_dim, d_model, bias=False)
-        #self.W_c = nn.Linear(vocab_size, vocab_size, bias=False)
-
-    def scaled_dot_product_attention(self, queries, keys, values):    
-        '''
-        Compute scaled dot-product attention.
-        Args:
-            queries, keys, values: tensors of shape (batch, seq_len, head_dim)
-        Returns:
-            output: weighted sum of values
-            weights: attention weights
-        '''
-        scale_factor = self.head_dim ** 0.5  # Square root of head dimension
-        # b = batch, q = query pos, k = key pos, d = head dimension
-        scores = torch.einsum('bqd, bkd -> bqk', queries, keys) / scale_factor
-        weights = torch.softmax(scores, dim=-1)
-        output = torch.einsum('bqk, bkd -> bqd', weights, values)
-
-        return output, weights
-
-    def forward(self, x, c):
-        '''
-        Forward pass of the attention block.
-        Args:
-            x: input tensor of shape (batch, seq_len, d_model)
-            c: consentrations tensor of shape (batch, seq_len, vocab_size)
-        Returns:
-            output_x: updated x after attention and residual connection
-            output_c: updated c after attention
-        '''
-        norm_x = self.layer_norm(x)
-
-        # Optional transformation of c:
-        #modified_c = self.W_c(c.transpose(-2,-1)).transpose(-2,-1)
-        modified_c = c
-
-        Q = self.W_q(norm_x)
-        K = self.W_k(norm_x)
-        V = self.W_v(norm_x)
-
-        attention_output, attention_weights = self.scaled_dot_product_attention(Q, K, V)
-
-        #print(attention_weights.size(),modified_c.size())
-
-        attended_c = torch.einsum('bqk, bkv -> bqv', attention_weights, modified_c)
-        
-        #print(c.size(),attended_c.size())
-
-        # Residual connections
-        output_x = self.W_o(attention_output) + x * (1 / self.n_heads)
-        output_c = (attended_c + c) * (1 / self.n_heads)
-
-        return output_x, output_c
-
-class MultiHeadAttentionBlock(nn.Module):
-    '''Multi-Head Attention layer for metabolic modeling'''
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2):
-        super().__init__()
-
-        self.attention_blocks = nn.ModuleList([AttentionBlock(vocab_size, d_model, n_heads) for _ in range(n_heads)])
-
-    def forward(self,x,c):
-        output_x = torch.zeros_like(x)
-        output_c = torch.zeros_like(c)
-
-        for attention_block in self.attention_blocks:
-            o_x, o_c = attention_block(x, c)
-            output_x += o_x
-            output_c += o_c
-
-        return output_x, output_c
-    
-class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, inner_dim_multiplier, dropout=0.1):
-        super().__init__()
-
-        self.d_model = d_model + 1
-        self.inner_dim = inner_dim_multiplier * (d_model + 1)
-
-        self.layer_norm = nn.LayerNorm(self.d_model)
-
-        self.linear_layer_1 = nn.Linear(self.d_model, self.inner_dim)
-        self.linear_layer_2 = nn.Linear(self.inner_dim, self.d_model)
-        self.dropout = nn.Dropout(dropout)
-    
-    def forward(self, x, c):
-        y = torch.cat((x, c), 2)
-        
-        norm_y = self.layer_norm(y)    
-        norm_y = self.linear_layer_1(norm_y)
-        norm_y = F.relu(norm_y)
-        norm_y = self.linear_layer_2(norm_y)
-
-        return norm_y + y
-
-class TransformerBlock(nn.Module):
-    '''Embedding layer + Attention Block + FeedForward Layer'''
-    def __init__(self, vocab_size=115, d_model=6, n_heads=2, inner_dim_multiplier=5):
-        super().__init__()
-
-        self.d_model = d_model
-        self.vocab_size = vocab_size
-
-        self.inp_embedding = nn.Embedding(vocab_size, d_model)
-
-        self.attention_block = MultiHeadAttentionBlock(vocab_size, d_model, n_heads)
-
-        self.feedforward_block = FeedForwardBlock(d_model, inner_dim_multiplier)
-
-        self.linear_layer_1 = nn.Linear(vocab_size, vocab_size)
-
-        self.apply(self._init_weights)
-    
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-      
-    def forward(self, c):
-        batch_size, vocab_size, _ = c.size()
-
-        # y = torch.randint(0, vocab_size, (batch_size, vocab_size))
-        # for k in range(vocab_size):
-        #     y[:,k] = k
-
-        y = torch.arange(vocab_size, device=device).unsqueeze(0).expand(batch_size, -1)
-        x = self.inp_embedding(y)
-        # print(x.size())
-        
-        output_x, output_c = self.attention_block(x,c)
-        output_y = self.feedforward_block(output_x,output_c)
-
-        return output_y[:,:,-1].unsqueeze(-1)
-"""
+    plot_prediction_sample(X_test, y_test, model_822)
