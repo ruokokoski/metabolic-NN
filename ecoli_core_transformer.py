@@ -9,13 +9,11 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from torch.utils.data import TensorDataset, DataLoader
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import r2_score
+#from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score, mean_absolute_error
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -423,7 +421,7 @@ def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def plot_prediction_sample(X_test, y_test, model):
+def plot_prediction_sample(X_test, y_test, model, save_path=None):
     X_test_ = X_test.unsqueeze(-1)
     y_test_ = y_test.unsqueeze(-1)
     j = np.random.randint(0, X_test_.size(0), 1)[0]
@@ -441,32 +439,38 @@ def plot_prediction_sample(X_test, y_test, model):
     plt.ylabel("Rate")
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        print(f"Graph for prediction samples saved to {save_path}")
+        plt.close()
+    else:
+        plt.show()
 
 if __name__ == "__main__":
-    set_seed()
+    #set_seed()
 
     d_model = 8
     n_heads = 2
     n_layers = 2
     d_ff = 128
     batch_size = 128
-    num_epochs = 2000
+    num_epochs = 1000
     learning_rate = 1e-3
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X, y, columns, input_cols, output_cols = load_data(DATA_PATH)
+    X, y, input_cols, output_cols = load_data(DATA_PATH)
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    train_loss, test_loss, model_822 = train_model(d_model, n_heads, n_layers, d_ff, batch_size, num_epochs, learning_rate)
+    train_loss, test_loss, model = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate)
 
     today = date.today().isoformat()
-    pic_dir = f"./pics/{today}"
-    os.makedirs(pic_dir, exist_ok=True)
     model_name = f"ecoli_core_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    pic_dir = f"./pics/{today}/{model_name}"
+    os.makedirs(pic_dir, exist_ok=True)
 
     plot_loss_curves(
         train_loss, test_loss,
@@ -474,6 +478,40 @@ if __name__ == "__main__":
         n_heads=n_heads,
         n_layers=n_layers,
         d_ff=d_ff,
-        save_path=f"{pic_dir}/{model_name}_training_curve.png"
+        save_path=f"{pic_dir}/training_curve.png"
     )
-    plot_prediction_sample(X_test, y_test, model_822)
+    plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
+
+    metrics = []
+
+    model.eval()
+    with torch.no_grad():
+        y_pred = model(X_test.unsqueeze(-1).to(device))  # shape: [n_samples, 115, 1]
+
+    y_pred = y_pred.squeeze(-1).cpu().numpy()[:, 20:]
+    y_true = y_test.cpu().numpy()[:, 20:]
+
+    for i, label in enumerate(output_cols):
+        r2 = r2_score(y_true[:, i], y_pred[:, i])
+        mae = mean_absolute_error(y_true[:, i], y_pred[:, i])
+        print(f"{label}: R² = {r2:.3f}, MAE = {mae:.3f}")
+        metrics.append({
+            'flux': label,
+            'r2': r2,
+            'mae': mae,
+        })
+        plot_diagnostics_2x2(
+            y_true[:, i],
+            y_pred[:, i],
+            label=label,
+            save_path=f"{pic_dir}/{label}.png"
+        )
+    print(f'Diagnostic plots for all fluxes saved to {pic_dir}')
+    metrics_df = pd.DataFrame(metrics)
+    metrics_df.to_csv(f"{pic_dir}/flux_metrics.csv", index=False)
+    print(f"\nSaved R² and MAE metrics to {pic_dir}/flux_metrics.csv")
+
+    save_path = f"./models/{model_name}.pth"
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    torch.save(model.state_dict(), save_path)
+    print(f"\nModel saved to {save_path}")
