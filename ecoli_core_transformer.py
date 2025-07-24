@@ -18,7 +18,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-22_full_training_data_29446_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-24_full_training_data_49014_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -220,7 +220,6 @@ def load_data(filepath):
         'RPI_flux', 'SUCCt2_2_flux', 'SUCCt3_flux', 'SUCDi_flux', 'SUCOAS_flux',
         'TALA_flux', 'THD2_flux', 'TKT1_flux', 'TKT2_flux', 'TPI_flux'
     ]
-    #all_columns = inputs + outputs
     
     df = pd.read_csv(filepath)
 
@@ -449,11 +448,11 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
 
 if __name__ == "__main__":
     #set_seed()
-
-    d_model = 8
-    n_heads = 2
-    n_layers = 2
-    d_ff = 128
+    
+    d_model = 64
+    n_heads = 8
+    n_layers = 3
+    d_ff = 256
     batch_size = 128
     num_epochs = 1000
     learning_rate = 1e-3
@@ -485,10 +484,19 @@ if __name__ == "__main__":
     metrics = []
 
     model.eval()
+    '''
     with torch.no_grad():
         y_pred = model(X_test.unsqueeze(-1).to(device))  # shape: [n_samples, 115, 1]
-
     y_pred = y_pred.squeeze(-1).cpu().numpy()[:, 20:]
+    '''
+    
+    predictions = []
+    with torch.no_grad():
+        for batch_X, _ in test_loader:  # Use test_loader to batch inference
+            y_batch_pred = model(batch_X)
+            predictions.append(y_batch_pred.squeeze(-1).cpu())
+    y_pred = torch.cat(predictions, dim=0).numpy()[:, 20:]
+
     y_true = y_test.cpu().numpy()[:, 20:]
 
     for i, label in enumerate(output_cols):
