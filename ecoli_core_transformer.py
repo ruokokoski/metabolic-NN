@@ -483,19 +483,13 @@ if __name__ == "__main__":
 
     metrics = []
 
-    model.eval()
-    '''
+    model_cpu = model.to('cpu')  # move model to CPU
+    model_cpu.eval()
+
     with torch.no_grad():
-        y_pred = model(X_test.unsqueeze(-1).to(device))  # shape: [n_samples, 115, 1]
-    y_pred = y_pred.squeeze(-1).cpu().numpy()[:, 20:]
-    '''
-    
-    predictions = []
-    with torch.no_grad():
-        for batch_X, _ in test_loader:  # Use test_loader to batch inference
-            y_batch_pred = model(batch_X)
-            predictions.append(y_batch_pred.squeeze(-1).cpu())
-    y_pred = torch.cat(predictions, dim=0).numpy()[:, 20:]
+        y_pred_tensor = model_cpu(X_test.unsqueeze(-1).to('cpu'))  # shape: [n_samples, 115, 1]
+
+    y_pred = y_pred_tensor.squeeze(-1).cpu().numpy()[:, 20:]
 
     y_true = y_test.cpu().numpy()[:, 20:]
 
