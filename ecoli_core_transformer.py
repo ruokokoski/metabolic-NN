@@ -61,9 +61,9 @@ class AttentionBlock(nn.Module):
             batch_first=True,
         )
         # c projection to match d_model
-        self.Wc_proj = nn.Linear(1, d_model, bias=False)
+        #self.Wc_proj = nn.Linear(1, d_model, bias=False)
         # Project back to original c_dim=1
-        self.Wc_out = nn.Linear(d_model, 1, bias=False)
+        #self.Wc_out = nn.Linear(d_model, 1, bias=False)
 
     def forward(self, x, c):
         # x: (batch, seq_len, d_model)
@@ -79,13 +79,15 @@ class AttentionBlock(nn.Module):
 
         # Cross-attend concentrations c using same attention weights
         # Project c into d_model space
-        c_proj = self.Wc_proj(c)            # (B, S, d_model)
+        #c_proj = self.Wc_proj(c)            # (B, S, d_model)
+
         # Apply attention weights: (B, S, S) @ (B, S, d_model) -> (B, S, d_model)
         # need to batch-matmul with proper dims
-        c_att = torch.bmm(attn_weights, c_proj)
+        c_att = torch.bmm(attn_weights, c)
+        
         # Project back to scalar per position
-        c_out = self.Wc_out(c_att) + c      # (B, S, 1)
-
+        #c_out = self.Wc_out(c_att) + c      # (B, S, 1)
+        c_out = c_att + c
         return x_out, c_out
 
 class FeedForwardBlock(nn.Module):
@@ -449,10 +451,10 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
 if __name__ == "__main__":
     #set_seed()
     
-    d_model = 64
-    n_heads = 8
-    n_layers = 3
-    d_ff = 256
+    d_model = 16
+    n_heads = 4
+    n_layers = 2
+    d_ff = 128
     batch_size = 128
     num_epochs = 1000
     learning_rate = 1e-3
