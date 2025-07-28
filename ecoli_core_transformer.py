@@ -18,7 +18,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-24_full_training_data_49014_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -46,7 +46,7 @@ def print_gpu_memory():
 
 class AttentionBlock(nn.Module):
     """Multi-head attention block for metabolic modeling with context """
-    def __init__(self, d_model=6, n_heads=2, dropout=0.1):
+    def __init__(self, d_model=8, n_heads=2, dropout=0.1):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
@@ -60,10 +60,6 @@ class AttentionBlock(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
-        # c projection to match d_model
-        #self.Wc_proj = nn.Linear(1, d_model, bias=False)
-        # Project back to original c_dim=1
-        #self.Wc_out = nn.Linear(d_model, 1, bias=False)
 
     def forward(self, x, c):
         # x: (batch, seq_len, d_model)
@@ -77,17 +73,11 @@ class AttentionBlock(nn.Module):
 
         x_out = attn_out + x
 
-        # Cross-attend concentrations c using same attention weights
-        # Project c into d_model space
-        #c_proj = self.Wc_proj(c)            # (B, S, d_model)
-
         # Apply attention weights: (B, S, S) @ (B, S, d_model) -> (B, S, d_model)
         # need to batch-matmul with proper dims
         c_att = torch.bmm(attn_weights, c)
-        
-        # Project back to scalar per position
-        #c_out = self.Wc_out(c_att) + c      # (B, S, 1)
         c_out = c_att + c
+
         return x_out, c_out
 
 class FeedForwardBlock(nn.Module):
@@ -99,7 +89,8 @@ class FeedForwardBlock(nn.Module):
 
         self.layer_norm = nn.LayerNorm(self.d_model)
         self.linear1 = nn.Linear(self.d_model, self.d_ff)
-        self.activation = nn.LeakyReLU(0.01)
+        #self.activation = nn.LeakyReLU(0.01)
+        self.activation = nn.GELU()
         self.linear2 = nn.Linear(self.d_ff, self.d_model)
         self.dropout = nn.Dropout(dropout)
     
@@ -109,7 +100,7 @@ class FeedForwardBlock(nn.Module):
         norm_y = self.layer_norm(y)
         hidden = self.linear1(norm_y)
         hidden = self.activation(hidden)
-        #hidden = self.dropout(hidden)
+        hidden = self.dropout(hidden)
         output = self.linear2(hidden)
 
         return output + y
@@ -290,7 +281,7 @@ def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
 
     return train_loader, test_loader
 
-def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, learning_rate=0.001):
+def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, learning_rate=0.001, dropout=0.1):
     start_time = time.time()
 
     model = FluxTransformer(
@@ -298,7 +289,8 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
-        d_ff=d_ff
+        d_ff=d_ff,
+        dropout=dropout
     ).to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -451,13 +443,14 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
 if __name__ == "__main__":
     #set_seed()
     
-    d_model = 16
-    n_heads = 4
-    n_layers = 2
-    d_ff = 128
+    d_model = 128
+    n_heads = 8
+    n_layers = 3
+    d_ff = 512
     batch_size = 128
     num_epochs = 1000
     learning_rate = 1e-3
+    dropout = 0.05
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -466,7 +459,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    train_loss, test_loss, model = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate)
+    train_loss, test_loss, model = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout)
 
     today = date.today().isoformat()
     model_name = f"ecoli_core_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
