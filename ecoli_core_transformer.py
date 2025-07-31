@@ -13,12 +13,14 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from sklearn.model_selection import train_test_split
 #from sklearn.preprocessing import StandardScaler
+from sklearn.manifold import TSNE
 from sklearn.metrics import r2_score, mean_absolute_error
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+#DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-31_full_training_data_9844_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -158,7 +160,7 @@ class FluxTransformer(nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, c):
+    def forward(self, c, return_embedding=False):
         batch_size = c.size(0)
         
         # Create token indices once
@@ -170,6 +172,9 @@ class FluxTransformer(nn.Module):
         
         for layer in self.layers:
             x, c = layer(x, c)
+
+        if return_embedding:
+            return x  # Return embeddings (batch, seq, d_model)
         
         return c
     
@@ -440,17 +445,258 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
     else:
         plt.show()
 
-if __name__ == "__main__":
-    #set_seed()
+def plot_post_attention_zero_context_tsne(model, output_cols, perplexity=30.0, save_path=None):
+    """
+    Visualize token embeddings after attention layers with zero context using t-SNE.
+    Shows how the model transforms embeddings without metabolic context.
     
-    d_model = 128
-    n_heads = 8
-    n_layers = 3
-    d_ff = 512
+    Parameters:
+        model: Trained FluxTransformer model
+        output_cols: List of output column names (for labeling)
+        perplexity: t-SNE perplexity parameter
+        save_path: Directory to save plot
+    """
+    device = next(model.parameters()).device
+    n_outputs = len(output_cols)
+
+    # Get all embeddings
+    model.eval()
+    with torch.no_grad():
+        # Create zero c: (batch_size=1, seq_len=115, 1)
+        dummy_c = torch.zeros(1, model.vocab_size, 1, device=device)
+        # Get embeddings (shape: [1, 115, d_model])
+        embeddings = model(dummy_c, return_embedding=True)  
+        # Extract output tokens (indices 20-114) and remove batch dimension
+        output_embeddings = embeddings[0, 20:20+n_outputs, :].cpu().numpy()  # shape: (95, d_model)
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(output_embeddings)
+
+    colors = plt.cm.tab20(np.linspace(0, 1, n_outputs))
+    #colors = plt.cm.Set3(np.linspace(0, 1, n_outputs))
+    #colors = plt.cm.coolwarm(np.linspace(0, 1, n_outputs))
+
+    plt.figure(figsize=(14, 10))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=colors, s=100, alpha=0.7)
+    plt.title('t-SNE of Output Flux Embeddings, Zero Context\n(Each flux colored individually)', fontsize=20)
+    plt.xlabel('t-SNE Dimension 1', fontsize=18)
+    plt.ylabel('t-SNE Dimension 2', fontsize=18)
+    plt.grid(alpha=0.2)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        print(f"Post attention, zero c t-SNE plot for output tokens saved to {save_path}")
+    else:
+        plt.show()
+
+'''
+def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=1000, perplexity=30.0, save_path=None):
+    """
+    Visualize token embeddings after attention layers with real metabolic context using t-SNE.
+    Shows how actual input concentrations affect the model's internal representations.
+    
+    Parameters:
+        model: Trained FluxTransformer model
+        output_cols: List of output column names (for labeling)
+        X_test: Test set inputs for generating realistic contexts
+        n_samples: Number of context samples to average over
+        perplexity: t-SNE perplexity parameter
+        save_path: Directory to save plot
+    """
+    device = next(model.parameters()).device
+    n_outputs = len(output_cols)
+    
+    # Use a subset of test samples to create diverse contexts
+    c_subset = X_test[:n_samples, :20].unsqueeze(-1).to(device)
+    
+    model.eval()
+    all_embeddings = []
+    
+    with torch.no_grad():
+        # Process in batches to save memory
+        batch_size = 128
+        for i in range(0, n_samples, batch_size):
+            batch = c_subset[i:i+batch_size]
+            
+            # Create full context: inputs + zeros for outputs
+            batch_context = torch.zeros(
+                batch.size(0), model.vocab_size, 1,
+                device=device,
+                dtype=torch.float32
+            )
+            batch_context[:, :20] = batch
+            
+            # Get embeddings (shape: [batch_size, 115, d_model])
+            embeddings = model(batch_context, return_embedding=True)
+            
+            output_embeddings = embeddings[:, 20:20+n_outputs, :]
+            all_embeddings.append(output_embeddings.cpu())
+            
+    # Concatenate and average embeddings
+    all_embeddings = torch.cat(all_embeddings, dim=0)
+    avg_embeddings = all_embeddings.mean(dim=0).numpy()  # shape: (95, d_model)
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(avg_embeddings)
+
+    colors = plt.cm.gist_rainbow(np.linspace(0, 1, n_outputs))
+
+    plt.figure(figsize=(14, 10))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=colors, s=100, alpha=0.7)
+    
+    # Add labels for important fluxes
+    important_fluxes = ['Biomass_Ecoli_core_flux', 'EX_glc__D_e_flux']
+    for i, flux in enumerate(output_cols):
+        if flux in important_fluxes:
+            plt.annotate(flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
+                         xytext=(5, 5), textcoords='offset points',
+                         fontsize=9, bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+
+    plt.title(f't-SNE of Output Flux Embeddings (Averaged over {n_samples} Concentrations)\nEach flux colored individually', fontsize=20)
+    plt.xlabel('t-SNE Dimension 1', fontsize=18)
+    plt.ylabel('t-SNE Dimension 2', fontsize=18)
+    plt.grid(alpha=0.2)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        print(f"Post attention, real c t-SNE plot for output tokens saved to {save_path}")
+    else:
+        plt.show()
+'''
+def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=500, perplexity=30.0, save_path=None):
+    """
+    Visualize token embeddings from real metabolic contexts.
+    Shows how input conditions affect the model's internal representations.
+    """
+    device = next(model.parameters()).device
+    n_outputs = len(output_cols)
+    n_samples = min(n_samples, len(X_test))
+    
+    model.eval()
+    all_embeddings = []
+    flux_indices = []
+    
+    with torch.no_grad():
+        batch_size = 128
+        for i in range(0, n_samples, batch_size):
+            batch = X_test[i:i+batch_size, :20].unsqueeze(-1).to(device)
+            batch_context = torch.zeros(batch.size(0), model.vocab_size, 1, device=device)
+            batch_context[:, :20] = batch
+            
+            embeddings = model(batch_context, return_embedding=True)
+            output_embeddings = embeddings[:, 20:20+n_outputs, :]
+            
+            all_embeddings.append(output_embeddings.cpu())
+            flux_indices.extend([np.arange(n_outputs)] * len(batch))
+    
+    # Combine all samples [total_samples, 95, d_model]
+    all_embeddings = torch.cat(all_embeddings, dim=0)
+    flux_indices = np.concatenate(flux_indices)
+    
+    # For visualization, select subset if too many points
+    max_points = 10000
+    if len(all_embeddings) > max_points:
+        idx = np.random.choice(len(all_embeddings), max_points, replace=False)
+        all_embeddings = all_embeddings[idx]
+        flux_indices = flux_indices[idx]
+    
+    # Flatten for t-SNE [n_points, d_model]
+    embeddings_flat = all_embeddings.reshape(-1, all_embeddings.shape[-1]).numpy()
+    
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings_flat)
+    
+    plt.figure(figsize=(16, 12))
+    scatter = plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1],
+                         c=flux_indices, cmap='gist_rainbow', alpha=0.4, s=15)
+    
+    # Add labels for cluster centers
+    centers = []
+    for flux_idx in range(n_outputs):
+        mask = flux_indices == flux_idx
+        if mask.any():
+            center = np.median(embeddings_2d[mask], axis=0)
+            centers.append((output_cols[flux_idx], center))
+    
+    for flux, (x, y) in centers:
+        if flux in ['Biomass_Ecoli_core_flux', 'EX_glc__D_e_flux']:
+            clean_flux = flux.replace('_flux', '')
+            plt.annotate(clean_flux, (x, y), xytext=(5,5), textcoords='offset points',
+                        bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+    
+    plt.title(f'Post-Attention Embeddings with Real Context\n({n_samples} input conditions)', fontsize=20)
+    plt.xlabel('t-SNE Dimension 1', fontsize=16)
+    plt.ylabel('t-SNE Dimension 2', fontsize=16)
+    plt.grid(alpha=0.1)
+    
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        print(f"Post attention, real c t-SNE plot for output tokens saved to {save_path}")
+    else:
+        plt.show()
+
+def plot_pre_attention_embeddings_tsne(model, output_cols, perplexity=30.0, save_path=None):
+    """
+    Visualize the model's fundamental token embeddings (pre-attention) using t-SNE.
+    Shows the initial learned representations before any context is applied.
+    
+    Parameters:
+        model: Trained FluxTransformer model
+        output_cols: List of output column names (for labeling)
+        perplexity: t-SNE perplexity parameter
+        save_path: Directory to save plot
+    """
+    device = next(model.parameters()).device
+    n_outputs = len(output_cols)
+    
+    # Get the raw embeddings from the model's embedding layer
+    with torch.no_grad():
+        token_ids = torch.arange(20, 20+n_outputs, device=device)
+        embeddings = model.input_embedding(token_ids).cpu().numpy()
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings)
+
+    #colors = plt.cm.gist_rainbow(np.linspace(0, 1, n_outputs))
+    colors = plt.cm.viridis(np.linspace(0, 1, n_outputs))
+
+    plt.figure(figsize=(14, 10))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=colors, s=100, alpha=0.7)
+    
+    # Add labels for important fluxes
+    important_fluxes = ['Biomass_Ecoli_core_flux', 'EX_glc__D_e_flux']
+    for i, flux in enumerate(output_cols):
+        if flux in important_fluxes:
+            plt.annotate(flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
+                         xytext=(5, 5), textcoords='offset points',
+                         fontsize=9, bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+
+    plt.title('t-SNE of Fundamental Output Token Embeddings\n(Pre-attention, context-independent)', fontsize=20)
+    plt.xlabel('t-SNE Dimension 1', fontsize=18)
+    plt.ylabel('t-SNE Dimension 2', fontsize=18)
+    plt.grid(alpha=0.2)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        print(f"Embedding visualization saved to {save_path}")
+    else:
+        plt.show()
+
+if __name__ == "__main__":
+    set_seed()
+    
+    d_model = 32
+    n_heads = 4
+    n_layers = 2
+    d_ff = 128
     batch_size = 128
-    num_epochs = 1000
+    num_epochs = 100
     learning_rate = 1e-3
-    dropout = 0.05
+    dropout = 0.01
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -479,6 +725,7 @@ if __name__ == "__main__":
     metrics = []
 
     model_cpu = model.to('cpu')  # move model to CPU
+    '''
     model_cpu.eval()
 
     with torch.no_grad():
@@ -507,6 +754,28 @@ if __name__ == "__main__":
     metrics_df = pd.DataFrame(metrics)
     metrics_df.to_csv(f"{pic_dir}/flux_metrics.csv", index=False)
     print(f"\nSaved R² and MAE metrics to {pic_dir}/flux_metrics.csv")
+    '''
+
+    # Generate all three types of embedding visualizations
+    plot_pre_attention_embeddings_tsne(
+        model, 
+        output_cols,
+        save_path=f"{pic_dir}/tsne_pre_attention_embeddings.png"
+    )
+
+    plot_post_attention_zero_context_tsne(
+        model,
+        output_cols,
+        save_path=f"{pic_dir}/tsne_post_attention_zero_c.png"
+    )
+
+    plot_post_attention_real_context_tsne(
+        model,
+        output_cols,
+        X_test=X_test,
+        n_samples=512,
+        save_path=f"{pic_dir}/tsne_post_attention_real_c.png"
+    )
 
     save_path = f"./models/{model_name}.pth"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
