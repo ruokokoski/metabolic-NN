@@ -697,7 +697,7 @@ def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=
         'NH4t_flux'            # Ammonium transport
     ]
     for flux, (x, y) in centers:
-        if flux in important_fluxes:
+        if flux in output_cols:
             clean_flux = flux.replace('_flux', '')
             plt.annotate(clean_flux, (x, y), xytext=(5,5), textcoords='offset points',
                         bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
@@ -717,12 +717,12 @@ def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=
 if __name__ == "__main__":
     set_seed()
     
-    d_model = 64
+    d_model = 128
     n_heads = 8
     n_layers = 3
     d_ff = 512
     batch_size = 128
-    num_epochs = 500
+    num_epochs = 200
     learning_rate = 1e-3
     dropout = 0.01
     
