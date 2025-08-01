@@ -648,54 +648,6 @@ def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=
             center = np.median(embeddings_2d[mask], axis=0)
             centers.append((output_cols[flux_idx], center))
     
-    # Define metabolic groups and colors
-    flux_groups = {
-        'Glycolysis': ['EX_glc__D_e_flux', 'PFK_flux', 'PYK_flux', 'PGI_flux', 'FBA_flux'],
-        'TCA Cycle': ['CS_flux', 'ACONTa_flux', 'ACONTb_flux', 'AKGDH_flux', 'SUCDi_flux', 'MDH_flux'],
-        'Fermentation': ['EX_lac__D_e_flux', 'EX_etoh_e_flux', 'EX_ac_e_flux', 'LDH_D_flux', 'PFL_flux'],
-        'OxPhos': ['ATPM_flux', 'ATPS4r_flux', 'CYTBD_flux', 'NADH16_flux'],
-        'PP Pathway': ['G6PDH2r_flux', 'GND_flux', 'TKT1_flux', 'TKT2_flux'],
-        'Amino Acid': ['GLNS_flux', 'GLUDy_flux', 'GLUN_flux', 'GLUSy_flux'],
-        'Transport': ['EX_o2_e_flux', 'EX_co2_e_flux', 'NH4t_flux', 'H2Ot_flux', 'PIt2r_flux'],
-        'Biomass': ['Biomass_Ecoli_core_flux']
-    }
-    
-    group_colors = {
-        'Glycolysis': '#FF9AA2',
-        'TCA Cycle': '#FFB7B2',
-        'Fermentation': '#FFDAC1',
-        'OxPhos': '#E2F0CB',
-        'PP Pathway': '#B5EAD7',
-        'Amino Acid': '#C7CEEA',
-        'Transport': '#F8B195',
-        'Biomass': '#6C5B7B'
-    }
-    
-    important_fluxes = [
-        'Biomass_Ecoli_core_flux',
-        'EX_glc__D_e_flux',    # Glucose uptake (start)
-        'PFK_flux',            # Key control point 
-        'PYK_flux',            # Pyruvate kinase (end)
-
-        'CS_flux',             # Citrate synthase (entry)
-        'ACONTa_flux',         # Aconitase 
-        'AKGDH_flux',          # α-KG dehydrogenase
-        'SUCDi_flux',          # Succinate dehydrogenase
-
-        'EX_lac__D_e_flux',    # Lactate excretion
-        'EX_etoh_e_flux',      # Ethanol excretion
-        'EX_ac_e_flux',        # Acetate excretion
-
-        'GLNS_flux',           # Glutamine synthesis
-        'GLUDy_flux',          # Glutamate dehydrogenase
-
-        'G6PDH2r_flux',        # G6P dehydrogenase
-        'TKT1_flux',           # Transketolase
-
-        'EX_o2_e_flux',        # Oxygen uptake
-        'EX_co2_e_flux',       # CO2 excretion
-        'NH4t_flux'            # Ammonium transport
-    ]
     for flux, (x, y) in centers:
         if flux in output_cols:
             clean_flux = flux.replace('_flux', '')
