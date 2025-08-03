@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-08-01_full_training_data_196130_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -324,6 +324,11 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_train_loss /= len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
 
+        # Switch optimizer after 200 epochs
+        if epoch == 50:
+            print("Switching optimizer from Adam to AdamW")
+            optimizer = optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-2)
+
         # Evaluation
         model.eval()
         epoch_test_loss = 0.0
@@ -340,7 +345,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 50 == 0:
             print(f"Epoch {epoch+1}/{num_epochs} | "
                 f"Train Loss: {epoch_train_loss:.6f} | "
                 f"Test Loss: {epoch_test_loss:.6f}")
@@ -380,6 +385,9 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 
 def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
     """Creates a 2x2 matrix of plots: true vs predicted, residuals, error distribution, and histogram of actuals"""
+    if np.std(y_true) < 1e-6:
+        print(f"Skipping {label} due to near-constant target values.")
+        return
     residuals = y_true - y_pred
 
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
@@ -401,14 +409,14 @@ def plot_diagnostics_2x2(y_true, y_pred, label, save_path):
     axs[0, 1].grid(True)
 
     # Error distribution
-    sns.histplot(residuals, kde=True, ax=axs[1, 0], legend=False, color='indianred')
+    sns.histplot(residuals.ravel(), kde=True, ax=axs[1, 0], legend=False, color='indianred')
     axs[1, 0].set_title(f'Prediction Error Distribution: {label}')
     axs[1, 0].set_xlabel('Prediction Error')
     axs[1, 0].set_ylabel('Frequency')
     axs[1, 0].grid(True)
 
     # Histogram of actual values
-    sns.histplot(y_true, kde=True, bins=100, ax=axs[1, 1], legend=False, color='mediumseagreen')
+    sns.histplot(y_true.ravel(), kde=True, bins=100, ax=axs[1, 1], legend=False, color='mediumseagreen')
     axs[1, 1].set_title(f'True Value Distribution: {label}')
     axs[1, 1].set_xlabel('True Value')
     axs[1, 1].set_ylabel('Frequency')
@@ -473,38 +481,11 @@ def plot_pre_attention_embeddings_tsne(model, output_cols, perplexity=30.0, save
 
     plt.figure(figsize=(14, 10))
     plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=colors, s=100, alpha=1.0)
-    
-    # Add labels for important fluxes
-    #important_fluxes = ['Biomass_Ecoli_core_flux', 'EX_glc__D_e_flux']
-    important_fluxes = [
-        'Biomass_Ecoli_core_flux',
-        'EX_glc__D_e_flux',    # Glucose uptake (start)
-        'PFK_flux',            # Key control point 
-        'PYK_flux',            # Pyruvate kinase (end)
-
-        'CS_flux',             # Citrate synthase (entry)
-        'ACONTa_flux',         # Aconitase 
-        'AKGDH_flux',          # α-KG dehydrogenase
-        'SUCDi_flux',          # Succinate dehydrogenase
-
-        'EX_lac__D_e_flux',    # Lactate excretion
-        'EX_etoh_e_flux',      # Ethanol excretion
-        'EX_ac_e_flux',        # Acetate excretion
-
-        'GLNS_flux',           # Glutamine synthesis
-        'GLUDy_flux',          # Glutamate dehydrogenase
-
-        'G6PDH2r_flux',        # G6P dehydrogenase
-        'TKT1_flux',           # Transketolase
-
-        'EX_o2_e_flux',        # Oxygen uptake
-        'EX_co2_e_flux',       # CO2 excretion
-        'NH4t_flux'            # Ammonium transport
-    ]
 
     for i, flux in enumerate(output_cols):
-        if flux in important_fluxes:
-            plt.annotate(flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
+        if flux in output_cols:
+            clean_flux = flux.replace('_flux', '')
+            plt.annotate(clean_flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
                          xytext=(5, 5), textcoords='offset points',
                          fontsize=9, bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
 
@@ -553,35 +534,10 @@ def plot_post_attention_zero_context_tsne(model, output_cols, perplexity=30.0, s
     plt.figure(figsize=(14, 10))
     plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=colors, s=100, alpha=1.0)
 
-    important_fluxes = [
-        'Biomass_Ecoli_core_flux',
-        'EX_glc__D_e_flux',    # Glucose uptake (start)
-        'PFK_flux',            # Key control point 
-        'PYK_flux',            # Pyruvate kinase (end)
-
-        'CS_flux',             # Citrate synthase (entry)
-        'ACONTa_flux',         # Aconitase 
-        'AKGDH_flux',          # α-KG dehydrogenase
-        'SUCDi_flux',          # Succinate dehydrogenase
-
-        'EX_lac__D_e_flux',    # Lactate excretion
-        'EX_etoh_e_flux',      # Ethanol excretion
-        'EX_ac_e_flux',        # Acetate excretion
-
-        'GLNS_flux',           # Glutamine synthesis
-        'GLUDy_flux',          # Glutamate dehydrogenase
-
-        'G6PDH2r_flux',        # G6P dehydrogenase
-        'TKT1_flux',           # Transketolase
-
-        'EX_o2_e_flux',        # Oxygen uptake
-        'EX_co2_e_flux',       # CO2 excretion
-        'NH4t_flux'            # Ammonium transport
-    ]
-
     for i, flux in enumerate(output_cols):
-        if flux in important_fluxes:
-            plt.annotate(flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
+        if flux in output_cols:
+            clean_flux = flux.replace('_flux', '')
+            plt.annotate(clean_flux, (embeddings_2d[i, 0], embeddings_2d[i, 1]), 
                          xytext=(5, 5), textcoords='offset points',
                          fontsize=9, bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
             
@@ -671,10 +627,10 @@ if __name__ == "__main__":
     
     d_model = 128
     n_heads = 8
-    n_layers = 3
+    n_layers = 4
     d_ff = 512
     batch_size = 128
-    num_epochs = 200
+    num_epochs = 100
     learning_rate = 1e-3
     dropout = 0.01
     
@@ -706,6 +662,7 @@ if __name__ == "__main__":
 
     model_cpu = model.to('cpu')  # move model to CPU
     
+    '''
     model_cpu.eval()
 
     with torch.no_grad():
@@ -714,6 +671,23 @@ if __name__ == "__main__":
     y_pred = y_pred_tensor.squeeze(-1).cpu().numpy()[:, 20:]
 
     y_true = y_test.cpu().numpy()[:, 20:]
+    '''
+    model_cpu.eval()
+
+    all_preds = []
+    all_targets = []
+
+    with torch.no_grad():
+        for batch_X, batch_y in test_loader:
+            batch_X = batch_X.to('cpu')
+            preds = model_cpu(batch_X)
+            all_preds.append(preds.cpu())
+            all_targets.append(batch_y.cpu())
+
+    # Concatenate predictions
+    y_pred_tensor = torch.cat(all_preds, dim=0)
+    y_pred = y_pred_tensor.numpy()[:, 20:]
+    y_true = torch.cat(all_targets, dim=0).numpy()[:, 20:]
 
     for i, label in enumerate(output_cols):
         r2 = r2_score(y_true[:, i], y_pred[:, i])
@@ -753,8 +727,8 @@ if __name__ == "__main__":
         model_cpu,
         output_cols,
         X_test=X_test,
-        n_samples=1024,
-        perplexity=20,
+        n_samples=1000,
+        perplexity=30,
         save_path=f"{pic_dir}/tsne_post_attention_real_c.png"
     )
 
