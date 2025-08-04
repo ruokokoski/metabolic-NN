@@ -13,14 +13,17 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from sklearn.model_selection import train_test_split
 #from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.metrics import r2_score, mean_absolute_error
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 
-DATA_PATH = "./data/2025-08-01_full_training_data_196130_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-08-03_full_training_data_490227_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -553,10 +556,33 @@ def plot_post_attention_zero_context_tsne(model, output_cols, perplexity=30.0, s
     else:
         plt.show()
 
-def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=500, perplexity=30.0, save_path=None):
+def plot_post_attention_real_context(
+    model, 
+    output_cols, 
+    X_test, 
+    method='pca',
+    n_components=2,
+    n_samples=1000, 
+    perplexity=30.0, # t-SNE parameter
+    n_neighbors=15,  # UMAP parsmeter
+    min_dist=0.1, # UMAP parameter
+    save_path=None
+):
     """
-    Visualize token embeddings from real metabolic contexts.
+    Visualize token embeddings from real metabolic contexts using PCA or t-SNE.
     Shows how input conditions affect the model's internal representations.
+    
+    Args:
+        model: Trained model
+        output_cols: List of output flux names
+        X_test: Input tensor for test data
+        method: 'pca' or 'tsne' (default: 'pca')
+        n_components: number of dimensions for visualization
+        n_samples: Number of samples to visualize
+        perplexity: t-SNE perplexity (only for t-SNE method)
+        n_neighbors: UMAP parameter controlling neighborhood size
+        min_dist: UMAP parameter controlling cluster spacing
+        save_path: Optional path to save the figure
     """
     device = next(model.parameters()).device
     n_outputs = len(output_cols)
@@ -579,46 +605,105 @@ def plot_post_attention_real_context_tsne(model, output_cols, X_test, n_samples=
             all_embeddings.append(output_embeddings.cpu())
             flux_indices.extend([np.arange(n_outputs)] * len(batch))
     
-    # Combine all samples [total_samples, 95, d_model]
+    # Combine all samples [total_samples, n_outputs, d_model]
     all_embeddings = torch.cat(all_embeddings, dim=0)
     flux_indices = np.concatenate(flux_indices)
     
-    # Flatten for t-SNE [n_points, d_model]
+    # Flatten embeddings [n_points, d_model]
     embeddings_flat = all_embeddings.reshape(-1, all_embeddings.shape[-1]).numpy()
     
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
-    embeddings_2d = tsne.fit_transform(embeddings_flat)
+    # Dimensionality reduction method
+    if method.lower() == 'pca':
+        reducer = PCA(n_components=n_components)
+        method_name = 'PCA'
+    elif method.lower() == 'tsne':
+        reducer = TSNE(n_components=n_components, perplexity=perplexity, random_state=42)
+        method_name = 't-SNE'
+    elif method.lower() == 'umap':
+        try:
+            from umap import UMAP
+            reducer = UMAP(n_components=n_components, 
+                          n_neighbors=n_neighbors, 
+                          min_dist=min_dist, 
+                          random_state=42)
+            method_name = 'UMAP'
+        except ImportError:
+            raise ImportError("UMAP not installed. Please install umap-learn: pip install umap-learn")
+    else:
+        raise ValueError(f"Invalid method: '{method}'. Choose 'pca' or 'tsne'")
+    
+    embeddings_rd = reducer.fit_transform(embeddings_flat)
 
+    # Create colormap and plot
     colors = plt.cm.nipy_spectral(np.linspace(0, 1, n_outputs))
     discrete_cmap = ListedColormap(colors)
-    
-    plt.figure(figsize=(16, 12))
-    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1],
-                         c=flux_indices, cmap=discrete_cmap, alpha=0.2, s=10)
-    
-    # Add labels for cluster centers
+
+    # Calculate cluster centers
     centers = []
     for flux_idx in range(n_outputs):
         mask = flux_indices == flux_idx
         if mask.any():
-            center = np.median(embeddings_2d[mask], axis=0)
+            center = np.median(embeddings_rd[mask], axis=0)
             centers.append((output_cols[flux_idx], center))
     
-    for flux, (x, y) in centers:
-        if flux in output_cols:
+    if n_components == 3:
+        fig = plt.figure(figsize=(16, 12))
+        ax = fig.add_subplot(111, projection='3d')
+        
+        sc = ax.scatter(
+            embeddings_rd[:, 0], 
+            embeddings_rd[:, 1], 
+            embeddings_rd[:, 2],
+            c=flux_indices, 
+            cmap=discrete_cmap, 
+            alpha=0.15, 
+            s=7,
+            edgecolors='none'
+        )
+                
+        ax.set_title(f'Post-Attention Embeddings\n({n_samples} input conditions, {method_name})', fontsize=16)
+        ax.set_xlabel(f'{method_name} 1', fontsize=12)
+        ax.set_ylabel(f'{method_name} 2', fontsize=12)
+        ax.set_zlabel(f'{method_name} 3', fontsize=12)
+        ax.grid(alpha=0.2)
+        
+    elif n_components == 2:
+        plt.figure(figsize=(16, 12))
+        plt.scatter(
+            embeddings_rd[:, 0], embeddings_rd[:, 1],
+            c=flux_indices, cmap=discrete_cmap, alpha=0.2, s=10,
+            edgecolors='none'
+        )
+        
+        # Plot and annotate cluster centers
+        for flux, center in centers:
             clean_flux = flux.replace('_flux', '')
-            plt.annotate(clean_flux, (x, y), xytext=(5,5), textcoords='offset points',
-                        bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+            plt.scatter(
+                center[0], center[1],
+                s=20, marker='o',
+                color=colors[output_cols.index(flux) % len(colors)],
+                edgecolor='black', linewidth=0.5
+            )
+            plt.annotate(
+                clean_flux, center,
+                xytext=(5, 5), textcoords='offset points',
+                fontsize=9,
+                bbox=dict(boxstyle='round,pad=0.2', fc='white', alpha=0.8)
+            )
+        
+        plt.title(f'Post-Attention Embeddings\n({n_samples} input conditions, {method_name})', fontsize=16)
+        plt.xlabel(f'{method_name} 1', fontsize=12)
+        plt.ylabel(f'{method_name} 2', fontsize=12)
+        plt.grid(alpha=0.1)
     
-    plt.title(f'Post-Attention Embeddings with Real Context\n({n_samples} input conditions)', fontsize=20)
-    plt.xlabel('t-SNE 1', fontsize=16)
-    plt.ylabel('t-SNE 2', fontsize=16)
-    plt.grid(alpha=0.1)
+    else:
+        raise ValueError("n_components must be 2 or 3")
     
+    # Save or display the plot
     if save_path:
         plt.savefig(save_path, bbox_inches='tight', dpi=300)
         plt.close()
-        print(f"Post attention, real c t-SNE plot for output tokens saved to {save_path}")
+        print(f"Plot saved to {save_path}")
     else:
         plt.show()
 
@@ -627,7 +712,7 @@ if __name__ == "__main__":
     
     d_model = 128
     n_heads = 8
-    n_layers = 4
+    n_layers = 3
     d_ff = 512
     batch_size = 128
     num_epochs = 100
@@ -662,16 +747,6 @@ if __name__ == "__main__":
 
     model_cpu = model.to('cpu')  # move model to CPU
     
-    '''
-    model_cpu.eval()
-
-    with torch.no_grad():
-        y_pred_tensor = model_cpu(X_test.unsqueeze(-1).to('cpu'))  # shape: [n_samples, 115, 1]
-
-    y_pred = y_pred_tensor.squeeze(-1).cpu().numpy()[:, 20:]
-
-    y_true = y_test.cpu().numpy()[:, 20:]
-    '''
     model_cpu.eval()
 
     all_preds = []
@@ -723,14 +798,27 @@ if __name__ == "__main__":
         save_path=f"{pic_dir}/tsne_post_attention_zero_c.png"
     )
     
-    plot_post_attention_real_context_tsne(
-        model_cpu,
-        output_cols,
-        X_test=X_test,
-        n_samples=1000,
-        perplexity=30,
+    plot_post_attention_real_context(
+        model_cpu, 
+        output_cols, 
+        X_test, 
+        method='tsne', 
+        n_components=2, 
+        n_samples=1000, 
+        perplexity=30.0,
         save_path=f"{pic_dir}/tsne_post_attention_real_c.png"
     )
+    '''
+    plot_post_attention_real_context(
+        model, 
+        output_cols, 
+        X_test, 
+        method='umap',
+        n_neighbors=50,
+        min_dist=0.5,
+        save_path=f"{pic_dir}/umap_post_attention_real_c.png"
+    )
+    '''
 
     model_save_dir = f"./models/{model_name}"
     model_save_path = f"{model_save_dir}/{model_name}.pth"
