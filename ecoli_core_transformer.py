@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 
-DATA_PATH = "./data/2025-08-03_full_training_data_490227_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-08-04_full_training_data_980621_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
