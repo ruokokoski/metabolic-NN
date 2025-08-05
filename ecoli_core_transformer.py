@@ -301,10 +301,25 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         dropout=dropout
     ).to(device)
     
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     #optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    optimizer = optim.AdamW(
+        model.parameters(),
+        lr=learning_rate,
+        betas=(0.9, 0.98),
+        eps=1e-9,
+        weight_decay=1e-4
+    )
     #criterion = nn.MSELoss()
     criterion = nn.HuberLoss()
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, 
+        mode='min',
+        factor=0.5,
+        patience=20,
+        verbose=True
+    )
 
     train_losses = []
     test_losses = []
@@ -317,6 +332,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
             predictions = model(batch_X)
             loss = criterion(predictions, batch_y)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             epoch_train_loss += loss.item() * batch_X.size(0)
 
@@ -327,11 +343,6 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_train_loss /= len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
 
-        # Switch optimizer after 200 epochs
-        if epoch == 50:
-            print("Switching optimizer from Adam to AdamW")
-            optimizer = optim.AdamW(model.parameters(), lr=3e-4, weight_decay=1e-2)
-
         # Evaluation
         model.eval()
         epoch_test_loss = 0.0
@@ -340,6 +351,8 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
                 predictions = model(batch_X)
                 loss = criterion(predictions, batch_y)
                 epoch_test_loss += loss.item() * batch_X.size(0)
+
+                scheduler.step(epoch_test_loss)
 
                 # Explicitly free tensors
                 del predictions, loss
