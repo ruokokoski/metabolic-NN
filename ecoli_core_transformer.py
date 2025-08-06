@@ -313,14 +313,6 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
     #criterion = nn.MSELoss()
     criterion = nn.HuberLoss()
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, 
-        mode='min',
-        factor=0.5,
-        patience=20,
-        verbose=True
-    )
-
     train_losses = []
     test_losses = []
 
@@ -351,8 +343,6 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
                 predictions = model(batch_X)
                 loss = criterion(predictions, batch_y)
                 epoch_test_loss += loss.item() * batch_X.size(0)
-
-                scheduler.step(epoch_test_loss)
 
                 # Explicitly free tensors
                 del predictions, loss
