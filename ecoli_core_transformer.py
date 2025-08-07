@@ -713,12 +713,12 @@ def plot_post_attention_real_context(
 if __name__ == "__main__":
     set_seed()
     
-    d_model = 128
-    n_heads = 8
+    d_model = 64
+    n_heads = 4
     n_layers = 3
     d_ff = 512
     batch_size = 128
-    num_epochs = 100
+    num_epochs = 200
     learning_rate = 1e-3
     dropout = 0.01
     
