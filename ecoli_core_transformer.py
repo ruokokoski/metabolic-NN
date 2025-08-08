@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
+import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 #from sklearn.preprocessing import StandardScaler
@@ -85,6 +86,7 @@ class AttentionBlock(nn.Module):
 
         return x_out, c_out
 
+'''
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model, d_ff, dropout=0.1):
         super().__init__()
@@ -105,6 +107,33 @@ class FeedForwardBlock(nn.Module):
         norm_y = self.layer_norm(y)
         hidden = self.linear1(norm_y)
         hidden = self.activation(hidden)
+        hidden = self.dropout(hidden)
+        output = self.linear2(hidden)
+
+        return output + y
+'''
+# SwiGLU trial:
+class FeedForwardBlock(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super().__init__()
+
+        self.d_model = d_model + 1
+        self.d_ff = d_ff
+
+        self.layer_norm = nn.LayerNorm(self.d_model)
+        self.linear1 = nn.Linear(self.d_model, self.d_ff * 2)  # double for SwiGLU
+        self.linear2 = nn.Linear(self.d_ff, self.d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, c):
+        y = torch.cat((x, c), dim=2)
+
+        norm_y = self.layer_norm(y)
+        hidden = self.linear1(norm_y)
+
+        x1, x2 = hidden.chunk(2, dim=-1)
+        hidden = F.silu(x1) * x2  # SwiGLU activation
+
         hidden = self.dropout(hidden)
         output = self.linear2(hidden)
 
@@ -313,6 +342,9 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
     #criterion = nn.MSELoss()
     criterion = nn.HuberLoss()
 
+    best_test_loss = float('inf')
+    best_epoch = -1
+
     train_losses = []
     test_losses = []
 
@@ -356,6 +388,10 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
                 f"Train Loss: {epoch_train_loss:.6f} | "
                 f"Test Loss: {epoch_test_loss:.6f}")
         
+        if epoch_test_loss < best_test_loss:
+            best_test_loss = epoch_test_loss
+            best_epoch = epoch + 1
+        
         # Additional memory cleanup after epoch
         torch.cuda.empty_cache()
         gc.collect()
@@ -365,6 +401,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
     elapsed_time = end_time - start_time
     mins, secs = divmod(elapsed_time, 60)
     print(f"Training took {int(mins)} min {secs:.1f} sec.")
+    print(f"Best test loss: {best_test_loss:.6f} at epoch {best_epoch}")
     
     return train_losses, test_losses, model, optimizer
 
@@ -713,14 +750,14 @@ def plot_post_attention_real_context(
 if __name__ == "__main__":
     set_seed()
     
-    d_model = 64
+    d_model = 128
     n_heads = 4
     n_layers = 3
     d_ff = 512
     batch_size = 128
     num_epochs = 200
-    learning_rate = 1e-3
-    dropout = 0.01
+    learning_rate = 3e-4
+    dropout = 0.02
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
