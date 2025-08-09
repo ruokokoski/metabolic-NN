@@ -73,8 +73,9 @@ class AttentionBlock(nn.Module):
 
         # Normalize and self-attend x
         x_norm = self.layer_norm(x)
-        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True)
-        # attn_out: (B, S, d_model)
+        key_padding_mask = (c.squeeze(-1) == 0.0)  # True for silent fluxes
+        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask, need_weights=True)
+        # attn_out: (B, S, d_model) 
         # attn_weights: (B, S, S) averaged over heads
 
         x_out = attn_out + x
@@ -85,7 +86,6 @@ class AttentionBlock(nn.Module):
         c_out = c_att + c
 
         return x_out, c_out
-
 '''
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model, d_ff, dropout=0.1):
@@ -112,7 +112,6 @@ class FeedForwardBlock(nn.Module):
 
         return output + y
 '''
-# SwiGLU trial:
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model, d_ff, dropout=0.1):
         super().__init__()
@@ -340,7 +339,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         weight_decay=1e-4
     )
     #criterion = nn.MSELoss()
-    criterion = nn.HuberLoss()
+    criterion = nn.HuberLoss(reduction='none')
 
     best_test_loss = float('inf')
     best_epoch = -1
@@ -354,14 +353,28 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
             predictions = model(batch_X)
-            loss = criterion(predictions, batch_y)
+            #loss = criterion(predictions, batch_y)
+
+            # Build mask: 1 where target flux is active, 0 where silent
+            mask = (batch_y.squeeze(-1) != 0.0).float()
+
+            # Elementwise Huber loss
+            loss_raw = criterion(predictions, batch_y).squeeze(-1)
+            masked_loss = loss_raw * mask
+
+            mask_sum = mask.sum()
+            if mask_sum.item() > 0:
+                loss = masked_loss.sum() / mask_sum
+            else:
+                loss = loss_raw.mean()
             loss.backward()
+
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             epoch_train_loss += loss.item() * batch_X.size(0)
 
             # Explicitly free tensors
-            del predictions, loss
+            del predictions, loss, loss_raw, masked_loss, mask
             torch.cuda.empty_cache()
         
         epoch_train_loss /= len(train_loader.dataset)
@@ -373,7 +386,18 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
                 predictions = model(batch_X)
-                loss = criterion(predictions, batch_y)
+                #loss = criterion(predictions, batch_y)
+
+                mask = (batch_y.squeeze(-1) != 0.0).float()
+                loss_raw = criterion(predictions, batch_y).squeeze(-1)
+                masked_loss = loss_raw * mask
+
+                mask_sum = mask.sum()
+                if mask_sum.item() > 0:
+                    loss = masked_loss.sum() / mask_sum
+                else:
+                    loss = loss_raw.mean()
+
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
@@ -755,7 +779,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 512
     batch_size = 128
-    num_epochs = 200
+    num_epochs = 100
     learning_rate = 3e-4
     dropout = 0.02
     
@@ -831,12 +855,13 @@ if __name__ == "__main__":
         output_cols,
         save_path=f"{pic_dir}/tsne_pre_attention_embeddings.png"
     )
-
+    '''
     plot_post_attention_zero_context_tsne(
         model_cpu,
         output_cols,
         save_path=f"{pic_dir}/tsne_post_attention_zero_c.png"
     )
+    '''
     
     plot_post_attention_real_context(
         model_cpu, 
