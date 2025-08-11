@@ -22,6 +22,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+import matplotlib.patches as mpatches
 import seaborn as sns
 
 DATA_PATH = "./data/2025-08-04_full_training_data_980621_samples.csv" # carbons log-uniform, others uniform
@@ -87,7 +88,6 @@ class AttentionBlock(nn.Module):
 
         return x_out, c_out
 '''
-    
 class AttentionBlock(nn.Module):
     """Multi-head attention block with per-head diffusion of c (no averaging)."""
     def __init__(self, d_model=8, n_heads=2, dropout=0.1):
@@ -772,16 +772,195 @@ def plot_post_attention_real_context(
     else:
         plt.show()
 
+def plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000, 
+                                         perplexity=30.0, save_path=None):
+    """
+    Visualize token embeddings from real metabolic contexts with flux grouping.
+    Colors represent metabolic pathway groups.
+    """
+    device = next(model.parameters()).device
+    n_outputs = len(output_cols)
+    n_samples = min(n_samples, len(X_test))
+    
+    clean_fluxes = [f.replace('_flux', '') for f in output_cols]
+
+    group_colors = {
+        # Fermentation (red/orange)
+        'Ethanol Fermentation': "#FB737E",
+        'Acetate Production': "#FEABA5",
+        'Lactate Production': '#FFDAC1',
+        'Formate Production': "#F9AA61",
+        
+        # Central Carbon Metabolism (greens)
+        'Glycolysis': '#6CC070',
+        'Gluconeogenesis': "#7CECCA",
+        'PP Pathway': '#C7F0BD',
+        
+        # TCA & Associated Pathways (blues)
+        'TCA Cycle': "#237DE4",
+        'Glyoxylate Shunt': '#63B4FF',
+        'Anaplerotic': "#B0DEF4",
+        
+        # Respiration & Energy (purples)
+        'OxPhos': "#A4409F",
+        'ATP Maintenance': '#C77DFF',
+        'Anaerobic Respiration': "#BBACD7",
+        
+        # Nitrogen Metabolism (yellows/goldens)
+        'Nitrogen Uptake': "#E2C000",
+        'Glu/Gln Synthesis': "#FFF1A8",
+        
+        # Transport & Exchange (gray)
+        'Transport & EX': '#B0B0B0',
+        
+        # Biomass (distinctive color)
+        'Biomass': "#483954"
+    }
+    
+    # Define metabolic pathway groups
+    pathway_groups = {
+        # Fermentation Pathways
+        'Ethanol Fermentation': ['ACALD', 'ALCD2x', 'ETOHt2r', 'EX_etoh_e', 'ACALDt', 'EX_acald_e'],
+        'Acetate Production': ['PTAr', 'ACKr', 'ACt2r', 'EX_ac_e'],
+        'Lactate Production': ['LDH_D', 'D_LACt2', 'EX_lac__D_e'],
+        'Formate Production': ['PFL', 'FORt2', 'FORti', 'EX_for_e'],
+        
+        # Central Carbon Metabolism
+        'Glycolysis': ['GLCpts', 'FRUpts2', 'PGI', 'PFK', 'FBA', 'TPI', 'GAPD', 'PGK', 'PGM', 'ENO', 'PYK', 'EX_glc__D_e', 'EX_fru_e'],
+        'Gluconeogenesis': ['FBP', 'PPS'],
+        'PP Pathway': ['G6PDH2r', 'PGL', 'GND', 'RPE', 'RPI', 'TKT1', 'TKT2', 'TALA'],
+        
+        # TCA Cycle & Related
+        'TCA Cycle': ['PDH', 'CS', 'ACONTa', 'ACONTb', 'ICDHyr', 'AKGDH', 'SUCOAS', 'SUCDi', 'FUM', 'MDH', 'FUMt2_2', 'MALt2_2',
+            'SUCCt2_2', 'SUCCt3', 'AKGt2r', 'EX_akg_e', 'EX_succ_e', 'EX_fum_e', 'EX_mal__L_e'],
+        'Glyoxylate Shunt': ['ICL', 'MALS'],
+        'Anaplerotic': ['PPC', 'PPCK', 'ME1', 'ME2'],
+        
+        # Respiration & Energy
+        'OxPhos': ['CYTBD', 'ATPS4r', 'NADH16', 'THD2', 'NADTRHD'],
+        'ATP Maintenance': ['ATPM', 'ADK1'],
+        'Anaerobic Respiration': ['FRD7'],
+        
+        # Nitrogen Metabolism
+        'Nitrogen Uptake': ['GLNabc', 'GLUt2r', 'NH4t', 'EX_nh4_e', 'EX_gln__L_e', 'EX_glu__L_e'],
+        'Glu/Gln Synthesis': ['GLNS', 'GLUDy', 'GLUN', 'GLUSy'],
+        
+        # Transport & EX (remaining)
+        'Transport & EX': [
+            'CO2t', 'H2Ot', 'O2t', 'PIt2r', 'PYRt2',
+            'EX_co2_e', 'EX_h_e', 'EX_h2o_e', 'EX_o2_e', 'EX_pi_e', 'EX_pyr_e'
+        ],
+
+        # Biomass
+        'Biomass': ['Biomass_Ecoli_core'],
+    }
+    
+    # Create reverse mapping from flux to group
+    flux_to_group = {}
+    for group, fluxes in pathway_groups.items():
+        for flux in fluxes:
+            flux_to_group[flux] = group
+    
+    # Assign group IDs to each flux
+    group_ids = []
+    for flux in clean_fluxes:
+        group_name = 'Other'  # Default group
+        for key in flux_to_group:
+            if key in flux:
+                group_name = flux_to_group[key]
+                break
+        group_ids.append(group_name)
+    
+    group_color_map = {}
+    for group in set(group_ids):
+        if group in group_colors:
+            group_color_map[group] = group_colors[group]
+        else:
+            group_color_map[group] = '#999999'
+    
+    # Get embeddings
+    model.eval()
+    all_embeddings = []
+    flux_indices = []
+    
+    with torch.no_grad():
+        batch_size = 128
+        for i in range(0, n_samples, batch_size):
+            batch = X_test[i:i+batch_size, :20].unsqueeze(-1).to(device)
+            batch_context = torch.zeros(batch.size(0), model.vocab_size, 1, device=device)
+            batch_context[:, :20] = batch
+            
+            embeddings = model(batch_context, return_embedding=True)
+            output_embeddings = embeddings[:, 20:20+n_outputs, :]
+            
+            all_embeddings.append(output_embeddings.cpu())
+            flux_indices.extend([np.arange(n_outputs)] * len(batch))
+    
+    # Combine all samples
+    all_embeddings = torch.cat(all_embeddings, dim=0)
+    flux_indices = np.concatenate(flux_indices)
+    
+    # Flatten for t-SNE
+    embeddings_flat = all_embeddings.reshape(-1, all_embeddings.shape[-1]).numpy()
+    
+    # Run t-SNE
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings_flat)
+    
+    # Create color array for each point
+    point_colors = [group_color_map[group_ids[flux_idx]] 
+                   for flux_idx in flux_indices]
+    
+    plt.figure(figsize=(16, 12))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1],
+                c=point_colors, alpha=0.2, s=10)
+    
+    ordered_groups = list(group_colors.keys())
+    legend_patches = []
+    for group in ordered_groups:
+        if group in set(group_ids):
+            legend_patches.append(
+                mpatches.Patch(color=group_colors[group], label=group)
+            )
+
+    print("Legend order:", [g for g in ordered_groups if g in set(group_ids)])
+
+    plt.legend(handles=legend_patches, title="Metabolic Pathways",
+               bbox_to_anchor=(1.05, 1), loc='upper left')
+    for flux_idx in range(n_outputs):
+        mask = flux_indices == flux_idx
+        if np.any(mask):
+            center = np.median(embeddings_2d[mask], axis=0)
+            flux_name = clean_fluxes[flux_idx]
+            flux = flux_name + '_flux'
+            if flux in output_cols:
+                plt.annotate(flux_name, center, xytext=(5, 5), 
+                            textcoords='offset points', fontsize=9,
+                            bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7))
+    
+    plt.title(f'Flux Embeddings Grouped by Metabolic Pathway\n({n_samples} input conditions)', fontsize=16)
+    plt.xlabel('t-SNE 1', fontsize=12)
+    plt.ylabel('t-SNE 2', fontsize=12)
+    plt.grid(alpha=0.1)
+    
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        print(f"Grouped t-SNE plot saved to {save_path}")
+    else:
+        plt.tight_layout()
+        plt.show()
+
 if __name__ == "__main__":
     set_seed()
     
     d_model = 128
-    n_heads = 4
+    n_heads = 8
     n_layers = 3
-    d_ff = 512
+    d_ff = 640
     batch_size = 128
-    num_epochs = 100
-    learning_rate = 3e-4
+    num_epochs = 150
+    learning_rate = 1e-4
     dropout = 0.02
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -799,7 +978,7 @@ if __name__ == "__main__":
     os.makedirs(pic_dir, exist_ok=True)
 
     plot_loss_curves(
-        train_loss, test_loss,
+        train_loss, test_loss, 
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
@@ -871,7 +1050,7 @@ if __name__ == "__main__":
         n_components=2, 
         n_samples=1000, 
         perplexity=30.0,
-        save_path=f"{pic_dir}/tsne_post_attention_real_c.png"
+        save_path=f"{pic_dir}/tsne_post_attention_embeddings.png"
     )
     '''
     plot_post_attention_real_context(
@@ -925,3 +1104,6 @@ if __name__ == "__main__":
     checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
+
+
+    plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000, perplexity=30.0, save_path=f"{pic_dir}/tsne_post_attention_grouped.png")
