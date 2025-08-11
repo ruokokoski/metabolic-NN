@@ -50,6 +50,7 @@ def print_gpu_memory():
     else:
         print("CUDA is not available.")
 
+'''
 class AttentionBlock(nn.Module):
     """Multi-head attention block for metabolic modeling with context """
     def __init__(self, d_model=8, n_heads=2, dropout=0.1):
@@ -73,9 +74,8 @@ class AttentionBlock(nn.Module):
 
         # Normalize and self-attend x
         x_norm = self.layer_norm(x)
-        key_padding_mask = (c.squeeze(-1) == 0.0)  # True for silent fluxes
-        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask, need_weights=True)
-        # attn_out: (B, S, d_model) 
+        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True)
+        # attn_out: (B, S, d_model)
         # attn_weights: (B, S, S) averaged over heads
 
         x_out = attn_out + x
@@ -87,6 +87,58 @@ class AttentionBlock(nn.Module):
 
         return x_out, c_out
 '''
+    
+class AttentionBlock(nn.Module):
+    """Multi-head attention block with per-head diffusion of c (no averaging)."""
+    def __init__(self, d_model=8, n_heads=2, dropout=0.1):
+        super().__init__()
+        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+
+        self.d_model = d_model
+        self.n_heads = n_heads
+
+        self.layer_norm = nn.LayerNorm(d_model)
+
+        self.mha = nn.MultiheadAttention(
+            embed_dim=d_model,
+            num_heads=n_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+
+        # Learnable head aggregation
+        self.head_logits = nn.Parameter(torch.zeros(n_heads))
+
+    def forward(self, x, c):
+        """
+        x: (B, S, d_model)
+        c: (B, S, 1)
+        returns: x_out (B, S, d_model), c_out (B, S, 1)
+        """
+        x_norm = self.layer_norm(x)
+
+        # Get per-head attention weights: (B, H, S, S)
+        attn_out, attn_weights = self.mha(
+            x_norm, x_norm, x_norm,
+            need_weights=True,
+            average_attn_weights=False
+        )
+        # attn_out: (B, S, d_model)
+        # attn_weights: (B, H, S_q, S_k) with S_q == S_k == S here
+
+        x_out = attn_out + x
+
+        # Per-head diffusion of c:
+        # (B, H, S, S) @ (B, 1, S, 1) -> (B, H, S, 1)
+        c_heads = torch.matmul(attn_weights, c.unsqueeze(1))
+
+        alpha = F.softmax(self.head_logits, dim=0).view(1, self.n_heads, 1, 1)  # (1,H,1,1)
+        c_att = (c_heads * alpha).sum(dim=1)  # (B, S, 1)
+
+        c_out = c_att + c
+
+        return x_out, c_out
+
 class FeedForwardBlock(nn.Module):
     def __init__(self, d_model, d_ff, dropout=0.1):
         super().__init__()
@@ -107,32 +159,6 @@ class FeedForwardBlock(nn.Module):
         norm_y = self.layer_norm(y)
         hidden = self.linear1(norm_y)
         hidden = self.activation(hidden)
-        hidden = self.dropout(hidden)
-        output = self.linear2(hidden)
-
-        return output + y
-'''
-class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, d_ff, dropout=0.1):
-        super().__init__()
-
-        self.d_model = d_model + 1
-        self.d_ff = d_ff
-
-        self.layer_norm = nn.LayerNorm(self.d_model)
-        self.linear1 = nn.Linear(self.d_model, self.d_ff * 2)  # double for SwiGLU
-        self.linear2 = nn.Linear(self.d_ff, self.d_model)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x, c):
-        y = torch.cat((x, c), dim=2)
-
-        norm_y = self.layer_norm(y)
-        hidden = self.linear1(norm_y)
-
-        x1, x2 = hidden.chunk(2, dim=-1)
-        hidden = F.silu(x1) * x2  # SwiGLU activation
-
         hidden = self.dropout(hidden)
         output = self.linear2(hidden)
 
@@ -339,7 +365,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         weight_decay=1e-4
     )
     #criterion = nn.MSELoss()
-    criterion = nn.HuberLoss(reduction='none')
+    criterion = nn.HuberLoss()
 
     best_test_loss = float('inf')
     best_epoch = -1
@@ -353,28 +379,14 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
             predictions = model(batch_X)
-            #loss = criterion(predictions, batch_y)
-
-            # Build mask: 1 where target flux is active, 0 where silent
-            mask = (batch_y.squeeze(-1) != 0.0).float()
-
-            # Elementwise Huber loss
-            loss_raw = criterion(predictions, batch_y).squeeze(-1)
-            masked_loss = loss_raw * mask
-
-            mask_sum = mask.sum()
-            if mask_sum.item() > 0:
-                loss = masked_loss.sum() / mask_sum
-            else:
-                loss = loss_raw.mean()
+            loss = criterion(predictions, batch_y)
             loss.backward()
-
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             epoch_train_loss += loss.item() * batch_X.size(0)
 
             # Explicitly free tensors
-            del predictions, loss, loss_raw, masked_loss, mask
+            del predictions, loss
             torch.cuda.empty_cache()
         
         epoch_train_loss /= len(train_loader.dataset)
@@ -386,18 +398,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
                 predictions = model(batch_X)
-                #loss = criterion(predictions, batch_y)
-
-                mask = (batch_y.squeeze(-1) != 0.0).float()
-                loss_raw = criterion(predictions, batch_y).squeeze(-1)
-                masked_loss = loss_raw * mask
-
-                mask_sum = mask.sum()
-                if mask_sum.item() > 0:
-                    loss = masked_loss.sum() / mask_sum
-                else:
-                    loss = loss_raw.mean()
-
+                loss = criterion(predictions, batch_y)
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
@@ -855,13 +856,12 @@ if __name__ == "__main__":
         output_cols,
         save_path=f"{pic_dir}/tsne_pre_attention_embeddings.png"
     )
-    '''
+
     plot_post_attention_zero_context_tsne(
         model_cpu,
         output_cols,
         save_path=f"{pic_dir}/tsne_post_attention_zero_c.png"
     )
-    '''
     
     plot_post_attention_real_context(
         model_cpu, 
