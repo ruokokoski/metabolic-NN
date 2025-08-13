@@ -88,6 +88,7 @@ class AttentionBlock(nn.Module):
 
         return x_out, c_out
 '''
+
 class AttentionBlock(nn.Module):
     """Multi-head attention block with per-head diffusion of c (no averaging)."""
     def __init__(self, d_model=8, n_heads=2, dropout=0.1):
@@ -408,7 +409,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch+1) % 50 == 0:
+        if (epoch+1) % 20 == 0:
             print(f"Epoch {epoch+1}/{num_epochs} | "
                 f"Train Loss: {epoch_train_loss:.6f} | "
                 f"Test Loss: {epoch_test_loss:.6f}")
@@ -959,7 +960,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 640
     batch_size = 128
-    num_epochs = 150
+    num_epochs = 140
     learning_rate = 1e-4
     dropout = 0.02
     
@@ -1052,6 +1053,15 @@ if __name__ == "__main__":
         perplexity=30.0,
         save_path=f"{pic_dir}/tsne_post_attention_embeddings.png"
     )
+
+    plot_post_attention_grouped_tsne(
+        model, 
+        output_cols, 
+        X_test, 
+        n_samples=1000, 
+        perplexity=30.0, 
+        save_path=f"{pic_dir}/tsne_post_attention_grouped.png"
+    )
     '''
     plot_post_attention_real_context(
         model, 
@@ -1104,6 +1114,3 @@ if __name__ == "__main__":
     checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
-
-
-    plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000, perplexity=30.0, save_path=f"{pic_dir}/tsne_post_attention_grouped.png")
