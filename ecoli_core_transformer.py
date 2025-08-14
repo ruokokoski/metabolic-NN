@@ -51,44 +51,6 @@ def print_gpu_memory():
     else:
         print("CUDA is not available.")
 
-'''
-class AttentionBlock(nn.Module):
-    """Multi-head attention block for metabolic modeling with context """
-    def __init__(self, d_model=8, n_heads=2, dropout=0.1):
-        super().__init__()
-        assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
-
-        self.d_model = d_model
-        self.n_heads = n_heads
-        self.layer_norm = nn.LayerNorm(d_model)
-
-        self.mha = nn.MultiheadAttention(
-            embed_dim=d_model,
-            num_heads=n_heads,
-            dropout=dropout,
-            batch_first=True,
-        )
-
-    def forward(self, x, c):
-        # x: (batch, seq_len, d_model)
-        # c: (batch, seq_len, 1)
-
-        # Normalize and self-attend x
-        x_norm = self.layer_norm(x)
-        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True)
-        # attn_out: (B, S, d_model)
-        # attn_weights: (B, S, S) averaged over heads
-
-        x_out = attn_out + x
-
-        # Apply attention weights: (B, S, S) @ (B, S, d_model) -> (B, S, d_model)
-        # need to batch-matmul with proper dims
-        c_att = torch.bmm(attn_weights, c)
-        c_out = c_att + c
-
-        return x_out, c_out
-'''
-
 class AttentionBlock(nn.Module):
     """Multi-head attention block with per-head diffusion of c (no averaging)."""
     def __init__(self, d_model=8, n_heads=2, dropout=0.1):
@@ -117,17 +79,26 @@ class AttentionBlock(nn.Module):
         returns: x_out (B, S, d_model), c_out (B, S, 1)
         """
         x_norm = self.layer_norm(x)
-
+        '''
         # Get per-head attention weights: (B, H, S, S)
         attn_out, attn_weights = self.mha(
             x_norm, x_norm, x_norm,
             need_weights=True,
             average_attn_weights=False
         )
+        '''
+        # post-norm test:
+        attn_out, attn_weights = self.mha(
+            x, x, x,
+            need_weights=True,
+            average_attn_weights=False
+        )
         # attn_out: (B, S, d_model)
         # attn_weights: (B, H, S_q, S_k) with S_q == S_k == S here
 
-        x_out = attn_out + x
+        #x_out = attn_out + x
+        # Residual connection + NEW post-norm
+        x_out = self.layer_norm(attn_out + x)  # LayerNorm AFTER residual
 
         # Per-head diffusion of c:
         # (B, H, S, S) @ (B, 1, S, 1) -> (B, H, S, 1)
@@ -149,7 +120,6 @@ class FeedForwardBlock(nn.Module):
 
         self.layer_norm = nn.LayerNorm(self.d_model)
         self.linear1 = nn.Linear(self.d_model, self.d_ff)
-        #self.activation = nn.LeakyReLU(0.01)
         self.activation = nn.GELU()
         self.linear2 = nn.Linear(self.d_ff, self.d_model)
         self.dropout = nn.Dropout(dropout)
@@ -157,13 +127,15 @@ class FeedForwardBlock(nn.Module):
     def forward(self, x, c):
         y = torch.cat((x, c), dim=2)
         
-        norm_y = self.layer_norm(y)
-        hidden = self.linear1(norm_y)
+        # REMOVE: norm_y = self.layer_norm(y)
+        # Process raw concatenated tensor (no initial LayerNorm)
+        hidden = self.linear1(y)  # Changed from norm_y to y
+        #hidden = self.linear1(norm_y)
         hidden = self.activation(hidden)
         hidden = self.dropout(hidden)
         output = self.linear2(hidden)
 
-        return output + y
+        return self.layer_norm(output + y) #post-norm test
     
 class FluxTransformerLayer(nn.Module):
     """Single transformer block without embedding layer"""
