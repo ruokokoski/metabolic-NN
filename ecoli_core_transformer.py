@@ -25,7 +25,7 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-DATA_PATH = "./data/2025-08-04_full_training_data_980621_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-08-14_full_training_data_1961238_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -78,7 +78,7 @@ class AttentionBlock(nn.Module):
         c: (B, S, 1)
         returns: x_out (B, S, d_model), c_out (B, S, 1)
         """
-        x_norm = self.layer_norm(x)
+        #x_norm = self.layer_norm(x)
         '''
         # Get per-head attention weights: (B, H, S, S)
         attn_out, attn_weights = self.mha(
@@ -94,7 +94,7 @@ class AttentionBlock(nn.Module):
             average_attn_weights=False
         )
         # attn_out: (B, S, d_model)
-        # attn_weights: (B, H, S_q, S_k) with S_q == S_k == S here
+        # attn_weights: (B, H, S_q, S_k) with S_q == S_k == S
 
         #x_out = attn_out + x
         # Residual connection + NEW post-norm
@@ -381,7 +381,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch+1) % 20 == 0:
+        if (epoch+1) % 10 == 0:
             print(f"Epoch {epoch+1}/{num_epochs} | "
                 f"Train Loss: {epoch_train_loss:.6f} | "
                 f"Test Loss: {epoch_test_loss:.6f}")
@@ -930,9 +930,9 @@ if __name__ == "__main__":
     d_model = 128
     n_heads = 8
     n_layers = 3
-    d_ff = 640
+    d_ff = 512
     batch_size = 128
-    num_epochs = 140
+    num_epochs = 100
     learning_rate = 1e-4
     dropout = 0.02
     
@@ -949,6 +949,47 @@ if __name__ == "__main__":
     model_name = f"ecoli_core_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
+
+    model_save_dir = f"./models/{model_name}"
+    model_save_path = f"{model_save_dir}/{model_name}.pth"
+    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    torch.save(model.state_dict(), model_save_path)
+    print(f"\nModel saved to {model_save_path}")
+
+    checkpoint = {
+        'epoch': num_epochs,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'train_losses': train_loss,
+        'test_losses': test_loss,
+        'config': {
+            'd_model': d_model,
+            'n_heads': n_heads,
+            'n_layers': n_layers,
+            'd_ff': d_ff,
+            'dropout': dropout,
+            'batch_size': batch_size,
+            'learning_rate': learning_rate,
+            'num_epochs': num_epochs,
+            'vocab_size': 115,
+        },
+        'rng_state': {
+            'torch': torch.get_rng_state(),
+            'numpy': np.random.get_state(),
+            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+        },
+        'data_info': {
+            'dataset': DATA_PATH,
+            'input_cols': input_cols,
+            'output_cols': output_cols,
+            'n_train': len(X_train),
+            'n_test': len(X_test)
+        }
+    }
+    
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+    torch.save(checkpoint, checkpoint_path)
+    print(f"Full checkpoint saved to {checkpoint_path}")
 
     plot_loss_curves(
         train_loss, test_loss, 
@@ -1045,44 +1086,3 @@ if __name__ == "__main__":
         save_path=f"{pic_dir}/umap_post_attention_real_c.png"
     )
     '''
-
-    model_save_dir = f"./models/{model_name}"
-    model_save_path = f"{model_save_dir}/{model_name}.pth"
-    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-    torch.save(model.state_dict(), model_save_path)
-    print(f"\nModel saved to {model_save_path}")
-
-    checkpoint = {
-        'epoch': num_epochs,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'train_losses': train_loss,
-        'test_losses': test_loss,
-        'config': {
-            'd_model': d_model,
-            'n_heads': n_heads,
-            'n_layers': n_layers,
-            'd_ff': d_ff,
-            'dropout': dropout,
-            'batch_size': batch_size,
-            'learning_rate': learning_rate,
-            'num_epochs': num_epochs,
-            'vocab_size': 115,
-        },
-        'rng_state': {
-            'torch': torch.get_rng_state(),
-            'numpy': np.random.get_state(),
-            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
-        },
-        'data_info': {
-            'dataset': DATA_PATH,
-            'input_cols': input_cols,
-            'output_cols': output_cols,
-            'n_train': len(X_train),
-            'n_test': len(X_test)
-        }
-    }
-    
-    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
-    torch.save(checkpoint, checkpoint_path)
-    print(f"Full checkpoint saved to {checkpoint_path}")
