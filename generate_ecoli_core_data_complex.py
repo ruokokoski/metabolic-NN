@@ -1,4 +1,5 @@
 import os
+import csv
 import numpy as np
 import pandas as pd
 from cobra.io import load_model
@@ -33,7 +34,7 @@ def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
         # Uniform sampling
         return round(np.random.uniform(min_val, max_val), 2)
 
-def generate_training_sample(carbon_subset, nitrogen_subset, outputs):
+def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_rate):
     data = {}
     with model:
         # Reset all exchanges
@@ -53,7 +54,6 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs):
             data[ex] = rate
 
         # Set variable oxygen uptake
-        #o2_rate = round(np.random.uniform(0.1, default_rate), 2)
         o2_rate = random_rate(0.1, default_rate)
         model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
         data["EX_o2_e"] = o2_rate
@@ -83,7 +83,7 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs):
 if __name__ == "__main__":
     np.random.seed(42)
     default_rate = 50
-    n_samples = 100000
+    n_samples = 5000000
 
     # Load the simplified E. coli metabolic model
     model = load_model("textbook")
@@ -114,48 +114,47 @@ if __name__ == "__main__":
         'EX_co2_e',
         'EX_h_e',
         'EX_h2o_e',
-        'EX_nh4_e',      # Ammonia
+        'EX_nh4_e',
         'EX_o2_e',
         'EX_pi_e',       # Phosphate (essential)
     ]
 
     outputs = [rxn.id for rxn in model.reactions]
-    #print([rxn.id for rxn in model.reactions])
-    #print(len(model.reactions))
+    input_cols = carbon_exchanges + ['EX_gln__L_e', 'EX_glu__L_e'] + base_exchanges
+    output_cols = [f"{rxn}_flux" for rxn in outputs]
+    ordered_columns = input_cols + output_cols
 
-    training_data = []
+    # Prepare output file
+    os.makedirs("./data", exist_ok=True)
+    today = datetime.today().strftime('%Y-%m-%d')
+    temp_filename = f"./data/{today}_full_training_data_temp.csv"
     start_time = time.time()
 
     print(f"Generating {n_samples} FBA training samples...\n")
     sample_count = 0
 
-    for _ in range(n_samples):
-        carbon_subset = draw_subset(carbon_exchanges)
-        nitrogen_subset = draw_subset(nitrogen_exchanges)
+    with open(temp_filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(ordered_columns)
+        
+        for i in range(n_samples):
+            carbon_subset = draw_subset(carbon_exchanges)
+            nitrogen_subset = draw_subset(nitrogen_exchanges)
+            
+            sample = generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_rate)
+            if sample:
+                row = [sample.get(col, 0.0) for col in ordered_columns]
+                writer.writerow(row)
+                sample_count += 1
+                
+                if sample_count % 1000 == 0:
+                    elapsed = time.time() - start_time
+                    print(f"Generated {sample_count}/{n_samples}")
 
-        sample = generate_training_sample(carbon_subset, nitrogen_subset, outputs)
-        if sample:
-            training_data.append(sample)
-            sample_count += 1
-            if sample_count % 1000 == 0:
-                print(f"Progress: {sample_count}/{n_samples}")
-
-    print(f"Total execution time: {time.time() - start_time:.2f} seconds")
-
-    input_cols = (
-        carbon_exchanges + 
-        ['EX_gln__L_e', 'EX_glu__L_e'] +
-        base_exchanges
-    )
-    output_cols = [f"{rxn}_flux" for rxn in outputs]
-    ordered_columns = input_cols + output_cols
-
-    df = pd.DataFrame(training_data).reindex(columns=ordered_columns, fill_value=0.0)
-                                             
-    # Save data
-    os.makedirs("./data", exist_ok=True)
-    today = datetime.today().strftime('%Y-%m-%d')
-    filename = f"./data/{today}_full_training_data_{len(df)}_samples.csv"
-    df.to_csv(filename, index=False)
+    # Rename with actual sample count
+    final_filename = f"./data/{today}_full_training_data_{sample_count}_samples.csv"
+    os.rename(temp_filename, final_filename)
     
-    print(f"Saved {len(df)} samples to {filename}.")
+    total_time = time.time() - start_time
+    print(f"\nCompleted {sample_count} samples in {total_time:.2f} seconds")
+    print(f"Saved to {final_filename}")
