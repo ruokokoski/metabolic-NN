@@ -25,7 +25,7 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-DATA_PATH = "./data/2025-08-14_full_training_data_1961238_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-08-17_full_training_data_4902849_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -925,14 +925,14 @@ def plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000,
         plt.show()
 
 if __name__ == "__main__":
-    set_seed()
+    #set_seed()
     
     d_model = 128
     n_heads = 8
     n_layers = 3
-    d_ff = 512
+    d_ff = 640
     batch_size = 128
-    num_epochs = 100
+    num_epochs = 50
     learning_rate = 1e-4
     dropout = 0.02
     
@@ -1001,10 +1001,10 @@ if __name__ == "__main__":
     )
     plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
 
+'''
     metrics = []
 
-    model_cpu = model.to('cpu')  # move model to CPU
-    
+    model_cpu = model.to('cpu')  # move model to CPU 
     model_cpu.eval()
 
     all_preds = []
@@ -1075,7 +1075,7 @@ if __name__ == "__main__":
         perplexity=30.0, 
         save_path=f"{pic_dir}/tsne_post_attention_grouped.png"
     )
-    '''
+    
     plot_post_attention_real_context(
         model, 
         output_cols, 
