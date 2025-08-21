@@ -929,7 +929,7 @@ if __name__ == "__main__":
     
     d_model = 128
     n_heads = 8
-    n_layers = 3
+    n_layers = 4
     d_ff = 640
     batch_size = 128
     num_epochs = 50
