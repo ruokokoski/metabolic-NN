@@ -381,7 +381,7 @@ def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, lea
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch+1) % 10 == 0:
+        if (epoch+1) % 2 == 0:
             print(f"Epoch {epoch+1}/{num_epochs} | "
                 f"Train Loss: {epoch_train_loss:.6f} | "
                 f"Test Loss: {epoch_test_loss:.6f}")
@@ -927,10 +927,10 @@ def plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000,
 if __name__ == "__main__":
     #set_seed()
     
-    d_model = 128
+    d_model = 256
     n_heads = 8
-    n_layers = 4
-    d_ff = 640
+    n_layers = 5
+    d_ff = 1024
     batch_size = 128
     num_epochs = 50
     learning_rate = 1e-4
