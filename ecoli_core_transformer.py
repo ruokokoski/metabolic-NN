@@ -70,7 +70,7 @@ class AttentionBlock(nn.Module):
         )
 
         # Learnable head aggregation
-        self.head_logits = nn.Parameter(torch.zeros(n_heads))
+        self.head_scores = nn.Parameter(torch.zeros(n_heads))
 
     def forward(self, x, c):
         """
@@ -104,7 +104,7 @@ class AttentionBlock(nn.Module):
         # (B, H, S, S) @ (B, 1, S, 1) -> (B, H, S, 1)
         c_heads = torch.matmul(attn_weights, c.unsqueeze(1))
 
-        alpha = F.softmax(self.head_logits, dim=0).view(1, self.n_heads, 1, 1)  # (1,H,1,1)
+        alpha = F.softmax(self.head_scores, dim=0).view(1, self.n_heads, 1, 1)  # (1,H,1,1)
         c_att = (c_heads * alpha).sum(dim=1)  # (B, S, 1)
 
         c_out = c_att + c
