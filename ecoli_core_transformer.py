@@ -52,8 +52,8 @@ def print_gpu_memory():
         print("CUDA is not available.")
 
 class AttentionBlock(nn.Module):
-    """Multi-head attention block with per-head diffusion of c (no averaging)."""
-    def __init__(self, d_model=8, n_heads=2, dropout=0.1):
+    """Multi-head attention block with per-head diffusion of c."""
+    def __init__(self, d_model=128, n_heads=8, dropout=0.05):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
@@ -78,32 +78,20 @@ class AttentionBlock(nn.Module):
         c: (B, S, 1)
         returns: x_out (B, S, d_model), c_out (B, S, 1)
         """
-        #x_norm = self.layer_norm(x)
-        '''
+        x_norm = self.layer_norm(x)
+
         # Get per-head attention weights: (B, H, S, S)
         attn_out, attn_weights = self.mha(
             x_norm, x_norm, x_norm,
             need_weights=True,
             average_attn_weights=False
         )
-        '''
-        # post-norm test:
-        attn_out, attn_weights = self.mha(
-            x, x, x,
-            need_weights=True,
-            average_attn_weights=False
-        )
-        # attn_out: (B, S, d_model)
-        # attn_weights: (B, H, S_q, S_k) with S_q == S_k == S
-
-        #x_out = attn_out + x
-        # Residual connection + NEW post-norm
-        x_out = self.layer_norm(attn_out + x)  # LayerNorm AFTER residual
+        
+        x_out = attn_out + x
 
         # Per-head diffusion of c:
         # (B, H, S, S) @ (B, 1, S, 1) -> (B, H, S, 1)
         c_heads = torch.matmul(attn_weights, c.unsqueeze(1))
-
         alpha = F.softmax(self.head_scores, dim=0).view(1, self.n_heads, 1, 1)  # (1,H,1,1)
         c_att = (c_heads * alpha).sum(dim=1)  # (B, S, 1)
 
@@ -112,7 +100,7 @@ class AttentionBlock(nn.Module):
         return x_out, c_out
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, d_ff, dropout=0.1):
+    def __init__(self, d_model, d_ff, dropout=0.05):
         super().__init__()
 
         self.d_model = d_model + 1
@@ -127,19 +115,17 @@ class FeedForwardBlock(nn.Module):
     def forward(self, x, c):
         y = torch.cat((x, c), dim=2)
         
-        # REMOVE: norm_y = self.layer_norm(y)
-        # Process raw concatenated tensor (no initial LayerNorm)
-        hidden = self.linear1(y)  # Changed from norm_y to y
-        #hidden = self.linear1(norm_y)
+        norm_y = self.layer_norm(y)
+        hidden = self.linear1(norm_y)
         hidden = self.activation(hidden)
         hidden = self.dropout(hidden)
         output = self.linear2(hidden)
 
-        return self.layer_norm(output + y) #post-norm test
+        return output + y
     
 class FluxTransformerLayer(nn.Module):
     """Single transformer block without embedding layer"""
-    def __init__(self, d_model=8, n_heads=2, d_ff=128, dropout=0.1):
+    def __init__(self, d_model=128, n_heads=8, d_ff=640, dropout=0.05):
         super().__init__()
         self.d_model = d_model
         
@@ -168,11 +154,11 @@ class FluxTransformer(nn.Module):
     def __init__(
         self,
         vocab_size=115,
-        d_model=8,
-        n_heads=2,
-        n_layers=2,
-        d_ff=128,
-        dropout=0.1
+        d_model=128,
+        n_heads=8,
+        n_layers=3,
+        d_ff=640,
+        dropout=0.05
     ):
         super().__init__()
         self.vocab_size = vocab_size
@@ -266,7 +252,7 @@ def load_data(filepath):
 
     return X_combined, y_combined, inputs, outputs
 
-def prepare_tensors(X, y, test_size=0.4, device="cpu"):
+def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     """
     Split data into train/test and convert to PyTorch tensors.
     
@@ -316,7 +302,7 @@ def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
 
     return train_loader, test_loader
 
-def train_model(d_model=8, n_heads=2, n_layers=2, d_ff=128, num_epochs=1000, learning_rate=0.001, dropout=0.1):
+def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, learning_rate=0.001, dropout=0.05):
     start_time = time.time()
 
     model = FluxTransformer(
@@ -927,12 +913,12 @@ def plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000,
 if __name__ == "__main__":
     #set_seed()
     
-    d_model = 256
+    d_model = 128
     n_heads = 8
-    n_layers = 5
-    d_ff = 1024
+    n_layers = 3
+    d_ff = 640
     batch_size = 128
-    num_epochs = 50
+    num_epochs = 40
     learning_rate = 1e-4
     dropout = 0.02
     
