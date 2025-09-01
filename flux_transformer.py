@@ -117,7 +117,7 @@ class FluxTransformer(nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, c):
+    def forward(self, c, return_embedding=False):
         batch_size = c.size(0)
         
         # Create token indices once
@@ -129,5 +129,8 @@ class FluxTransformer(nn.Module):
         
         for layer in self.layers:
             x, c = layer(x, c)
+
+        if return_embedding:
+            return x  # Return embeddings (batch, seq, d_model)
         
         return c
