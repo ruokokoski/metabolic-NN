@@ -27,7 +27,7 @@ import seaborn as sns
 from flux_transformer import FluxTransformer
 from ecoli_iML1515_reactions import inputs, outputs
 
-DATA_PATH = "./data/2025-08-26_iML1515_training_data_10000_samples.csv"
+DATA_PATH = "./data/2025-09-01_iML1515_training_data_10000_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -38,6 +38,20 @@ def set_seed(seed=42):
     torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def print_gpu_memory():
+    """
+    Displays the current GPU memory usage by PyTorch on the active CUDA device.
+    Useful for monitoring GPU memory usage during training.
+    """
+    if torch.cuda.is_available():
+        device = torch.cuda.current_device()
+        allocated = torch.cuda.memory_allocated(device) / 1024**2
+        reserved = torch.cuda.memory_reserved(device) / 1024**2
+        print(f'Allocated memory: {allocated:.2f} MB')
+        print(f'Reserved memory: {reserved:.2f} MB')
+    else:
+        print("CUDA is not available.")
 
 def load_data(filepath):
     """
@@ -222,15 +236,37 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
     else:
         plt.show()
 
+def plot_prediction_sample(X_test, y_test, model, save_path=None):
+    X_test_ = X_test.unsqueeze(-1)
+    y_test_ = y_test.unsqueeze(-1)
+    j = np.random.randint(0, X_test_.size(0), 1)[0]
+    pred = model(X_test_[j].unsqueeze(0))
+    true = y_test_[j].unsqueeze(0)
+    plt.plot(pred[0,:,0].cpu().detach().numpy(), label='Predicted')
+    plt.plot(true[0,:,0].cpu().detach().numpy(), label='True')
+    plt.legend()
+    plt.title(f"Random sample: index {j}")
+    plt.xlabel("Reaction ID")
+    plt.ylabel("Rate")
+    plt.grid(True)
+    plt.tight_layout()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        print(f"Graph for prediction samples saved to {save_path}")
+        plt.close()
+    else:
+        plt.show()
+
 if __name__ == "__main__":
     set_seed()
     
     d_model = 64
     n_heads = 4
     n_layers = 2
-    d_ff = 1024
+    d_ff = 512
     batch_size = 16
-    num_epochs = 50
+    num_epochs = 20
     learning_rate = 1e-4
     dropout = 0.02
     
@@ -241,12 +277,55 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
+    print_gpu_memory()
+
     train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout)
 
     today = date.today().isoformat()
     model_name = f"ecoli_iML1515_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
+
+    model_save_dir = f"./models/{model_name}"
+    model_save_path = f"{model_save_dir}/{model_name}.pth"
+    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    torch.save(model.state_dict(), model_save_path)
+    print(f"\nModel saved to {model_save_path}")
+
+    checkpoint = {
+        'epoch': num_epochs,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'train_losses': train_loss,
+        'test_losses': test_loss,
+        'config': {
+            'd_model': d_model,
+            'n_heads': n_heads,
+            'n_layers': n_layers,
+            'd_ff': d_ff,
+            'dropout': dropout,
+            'batch_size': batch_size,
+            'learning_rate': learning_rate,
+            'num_epochs': num_epochs,
+            'vocab_size': len(inputs) + len(outputs),
+        },
+        'rng_state': {
+            'torch': torch.get_rng_state(),
+            'numpy': np.random.get_state(),
+            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+        },
+        'data_info': {
+            'dataset': DATA_PATH,
+            'input_cols': input_cols,
+            'output_cols': output_cols,
+            'n_train': len(X_train),
+            'n_test': len(X_test)
+        }
+    }
+    
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+    torch.save(checkpoint, checkpoint_path)
+    print(f"Full checkpoint saved to {checkpoint_path}")
 
     plot_loss_curves(
         train_loss, test_loss, 
@@ -256,3 +335,4 @@ if __name__ == "__main__":
         d_ff=d_ff,
         save_path=f"{pic_dir}/training_curve.png"
     )
+    plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")

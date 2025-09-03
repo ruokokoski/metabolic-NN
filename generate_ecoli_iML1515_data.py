@@ -62,6 +62,8 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
         solution = model.optimize()
         if solution.status != 'optimal':
             return None
+        
+        print(f"Sample solution: objective={solution.objective_value:.6f}")
 
         for rxn_id in outputs:
             data[rxn_id + "_flux"] = solution.fluxes.get(rxn_id, 0.0)
@@ -75,7 +77,7 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 if __name__ == "__main__":
     np.random.seed(42)
 
-    n_samples = 100000
+    n_samples = 10000
     default_rate = 50
     carbon_exhange_rate = 2.2 # To match experimental set (Faure et al 2023)
     batch_size = 500
@@ -83,6 +85,8 @@ if __name__ == "__main__":
     # Load the E. coli iML1515 metabolic model
     model_dir ="./models"
     model = read_sbml_model(os.path.join(model_dir, "iML1515.xml"))
+
+    print("Objective reaction:", model.objective)
 
     carbon_exchanges = [
         'EX_glc__D_e',   # D-Glucose
