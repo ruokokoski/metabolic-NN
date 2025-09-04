@@ -63,7 +63,7 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
         if solution.status != 'optimal':
             return None
         
-        print(f"Sample solution: objective={solution.objective_value:.6f}")
+        #print(f"Sample solution: objective={solution.objective_value:.6f}")
 
         for rxn_id in outputs:
             data[rxn_id + "_flux"] = solution.fluxes.get(rxn_id, 0.0)
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     n_samples = 10000
     default_rate = 50
-    carbon_exhange_rate = 2.2 # To match experimental set (Faure et al 2023)
+    carbon_exhange_rate = 10 # 2.2 to match experimental set (Faure et al 2023): bad choice!
     batch_size = 500
 
     # Load the E. coli iML1515 metabolic model
@@ -124,10 +124,12 @@ if __name__ == "__main__":
         'EX_o2_e',
 
         # To match experimental set (Faure et al 2023):
-        'EX_ala__L_e', # Alanine
-        'EX_pro__L_e', # Proline 
-        'EX_thr__L_e', # Threonine
-        'EX_gly_e', # Glycine
+        # NOTE: These can't be included in base exchanges because they can act as sole carbon sources.
+        # As a result the effect of variable carbon sources are negligible!
+        # 'EX_ala__L_e', # Alanine
+        # 'EX_pro__L_e', # Proline 
+        # 'EX_thr__L_e', # Threonine
+        # 'EX_gly_e', # Glycine
     ]
 
     print(f"Generating {n_samples} FBA training samples...\n")

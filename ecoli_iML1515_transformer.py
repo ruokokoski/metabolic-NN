@@ -27,7 +27,7 @@ import seaborn as sns
 from flux_transformer import FluxTransformer
 from ecoli_iML1515_reactions import inputs, outputs
 
-DATA_PATH = "./data/2025-09-01_iML1515_training_data_10000_samples.csv"
+DATA_PATH = "./data/2025-09-03_iML1515_training_data_9913_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
