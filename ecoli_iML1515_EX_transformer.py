@@ -25,9 +25,9 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 from flux_transformer import FluxTransformer
-from ecoli_iML1515_reactions import inputs, outputs
+from ecoli_iML1515_reactions import inputs, exchange_reactions
 
-DATA_PATH = "./data/2025-09-04_iML1515_training_data_49586_samples.csv"
+DATA_PATH = "./data/2025-09-10_iML1515_EX_training_data_49586_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -73,15 +73,15 @@ def load_data(filepath):
 
     print(f"\nLoaded data with {len(df)} samples from {filepath}")
     print(f"Number of input features: {len(inputs)}")
-    print(f"Number of output targets: {len(outputs)}")
+    print(f"Number of output targets: {len(exchange_reactions)}")
 
     X = df[inputs].to_numpy(dtype=np.float32)
-    y = df[[f"{col}_flux" for col in outputs]].to_numpy(dtype=np.float32)
+    y = df[[f"{col}_flux" for col in exchange_reactions]].to_numpy(dtype=np.float32)
 
     X_combined = np.hstack([X, np.zeros_like(y)])
     y_combined = np.hstack([np.zeros_like(X), y])
 
-    return X_combined, y_combined, inputs, outputs
+    return X_combined, y_combined, inputs, exchange_reactions
 
 def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     """
@@ -132,7 +132,7 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
     start_time = time.time()
 
     model = FluxTransformer(
-        vocab_size=len(inputs) + len(outputs),
+        vocab_size=len(inputs) + len(exchange_reactions),
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout)
 
     today = date.today().isoformat()
-    model_name = f"ecoli_iML1515_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    model_name = f"ecoli_iML1515_EX_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
 
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             'batch_size': batch_size,
             'learning_rate': learning_rate,
             'num_epochs': num_epochs,
-            'vocab_size': len(inputs) + len(outputs),
+            'vocab_size': len(inputs) + len(exchange_reactions),
         },
         'rng_state': {
             'torch': torch.get_rng_state(),

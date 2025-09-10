@@ -133,7 +133,15 @@ if __name__ == "__main__":
     ]
 
     print(f"Generating {n_samples} FBA training samples...\n")
-    outputs = [rxn.id for rxn in model.reactions]
+    outputs = [rxn.id for rxn in model.exchanges]
+
+    # Add biomass reactions explicitly
+    biomass_rxns = [
+        "BIOMASS_Ec_iML1515_core_75p37M",
+        "BIOMASS_Ec_iML1515_core_75p37M_reverse_35685"
+    ]
+    outputs.extend(biomass_rxns)
+    
     input_cols = carbon_exchanges + base_exchanges
     output_cols = [f"{rxn}_flux" for rxn in outputs]
     ordered_columns = input_cols + output_cols
@@ -175,7 +183,7 @@ if __name__ == "__main__":
             writer.writerows(batch)
 
     # Rename with actual sample count
-    final_filename = f"./data/{today}_iML1515_training_data_{sample_count}_samples.csv"
+    final_filename = f"./data/{today}_iML1515_EX_training_data_{sample_count}_samples.csv"
     os.rename(temp_filename, final_filename)
     
     total_time = time.time() - start_time
