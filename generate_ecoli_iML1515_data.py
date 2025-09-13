@@ -77,7 +77,7 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 if __name__ == "__main__":
     np.random.seed(42)
 
-    n_samples = 50000
+    n_samples = 500000
     default_rate = 50
     carbon_exhange_rate = 10 # 2.2 to match experimental set (Faure et al 2023): bad choice!
     batch_size = 500
