@@ -13,9 +13,11 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.metrics import r2_score, mean_absolute_error
+import joblib
 
 import matplotlib
 matplotlib.use('Agg')
@@ -78,10 +80,14 @@ def load_data(filepath):
     X = df[inputs].to_numpy(dtype=np.float32)
     y = df[[f"{col}_flux" for col in outputs]].to_numpy(dtype=np.float32)
 
-    X_combined = np.hstack([X, np.zeros_like(y)])
-    y_combined = np.hstack([np.zeros_like(X), y])
+    # Normalize the output targets
+    scaler = StandardScaler()
+    y_normalized = scaler.fit_transform(y)
 
-    return X_combined, y_combined, inputs, outputs
+    X_combined = np.hstack([X, np.zeros_like(y_normalized)])
+    y_combined = np.hstack([np.zeros_like(X), y_normalized])
+
+    return X_combined, y_combined, inputs, outputs, scaler
 
 def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     """
@@ -128,6 +134,20 @@ def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
 
     return train_loader, test_loader
 
+def denormalize_predictions(normalized_predictions, scaler, input_size=30):
+    """
+    Convert normalized predictions back to original scale
+    Only denormalize the output part (after input_size)
+    """
+    output_predictions = normalized_predictions[:, input_size:]
+    
+    denormalized_outputs = scaler.inverse_transform(output_predictions.cpu().numpy())
+    
+    denormalized_full = np.zeros_like(normalized_predictions.cpu().numpy())
+    denormalized_full[:, input_size:] = denormalized_outputs
+    
+    return torch.tensor(denormalized_full, dtype=torch.float32).to(normalized_predictions.device)
+
 def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, learning_rate=0.001, dropout=0.02):
     start_time = time.time()
 
@@ -146,11 +166,11 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         model.parameters(),
         lr=learning_rate,
         betas=(0.9, 0.98),
-        eps=1e-9,
+        eps=1e-6,
         weight_decay=1e-4
     )
-    #criterion = nn.MSELoss()
-    criterion = nn.HuberLoss()
+    criterion = nn.MSELoss()
+    #criterion = nn.HuberLoss()
 
     best_test_loss = float('inf')
     best_epoch = -1
@@ -164,7 +184,8 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
             predictions = model(batch_X)
-            loss = criterion(predictions, batch_y)
+            #loss = criterion(predictions, batch_y)
+            loss = criterion(predictions[:, len(inputs):], batch_y[:, len(inputs):])
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -183,7 +204,8 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
                 predictions = model(batch_X)
-                loss = criterion(predictions, batch_y)
+                #loss = criterion(predictions, batch_y)
+                loss = criterion(predictions[:, len(inputs):], batch_y[:, len(inputs):])
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
@@ -236,14 +258,18 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
     else:
         plt.show()
 
-def plot_prediction_sample(X_test, y_test, model, save_path=None):
+def plot_prediction_sample(X_test, y_test, model, scaler, save_path=None):
     X_test_ = X_test.unsqueeze(-1)
     y_test_ = y_test.unsqueeze(-1)
     j = np.random.randint(0, X_test_.size(0), 1)[0]
     pred = model(X_test_[j].unsqueeze(0))
-    true = y_test_[j].unsqueeze(0)
-    plt.plot(pred[0,:,0].cpu().detach().numpy(), label='Predicted')
-    plt.plot(true[0,:,0].cpu().detach().numpy(), label='True')
+
+    # Denormalize predictions
+    pred_denorm = denormalize_predictions(pred, scaler, input_size=len(inputs))
+    true_denorm = denormalize_predictions(y_test_, scaler, input_size=len(inputs))
+    
+    plt.plot(pred_denorm[0,:,0].cpu().detach().numpy(), label='Predicted')
+    plt.plot(true_denorm[j,:,0].cpu().detach().numpy(), label='True')
     plt.legend()
     plt.title(f"Random sample: index {j}")
     plt.xlabel("Reaction ID")
@@ -258,6 +284,22 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
     else:
         plt.show()
 
+def calculate_denormalized_metrics(model, X_test, y_test, scaler):
+    model.eval()
+    with torch.no_grad():
+        predictions = model(X_test.unsqueeze(-1))
+        pred_denorm = denormalize_predictions(predictions, scaler, input_size=len(inputs))
+        true_denorm = denormalize_predictions(y_test.unsqueeze(-1), scaler, input_size=len(inputs))
+        
+        pred_outputs = pred_denorm[:, len(inputs):, 0].cpu().numpy()
+        true_outputs = true_denorm[:, len(inputs):, 0].cpu().numpy()
+        
+        r2 = r2_score(true_outputs.flatten(), pred_outputs.flatten())
+        mae = mean_absolute_error(true_outputs.flatten(), pred_outputs.flatten())
+        
+        print(f"Overall R²: {r2:.4f}")
+        print(f"Overall MAE: {mae:.4f}")
+
 if __name__ == "__main__":
     set_seed()
     
@@ -266,14 +308,14 @@ if __name__ == "__main__":
     n_layers = 2
     d_ff = 1024
     batch_size = 16
-    num_epochs = 20
+    num_epochs = 2
     learning_rate = 1e-4
     dropout = 0.02
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X, y, input_cols, output_cols = load_data(DATA_PATH)
+    X, y, input_cols, output_cols, scaler = load_data(DATA_PATH)
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
@@ -290,6 +332,9 @@ if __name__ == "__main__":
     model_save_path = f"{model_save_dir}/{model_name}.pth"
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     torch.save(model.state_dict(), model_save_path)
+
+    scaler_path = f"{model_save_dir}/scaler.joblib"
+    joblib.dump(scaler, scaler_path)
     print(f"\nModel saved to {model_save_path}")
 
     checkpoint = {
@@ -298,6 +343,7 @@ if __name__ == "__main__":
         'optimizer_state_dict': optimizer.state_dict(),
         'train_losses': train_loss,
         'test_losses': test_loss,
+        'scaler': scaler, 
         'config': {
             'd_model': d_model,
             'n_heads': n_heads,
@@ -308,6 +354,7 @@ if __name__ == "__main__":
             'learning_rate': learning_rate,
             'num_epochs': num_epochs,
             'vocab_size': len(inputs) + len(outputs),
+            'n_inputs': len(inputs),
         },
         'rng_state': {
             'torch': torch.get_rng_state(),
@@ -335,4 +382,6 @@ if __name__ == "__main__":
         d_ff=d_ff,
         save_path=f"{pic_dir}/training_curve.png"
     )
-    plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
+    plot_prediction_sample(X_test, y_test, model, scaler, save_path=f"{pic_dir}/prediction_sample.png")
+
+    calculate_denormalized_metrics(model, X_test, y_test, scaler)
