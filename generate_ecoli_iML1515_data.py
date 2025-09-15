@@ -48,15 +48,13 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 
         # Set base exchange rates
         for ex in base_exchanges:
-            model.reactions.get_by_id(ex).lower_bound = -default_rate
-            data[ex] = default_rate
-
-        '''
-        # Set variable oxygen uptake
-        o2_rate = random_rate(0.1, default_rate)
-        model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
-        data["EX_o2_e"] = o2_rate
-        '''
+            if ex == "EX_o2_e":
+                o2_rate = random_rate(min_val=0.1, max_val=default_rate, log_uniform=True)
+                model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
+                data["EX_o2_e"] = o2_rate
+            else:
+                model.reactions.get_by_id(ex).lower_bound = -default_rate
+                data[ex] = default_rate
 
         # Run FBA
         solution = model.optimize()
@@ -78,7 +76,7 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     n_samples = 500000
-    default_rate = 50
+    default_rate = 40
     carbon_exhange_rate = 10 # 2.2 to match experimental set (Faure et al 2023): bad choice!
     batch_size = 500
 
