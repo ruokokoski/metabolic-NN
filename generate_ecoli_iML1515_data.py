@@ -75,7 +75,7 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 if __name__ == "__main__":
     np.random.seed(42)
 
-    n_samples = 500000
+    n_samples = 300000
     default_rate = 40
     carbon_exhange_rate = 10 # 2.2 to match experimental set (Faure et al 2023): bad choice!
     batch_size = 500
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     # Load the E. coli iML1515 metabolic model
     model_dir ="./models"
     model = read_sbml_model(os.path.join(model_dir, "iML1515.xml"))
+    model.objective = "BIOMASS_Ec_iML1515_WT_75p37M"
 
     print("Objective reaction:", model.objective)
 

@@ -29,7 +29,7 @@ import seaborn as sns
 from flux_transformer import FluxTransformer
 from ecoli_iML1515_reactions import inputs, outputs
 
-DATA_PATH = "./data/2025-09-04_iML1515_training_data_49586_samples.csv"
+DATA_PATH = "./data/2025-09-16_iML1515_training_data_92084_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -141,9 +141,11 @@ def denormalize_predictions(normalized_predictions, scaler, input_size=30):
     """
     output_predictions = normalized_predictions[:, input_size:]
     
-    denormalized_outputs = scaler.inverse_transform(output_predictions.cpu().numpy())
+    denormalized_outputs = scaler.inverse_transform(
+        output_predictions.detach().cpu().numpy()
+    )
     
-    denormalized_full = np.zeros_like(normalized_predictions.cpu().numpy())
+    denormalized_full = np.zeros_like(normalized_predictions.detach().cpu().numpy())
     denormalized_full[:, input_size:] = denormalized_outputs
     
     return torch.tensor(denormalized_full, dtype=torch.float32).to(normalized_predictions.device)
