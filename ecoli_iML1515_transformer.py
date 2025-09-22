@@ -150,8 +150,12 @@ def denormalize_predictions(normalized_predictions, scaler, input_size=30):
     
     return torch.tensor(denormalized_full, dtype=torch.float32).to(normalized_predictions.device)
 
-def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, learning_rate=0.001, dropout=0.02):
+def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, learning_rate=0.001, dropout=0.02, model_name="ecoli"):
     start_time = time.time()
+
+    model_save_dir = f"./models/{model_name}"
+    os.makedirs(model_save_dir, exist_ok=True)
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
     model = FluxTransformer(
         vocab_size=len(inputs) + len(outputs),
@@ -174,13 +178,29 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
     criterion = nn.MSELoss()
     #criterion = nn.HuberLoss()
 
-    best_test_loss = float('inf')
-    best_epoch = -1
+    train_losses, test_losses = [], []
+    start_epoch, best_test_loss, best_epoch = 0, float("inf"), -1
 
-    train_losses = []
-    test_losses = []
+    if os.path.exists(checkpoint_path):
+        print(f"\nResuming training from checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        train_losses = checkpoint.get("train_losses", [])
+        test_losses = checkpoint.get("test_losses", [])
+        completed_epochs = checkpoint.get("epoch", 0)
+        start_epoch = completed_epochs
+        best_test_loss = min(test_losses) if test_losses else float("inf")
+        best_epoch = int(np.argmin(test_losses) + 1) if test_losses else -1
 
-    for epoch in range(num_epochs):
+        if start_epoch >= num_epochs:
+            print(f"Checkpoint indicates {start_epoch} completed epochs which is >= requested num_epochs ({num_epochs}).")
+            print("No training to do. If you want to continue training, pass a larger num_epochs.")
+            return train_losses, test_losses, model, optimizer
+    else:
+        print("\nNo checkpoint found. Starting fresh training.")
+
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         epoch_train_loss = 0.0
         for batch_X, batch_y in train_loader:
@@ -217,10 +237,9 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch+1) % 2 == 0:
-            print(f"Epoch {epoch+1}/{num_epochs} | "
-                f"Train Loss: {epoch_train_loss:.6f} | "
-                f"Test Loss: {epoch_test_loss:.6f}")
+        print(f"Epoch {epoch+1}/{num_epochs} | "
+            f"Train Loss: {epoch_train_loss:.6f} | "
+            f"Test Loss: {epoch_test_loss:.6f}")
         
         if epoch_test_loss < best_test_loss:
             best_test_loss = epoch_test_loss
@@ -283,29 +302,41 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
     else:
         plt.show()
 
-def calculate_metrics(model, X_test, y_test, inputs):
+def calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=None):
     """
-    Compute overall metrics (R^2 and MAE) on the output columns.
+    Compute overall metrics (R^2 and MAE) on the output columns in mini-batches.
     """
     n_inputs = len(inputs) if not isinstance(inputs, int) else inputs
+    device = device or next(model.parameters()).device
 
     model.eval()
+    preds_list, trues_list = [], []
+
     with torch.no_grad():
-        preds = model(X_test.unsqueeze(-1))  # [N, V, 1]
+        for i in range(0, X_test.size(0), batch_size):
+            xb = X_test[i:i+batch_size].to(device)
+            yb = y_test[i:i+batch_size].to(device)
 
-        if y_test.dim() == 2:
-            y_test = y_test.unsqueeze(-1)
+            # forward pass
+            pb = model(xb.unsqueeze(-1))  # [B, V, 1]
 
-        pred_outputs = preds[:, n_inputs:, 0].detach().cpu().numpy()
-        true_outputs = y_test[:, n_inputs:, 0].detach().cpu().numpy()
+            if yb.dim() == 2:
+                yb = yb.unsqueeze(-1)
 
-        r2 = r2_score(true_outputs.ravel(), pred_outputs.ravel())
-        mae = mean_absolute_error(true_outputs.ravel(), pred_outputs.ravel())
+            preds_list.append(pb[:, n_inputs:, 0].cpu())
+            trues_list.append(yb[:, n_inputs:, 0].cpu())
 
-        print(f"Overall R²: {r2:.4f}")
-        print(f"Overall MAE: {mae:.4f}")
+    pred_outputs = torch.cat(preds_list).numpy()
+    true_outputs = torch.cat(trues_list).numpy()
 
-        return {"r2": r2, "mae": mae}
+    # compute metrics
+    r2 = r2_score(true_outputs.ravel(), pred_outputs.ravel())
+    mae = mean_absolute_error(true_outputs.ravel(), pred_outputs.ravel())
+
+    print(f"Overall R²: {r2:.4f}")
+    print(f"Overall MAE: {mae:.4f}")
+
+    return {"r2": r2, "mae": mae}
 
 if __name__ == "__main__":
     set_seed()
@@ -315,9 +346,10 @@ if __name__ == "__main__":
     n_layers = 2
     d_ff = 1024
     batch_size = 16
-    num_epochs = 1
+    num_epochs = 4
     learning_rate = 1e-4
     dropout = 0.02
+    model_name = f"ecoli_iML1515_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -328,10 +360,9 @@ if __name__ == "__main__":
 
     print_gpu_memory()
 
-    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout)
+    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name=model_name)
 
     today = date.today().isoformat()
-    model_name = f"ecoli_iML1515_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
 
@@ -346,7 +377,7 @@ if __name__ == "__main__":
     print(f"\nModel saved to {model_save_path}")
 
     checkpoint = {
-        'epoch': num_epochs,
+        'epoch': len(train_loss),
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'train_losses': train_loss,
@@ -392,4 +423,4 @@ if __name__ == "__main__":
     )
     plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
 
-    metrics = calculate_metrics(model, X_test, y_test, inputs)
+    metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=device)
