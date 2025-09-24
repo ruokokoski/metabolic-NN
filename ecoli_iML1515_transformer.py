@@ -175,8 +175,8 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         eps=1e-6,
         weight_decay=1e-4
     )
-    criterion = nn.MSELoss()
-    #criterion = nn.HuberLoss()
+    #criterion = nn.MSELoss()
+    criterion = nn.HuberLoss()
 
     train_losses, test_losses = [], []
     start_epoch, best_test_loss, best_epoch = 0, float("inf"), -1

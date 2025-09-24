@@ -104,9 +104,9 @@ class FluxTransformer(nn.Module):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
-        
+
         self.input_embedding = nn.Embedding(vocab_size, d_model)
-        
+
         self.layers = nn.ModuleList([
             FluxTransformerLayer(
                 d_model=d_model,
@@ -117,20 +117,37 @@ class FluxTransformer(nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, c, return_embedding=False):
+    def forward(self, c, output_subset=None, return_embedding=False):
+        """
+        Args:
+            c: (batch, 1) or (batch, seq, 1) context tensor
+            output_subset: 1D tensor of indices (subset of outputs) or None
+            return_embedding: if True, return embeddings instead of c
+
+        Returns:
+            c: updated context
+            selected_indices: indices of tokens used (always include inputs 0..29)
+        """
         batch_size = c.size(0)
-        
-        # Create token indices once
-        y = torch.arange(self.vocab_size, device=c.device)
-        y = y.unsqueeze(0).expand(batch_size, -1)  # (batch, seq)
-        
-        # Embed tokens once
-        x = self.input_embedding(y)  # (batch, seq, d_model)
-        
+
+        # Always include input indices 0..29
+        input_indices = torch.arange(30, device=c.device)
+
+        if output_subset is None:
+            selected_indices = torch.arange(self.vocab_size, device=c.device)
+        else:
+            # Concatenate inputs + sampled outputs
+            selected_indices = torch.cat([input_indices, output_subset.to(c.device)])
+            selected_indices = torch.unique(selected_indices, sorted=True)
+
+        # Expand indices for batch
+        y = selected_indices.unsqueeze(0).expand(batch_size, -1)  # (B, seq_subset)
+        x = self.input_embedding(y)  # (B, seq_subset, d_model)
+
         for layer in self.layers:
             x, c = layer(x, c)
 
         if return_embedding:
-            return x  # Return embeddings (batch, seq, d_model)
-        
-        return c
+            return x, selected_indices  # embeddings + indices
+
+        return c, selected_indices
