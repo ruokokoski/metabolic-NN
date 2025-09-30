@@ -29,7 +29,7 @@ import seaborn as sns
 from flux_transformer import FluxTransformer
 from ecoli_iML1515_reactions import inputs, outputs
 
-DATA_PATH = "./data/2025-09-16_iML1515_training_data_92084_samples.csv"
+DATA_PATH = "./data/2025-09-23_iML1515_training_data_99029_samples.csv"
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -206,8 +206,8 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=1024, num_epochs=100, l
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
             predictions = model(batch_X)
-            loss = criterion(predictions, batch_y)
-            #loss = criterion(predictions[:, len(inputs):], batch_y[:, len(inputs):])
+            #loss = criterion(predictions, batch_y)
+            loss = criterion(predictions[:, len(inputs):], batch_y[:, len(inputs):])
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
