@@ -99,11 +99,13 @@ class FluxTransformer(nn.Module):
         n_heads=8,
         n_layers=3,
         d_ff=1024,
-        dropout=0.2
+        dropout=0.2,
+        input_length=30
     ):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
+        self.input_length = input_length
 
         self.input_embedding = nn.Embedding(vocab_size, d_model)
 
@@ -130,8 +132,8 @@ class FluxTransformer(nn.Module):
         """
         batch_size = c.size(0)
 
-        # Always include input indices 0..29
-        input_indices = torch.arange(30, device=c.device)
+        # Always include input indices
+        input_indices = torch.arange(self.input_length, device=c.device)
 
         if output_subset is None:
             selected_indices = torch.arange(self.vocab_size, device=c.device)
