@@ -73,9 +73,9 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
         return None
 
 if __name__ == "__main__":
-    np.random.seed(42)
+    np.random.seed(41)
 
-    n_samples = 10000
+    n_samples = 250000
     default_rate = 50
     carbon_exhange_rate = 10
     batch_size = 500
