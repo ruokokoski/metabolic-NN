@@ -13,10 +13,9 @@ from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
-#from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from sklearn.metrics import r2_score, mean_absolute_error
+#from sklearn.metrics import r2_score, mean_absolute_error
 
 import matplotlib
 matplotlib.use('Agg')
@@ -25,15 +24,15 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-28_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-28_full_training_data_98066_samples.csv"
+#DATA_PATH = "./data/2025-08-17_full_training_data_4902849_samples.csv" # carbons log-uniform, others uniform
 
-# Set all random seeds for reproducibility
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # For multi-GPU setups
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -52,45 +51,33 @@ def print_gpu_memory():
         print("CUDA is not available.")
 
 class AttentionBlock(nn.Module):
-    """Multi-head attention block with per-head diffusion of c."""
-    def __init__(self, d_model=128, n_heads=8, dropout=0.05):
+    """Custom multi-head attention block for metabolic modeling"""
+    def __init__(self, d_model=128, n_heads=8, dropout=0.2):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
         self.d_model = d_model
         self.n_heads = n_heads
-
         self.layer_norm = nn.LayerNorm(d_model)
 
         self.mha = nn.MultiheadAttention(
             embed_dim=d_model,
             num_heads=n_heads,
             dropout=dropout,
-            batch_first=True,
+            batch_first=True
         )
 
-        # Learnable head aggregation
         self.head_scores = nn.Parameter(torch.zeros(n_heads))
 
     def forward(self, x, c):
-        """
-        x: (B, S, d_model)
-        c: (B, S, 1)
-        returns: x_out (B, S, d_model), c_out (B, S, 1)
-        """
-        x_norm = self.layer_norm(x)
+        # x: (batch, seq_len, d_model)
+        # c: (batch, seq_len, 1)
+        x_norm = self.layer_norm(x) # pre-norm
+        attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True, average_attn_weights=False)
 
-        # Get per-head attention weights: (B, H, S, S)
-        attn_out, attn_weights = self.mha(
-            x_norm, x_norm, x_norm,
-            need_weights=True,
-            average_attn_weights=False
-        )
-        
         x_out = attn_out + x
 
         # Per-head diffusion of c:
-        # (B, H, S, S) @ (B, 1, S, 1) -> (B, H, S, 1)
         c_heads = torch.matmul(attn_weights, c.unsqueeze(1))
         alpha = F.softmax(self.head_scores, dim=0).view(1, self.n_heads, 1, 1)  # (1,H,1,1)
         c_att = (c_heads * alpha).sum(dim=1)  # (B, S, 1)
@@ -100,7 +87,7 @@ class AttentionBlock(nn.Module):
         return x_out, c_out
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, d_ff, dropout=0.05):
+    def __init__(self, d_model, d_ff, dropout=0.2):
         super().__init__()
 
         self.d_model = d_model + 1
@@ -122,10 +109,10 @@ class FeedForwardBlock(nn.Module):
         output = self.linear2(hidden)
 
         return output + y
-    
+        
 class FluxTransformerLayer(nn.Module):
     """Single transformer block without embedding layer"""
-    def __init__(self, d_model=128, n_heads=8, d_ff=640, dropout=0.05):
+    def __init__(self, d_model=128, n_heads=8, d_ff=1024, dropout=0.2):
         super().__init__()
         self.d_model = d_model
         
@@ -149,23 +136,25 @@ class FluxTransformerLayer(nn.Module):
         updated_c = ff_output[:, :, -1:]
         
         return updated_x, updated_c
-    
+        
 class FluxTransformer(nn.Module):
     def __init__(
         self,
-        vocab_size=115,
+        vocab_size=2742,
         d_model=128,
         n_heads=8,
         n_layers=3,
-        d_ff=640,
-        dropout=0.05
+        d_ff=1024,
+        dropout=0.2,
+        input_length=30
     ):
         super().__init__()
         self.vocab_size = vocab_size
         self.d_model = d_model
-        
+        self.input_length = input_length
+
         self.input_embedding = nn.Embedding(vocab_size, d_model)
-        
+
         self.layers = nn.ModuleList([
             FluxTransformerLayer(
                 d_model=d_model,
@@ -176,23 +165,44 @@ class FluxTransformer(nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, c, return_embedding=False):
+    def forward(self, c, output_subset=None, return_embedding=False):
+        """
+        Args:
+            c: (batch, 1) or (batch, seq, 1) context tensor
+            output_subset: 1D tensor of indices (subset of outputs) or None
+            return_embedding: if True, return embeddings instead of c
+
+        Returns:
+            c: updated context
+            selected_indices: indices of tokens used (always include inputs 0..29)
+        """
         batch_size = c.size(0)
-        
-        # Create token indices once
-        y = torch.arange(self.vocab_size, device=c.device)
-        y = y.unsqueeze(0).expand(batch_size, -1)  # (batch, seq)
-        
-        # Embed tokens once
-        x = self.input_embedding(y)  # (batch, seq, d_model)
-        
+
+        # Always include input indices
+        input_indices = torch.arange(self.input_length, device=c.device)
+
+        if output_subset is None:
+            selected_indices = torch.arange(self.vocab_size, device=c.device)
+        else:
+            # Concatenate inputs + sampled outputs
+            selected_indices = torch.cat([input_indices, output_subset.to(c.device)])
+            selected_indices = torch.unique(selected_indices, sorted=True)
+
+        # Expand indices for batch
+        y = selected_indices.unsqueeze(0).expand(batch_size, -1)  # (B, seq_subset)
+        x = self.input_embedding(y)  # (B, seq_subset, d_model)
+
+        # Slice c to selected indices
+        c_subset = c[:, selected_indices, :]
+
         for layer in self.layers:
-            x, c = layer(x, c)
+            x, c_subset = layer(x, c_subset)
 
         if return_embedding:
-            return x  # Return embeddings (batch, seq, d_model)
-        
-        return c
+            return x, selected_indices  # embeddings + indices
+
+        return c_subset, selected_indices
+
     
 def load_data(filepath):
     """
@@ -302,7 +312,16 @@ def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
 
     return train_loader, test_loader
 
-def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, learning_rate=0.001, dropout=0.05):
+def train_model(
+    d_model=128,
+    n_heads=8,
+    n_layers=3,
+    d_ff=640,
+    num_epochs=100,
+    learning_rate=0.001,
+    dropout=0.02,
+    output_sample_ratio=0.5
+):
     start_time = time.time()
 
     model = FluxTransformer(
@@ -314,8 +333,6 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, l
         dropout=dropout
     ).to(device)
     
-    #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    #optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     optimizer = optim.AdamW(
         model.parameters(),
         lr=learning_rate,
@@ -323,7 +340,6 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, l
         eps=1e-9,
         weight_decay=1e-4
     )
-    #criterion = nn.MSELoss()
     criterion = nn.HuberLoss()
 
     best_test_loss = float('inf')
@@ -332,13 +348,27 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, l
     train_losses = []
     test_losses = []
 
+    total_outputs = 95
+    output_start_idx = 20
+
     for epoch in range(num_epochs):
         model.train()
         epoch_train_loss = 0.0
         for batch_X, batch_y in train_loader:
             optimizer.zero_grad()
-            predictions = model(batch_X)
-            loss = criterion(predictions, batch_y)
+
+            # Randomly sample subset of outputs
+            n_sampled = max(1, int(total_outputs * output_sample_ratio))
+            sampled_indices = torch.tensor(
+                random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
+                device=device
+            )
+
+            predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
+            
+            target = batch_y[:, selected_indices, :]
+
+            loss = criterion(predictions, target)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -356,8 +386,16 @@ def train_model(d_model=128, n_heads=8, n_layers=3, d_ff=640, num_epochs=1000, l
         epoch_test_loss = 0.0
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
-                predictions = model(batch_X)
-                loss = criterion(predictions, batch_y)
+                n_sampled = max(1, int(total_outputs * output_sample_ratio))
+                sampled_indices = torch.tensor(
+                    random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
+                    device=device
+                )
+
+                predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
+                target = batch_y[:, selected_indices, :]
+                loss = criterion(predictions, target)
+
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
@@ -458,7 +496,8 @@ def plot_prediction_sample(X_test, y_test, model, save_path=None):
     X_test_ = X_test.unsqueeze(-1)
     y_test_ = y_test.unsqueeze(-1)
     j = np.random.randint(0, X_test_.size(0), 1)[0]
-    pred = model(X_test_[j].unsqueeze(0))
+    with torch.no_grad():
+        pred, _ = model(X_test_[j].unsqueeze(0))
     true = y_test_[j].unsqueeze(0)
     plt.plot(pred[0,:,0].cpu().detach().numpy(), label='Predicted')
     plt.plot(true[0,:,0].cpu().detach().numpy(), label='True')
@@ -921,6 +960,7 @@ if __name__ == "__main__":
     num_epochs = 40
     learning_rate = 1e-4
     dropout = 0.02
+    output_sample_ratio = 0.5
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -929,10 +969,10 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout)
+    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, output_sample_ratio)
 
     today = date.today().isoformat()
-    model_name = f"ecoli_core_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    model_name = f"ecoli_core_rs_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
 
