@@ -957,7 +957,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 640
     batch_size = 128
-    num_epochs = 80
+    num_epochs = 200
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 0.5

@@ -25,7 +25,7 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 import seaborn as sns
 
-DATA_PATH = "./data/2025-07-28_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
+DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv" # carbons log-uniform, others uniform
 
 # Set all random seeds for reproducibility
 def set_seed(seed=42):
@@ -918,7 +918,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 640
     batch_size = 128
-    num_epochs = 40
+    num_epochs = 200
     learning_rate = 1e-4
     dropout = 0.02
     
