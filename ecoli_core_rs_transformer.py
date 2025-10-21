@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-#from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.metrics import r2_score, mean_absolute_error
 
 import matplotlib
 matplotlib.use('Agg')
@@ -358,11 +358,14 @@ def train_model(
             optimizer.zero_grad()
 
             # Randomly sample subset of outputs
-            n_sampled = max(1, int(total_outputs * output_sample_ratio))
-            sampled_indices = torch.tensor(
-                random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
-                device=device
-            )
+            if output_sample_ratio >= 1.0:
+                sampled_indices = None  # pass None to FluxTransformer.forward()
+            else:
+                n_sampled = max(1, int(total_outputs * output_sample_ratio))
+                sampled_indices = torch.tensor(
+                    random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
+                    device=device
+                )
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
             
@@ -949,6 +952,63 @@ def plot_post_attention_grouped_tsne(model, output_cols, X_test, n_samples=1000,
         plt.tight_layout()
         plt.show()
 
+
+def evaluate_metrics(model, X_test, y_test, output_cols, device='cpu'):
+    """
+    Evaluate a trained FluxTransformer model on test data.
+
+    Args:
+        model (nn.Module): Trained PyTorch model.
+        X_test (Tensor): Test inputs, shape [n_samples, input+output features].
+        y_test (Tensor): Test outputs, shape [n_samples, input+output features].
+        output_cols (list of str): Names of output flux columns.
+        device (str or torch.device): Device to run evaluation on.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ['flux', 'r2', 'mae'].
+    """
+    model = model.to(device)
+    model.eval()
+    
+    with torch.no_grad():
+        y_pred_tensor, _ = model(X_test.unsqueeze(-1).to(device))
+    
+    y_pred = y_pred_tensor.squeeze(-1).cpu().numpy()[:, 20:]  # skip input indices
+    y_true = y_test.cpu().numpy()[:, 20:]
+
+    metrics = []
+    for i, label in enumerate(output_cols):
+        r2 = r2_score(y_true[:, i], y_pred[:, i])
+        mae = mean_absolute_error(y_true[:, i], y_pred[:, i])
+        metrics.append({'flux': label.replace('_flux',''), 'r2': r2, 'mae': mae})
+
+    df_metrics = pd.DataFrame(metrics)
+    df_metrics['r2'] = df_metrics['r2'].map('{:.3f}'.format)
+    df_metrics['mae'] = df_metrics['mae'].map('{:.4f}'.format)
+    
+    return df_metrics
+
+def plot_output_ratio_vs_r2(ratios, r2_values, flux_name, save_path=None):
+    """
+    Plot R² performance vs. output subset ratio.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(ratios, r2_values, marker='o', linewidth=2)
+    plt.xlabel('Output Subset Ratio', fontsize=14)
+    plt.ylabel(f'R² for {flux_name}', fontsize=14)
+    plt.title(f'Effect of Output Subset Ratio on {flux_name} Prediction', fontsize=16)
+    plt.grid(True)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        print(f"Saved output ratio plot to {save_path}")
+        plt.close()
+    else:
+        plt.show()
+
 if __name__ == "__main__":
     #set_seed()
     
@@ -969,13 +1029,14 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, output_sample_ratio)
+    #train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, output_sample_ratio)
 
     today = date.today().isoformat()
     model_name = f"ecoli_core_rs_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
 
+    '''
     model_save_dir = f"./models/{model_name}"
     model_save_path = f"{model_save_dir}/{model_name}.pth"
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
@@ -1026,8 +1087,46 @@ if __name__ == "__main__":
         save_path=f"{pic_dir}/training_curve.png"
     )
     plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
+    '''
+    # Biomass column name in outputs
+    biomass_col = 'Biomass_Ecoli_core'
 
-'''
+    # Store R² values
+    ratios = np.arange(0.1, 1.1, 0.1)
+    biomass_r2 = []
+
+    for ratio in ratios:
+        print(f"\nTraining with output subset ratio = {ratio:.1f}")
+        
+        # Train model with given output_sample_ratio
+        train_loss, test_loss, model, optimizer = train_model(
+            d_model=d_model,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            d_ff=d_ff,
+            num_epochs=num_epochs,
+            learning_rate=learning_rate,
+            dropout=dropout,
+            output_sample_ratio=ratio
+        )
+        
+        # Evaluate R² for biomass
+        df_metrics = evaluate_metrics(model, X_test, y_test, output_cols, device='cpu')
+        r2_value = float(df_metrics.loc[df_metrics['flux']==biomass_col.replace('_flux',''), 'r2'])
+        biomass_r2.append(r2_value)
+        
+        # Free GPU memory
+        del model, optimizer, train_loss, test_loss
+        torch.cuda.empty_cache()
+        gc.collect()
+
+    plot_output_ratio_vs_r2(
+        ratios, biomass_r2,
+        flux_name=biomass_col.replace('_flux',''),
+        save_path=f"{pic_dir}/biomass_r2_vs_output_ratio.png"
+    )
+
+    '''
     metrics = []
 
     model_cpu = model.to('cpu')  # move model to CPU 
