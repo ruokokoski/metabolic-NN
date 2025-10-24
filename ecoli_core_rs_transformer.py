@@ -280,11 +280,6 @@ def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     print(f"Training samples: {len(X_train)}")
     print(f"Test samples: {len(X_test)}")
 
-    # Optional: standardize inputs (only input features, i.e., first 20 columns)
-    # scaler = StandardScaler()
-    # X_train[:, :20] = scaler.fit_transform(X_train[:, :20])
-    # X_test[:, :20] = scaler.transform(X_test[:, :20])
-
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
     X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
     y_train_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
@@ -992,14 +987,16 @@ def plot_output_ratio_vs_r2(ratios, r2_values, flux_name, save_path=None):
     """
     Plot R² performance vs. output subset ratio.
     """
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(14, 10))
     plt.plot(ratios, r2_values, marker='o', linewidth=2)
-    plt.xlabel('Output Subset Ratio', fontsize=14)
-    plt.ylabel(f'R² for {flux_name}', fontsize=14)
-    plt.title(f'Effect of Output Subset Ratio on {flux_name} Prediction', fontsize=16)
+    plt.xlabel('Output Subset Ratio', fontsize=18)
+    plt.ylabel(f'R² score', fontsize=18)
+    plt.title(f'Impact of Output Subset Ratio on {flux_name} Prediction', fontsize=20)
     plt.grid(True)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.xlim(0, 1)
+    plt.ylim(0.95, 1)
     
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -1112,7 +1109,7 @@ if __name__ == "__main__":
         
         # Evaluate R² for biomass
         df_metrics = evaluate_metrics(model, X_test, y_test, output_cols, device='cpu')
-        r2_value = float(df_metrics.loc[df_metrics['flux']==biomass_col.replace('_flux',''), 'r2'])
+        r2_value = float(df_metrics.loc[df_metrics['flux'] == biomass_col.replace('_flux', ''), 'r2'].iloc[0])
         biomass_r2.append(r2_value)
         
         # Free GPU memory
