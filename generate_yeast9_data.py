@@ -9,9 +9,9 @@ import warnings
 warnings.filterwarnings("ignore", message="Solver status is 'infeasible'")
 
 
-def draw_subset(exchanges, max_sources=5):
+def draw_subset(exchanges, max_sources=7):
     """
-    Randomly draw between 1 and max_sources (default=5) exchanges.
+    Randomly draw between 1 and max_sources (default=7) exchanges.
     """
     k = np.random.randint(1, min(max_sources, len(exchanges)) + 1)
     return np.random.choice(exchanges, size=k, replace=False).tolist()
@@ -42,7 +42,7 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 
         # Set uptake rates for selected carbon sources
         for ex in carbon_subset:
-            rate = random_rate(min_val=0.1, max_val=carbon_exhange_rate, log_uniform=False)
+            rate = random_rate(min_val=0.1, max_val=carbon_exchange_rate, log_uniform=False)
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 
@@ -52,6 +52,10 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
                 o2_rate = random_rate(min_val=1, max_val=default_rate, log_uniform=False)
                 model.reactions.get_by_id("r_1992").lower_bound = -o2_rate
                 data["r_1992"] = o2_rate
+            elif ex == "r_1654":  # variable ammonium
+                nh4_rate = random_rate(min_val=0.1, max_val=default_rate)
+                model.reactions.get_by_id("r_1654").lower_bound = -nh4_rate
+                data["r_1654"] = nh4_rate
             else:
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
@@ -77,7 +81,7 @@ if __name__ == "__main__":
 
     n_samples = 100000
     default_rate = 50
-    carbon_exhange_rate = 10
+    carbon_exchange_rate = 10
     batch_size = 500
 
     # Load Saccharomyces Cerevisiae (yeast9) metabolic model
@@ -87,6 +91,7 @@ if __name__ == "__main__":
     print("Objective reaction:", model.objective)
 
     carbon_exchanges = [
+        # Sugars
         'r_1542', # (1->3)-beta-D-glucan
         'r_1650', # trehalose
         'r_1651', # alpha-D-glucosamine 6-phosphate
@@ -120,6 +125,28 @@ if __name__ == "__main__":
         'r_4538', # 6-phospho-D-gluconate
         'r_4539', # D-mannose 6-phosphate
         'r_4547', # D-mannose 1-phosphate
+
+        # Organic acids
+        'r_1634', # acetate
+        'r_1551', # (S)-lactate
+        'r_2056', # succinate
+        'r_1552', # (S)-malate
+        'r_1798', # fumarate
+        'r_1586', # 2-oxoglutarate
+
+        # Alcohols
+        'r_1761', # ethanol
+        'r_1866', # isobutanol
+        'r_1865', # isoamylol
+        'r_4494', # methanol
+        'r_1580', # 2-methylbutanol
+
+        # Amino acids
+        'r_1889', # L-glutamate
+        'r_1873', # L-alanine
+        'r_1881', # L-aspartate
+        'r_1906', # L-serine
+        'r_1899', # L-leucine
     ]
 
     base_exchanges = [
