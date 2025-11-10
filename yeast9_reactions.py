@@ -33,6 +33,28 @@ inputs = [
     'r_4539', # D-mannose 6-phosphate
     'r_4547', # D-mannose 1-phosphate
 
+    # Organic acids
+    'r_1634', # acetate
+    'r_1551', # (S)-lactate
+    'r_2056', # succinate
+    'r_1552', # (S)-malate
+    'r_1798', # fumarate
+    'r_1586', # 2-oxoglutarate
+
+    # Alcohols
+    'r_1761', # ethanol
+    'r_1866', # isobutanol
+    'r_1865', # isoamylol
+    'r_4494', # methanol
+    'r_1580', # 2-methylbutanol
+
+    # Amino acids
+    'r_1889', # L-glutamate
+    'r_1873', # L-alanine
+    'r_1881', # L-aspartate
+    'r_1906', # L-serine
+    'r_1899', # L-leucine
+
     'r_1654', # ammonium
     'r_1832', # H+
     'r_1861', # iron(2+)

@@ -79,10 +79,10 @@ def generate_training_sample(carbon_subset, base_exchanges, outputs, default_rat
 if __name__ == "__main__":
     np.random.seed(41)
 
-    n_samples = 100000
+    n_samples = 250000
     default_rate = 50
     carbon_exchange_rate = 10
-    batch_size = 500
+    batch_size = 1000
 
     # Load Saccharomyces Cerevisiae (yeast9) metabolic model
     model_dir ="./models"
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             writer.writerows(batch)
 
     # Rename with actual sample count
-    final_filename = f"./data/{today}_yeast9_training_data_{sample_count}_samples.csv"
+    final_filename = f"./data/{today}_yeast9_data_{sample_count}_samples.csv"
     os.rename(temp_filename, final_filename)
     
     total_time = time.time() - start_time

@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-training_times = np.array([32, 95, 191, 421, 511, 2301]) # Yeast9 training times in minutes (100k samples)
-output_subset_ratios = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 1.0])
+training_times = np.array([32, 95, 191, 421, 511, 1511, 2301]) # Yeast9 training times in minutes (100k samples)
+output_subset_ratios = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.8, 1.0])
 
 training_times_hours = training_times / 60
 
