@@ -98,7 +98,7 @@ class FluxTransformer(nn.Module):
         n_layers=3,
         d_ff=1024,
         dropout=0.2,
-        input_length=30
+        input_length=30 # iML1515
     ):
         super().__init__()
         self.vocab_size = vocab_size
