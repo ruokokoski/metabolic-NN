@@ -397,6 +397,8 @@ def train_model(
     else:
         print("\nNo checkpoint found. Starting fresh training.")
 
+    weights_t = torch.tensor(weights_for_outputs, device=device, dtype=torch.float32)
+
     for epoch in range(start_epoch, num_epochs):
         model.train()
         epoch_train_loss = 0.0
@@ -409,13 +411,12 @@ def train_model(
                 sampled_indices = None  # pass None to FluxTransformer.forward()
             else:
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
-                chosen_relative = np.random.choice(
-                    a=np.arange(total_outputs),
-                    size=n_sampled,
-                    replace=False,
-                    p=weights_for_outputs
+                chosen_relative = torch.multinomial(
+                    weights_t,
+                    num_samples=n_sampled,
+                    replacement=False
                 )
-                chosen_global = (chosen_relative + output_start_idx).astype(np.int64)
+                chosen_global = chosen_relative + output_start_idx
                 sampled_indices = torch.tensor(chosen_global, device=device)
                 '''
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
@@ -452,13 +453,13 @@ def train_model(
                 batch_y = batch_y.to(device, non_blocking=True)
 
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
-                chosen_relative = np.random.choice(
-                    a=np.arange(total_outputs),
-                    size=n_sampled,
-                    replace=False,
-                    p=weights_for_outputs
+
+                chosen_relative = torch.multinomial(
+                    weights_t,
+                    num_samples=n_sampled,
+                    replacement=False
                 )
-                chosen_global = (chosen_relative + output_start_idx).astype(np.int64)
+                chosen_global = chosen_relative + output_start_idx
                 sampled_indices = torch.tensor(chosen_global, device=device)
                 '''
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
