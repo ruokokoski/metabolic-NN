@@ -283,8 +283,9 @@ def compute_output_sampling_weights(
     data_path=DATA_PATH,
     inputs_list=inputs,
     outputs_list=outputs,
-    boost_dict=None,   # e.g. {"r_2111_flux": 20.0}
-    min_weight=1e-8
+    boost_dict=None,   # e.g. {"r_2111_flux": 10.0}
+    min_weight=1e-8,
+    temperature=1.0
 ):
     """
     Returns:
@@ -328,10 +329,13 @@ def compute_output_sampling_weights(
                 idx = flux_cols.index(rxn_key)
                 weights[idx] = weights[idx] * float(factor)
 
-    # replace NaN or non-finite with small weight
+    # replace NaN, non-finite or zero with small weight
     weights = np.nan_to_num(weights, nan=min_weight, posinf=min_weight, neginf=min_weight)
+    weights = np.where(weights == 0, min_weight, weights)
 
-    weights = weights / weights.sum()
+    # Softmax with temperature
+    exp_weights = np.exp(weights / temperature)
+    weights = exp_weights / np.sum(exp_weights)
 
     return weights, stats
 
@@ -452,8 +456,10 @@ def train_model(
                 batch_X = batch_X.to(device, non_blocking=True)
                 batch_y = batch_y.to(device, non_blocking=True)
 
+                # Use full outputs during evaluation
+                sampled_indices = None
+                '''
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
-
                 chosen_relative = torch.multinomial(
                     weights_t,
                     num_samples=n_sampled,
@@ -461,7 +467,7 @@ def train_model(
                 )
                 chosen_global = chosen_relative + output_start_idx
                 sampled_indices = torch.tensor(chosen_global, device=device)
-                '''
+                
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
                 sampled_indices = torch.tensor(
                     random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
@@ -583,13 +589,15 @@ if __name__ == "__main__":
 
     #print_gpu_memory()
 
-    boost_dict = {"r_2111_flux": 10.0}
+    boost_dict = {"r_2111_flux": 7.0}
+    temperature = 1.0
 
     weights_for_outputs, stats = compute_output_sampling_weights(
         data_path=DATA_PATH,
         inputs_list=inputs,
         outputs_list=outputs,
-        boost_dict=boost_dict
+        boost_dict=boost_dict,
+        temperature=temperature
     )
 
     # weights_for_outputs is aligned with outputs (index 0 -> outputs[0] -> vocab index len(inputs)+0)
