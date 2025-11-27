@@ -21,6 +21,9 @@ import matplotlib.pyplot as plt
 #from flux_transformer_rs import FluxTransformer
 from yeast9_reactions import inputs, outputs
 
+from collections import Counter
+sample_counter = Counter()
+
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 DATA_PATH = "./data/2025-11-07_yeast9_data_246923_samples.csv"
@@ -283,8 +286,8 @@ def compute_output_sampling_weights(
     data_path=DATA_PATH,
     inputs_list=inputs,
     outputs_list=outputs,
-    boost_dict=None,   # e.g. {"r_2111_flux": 10.0}
-    min_weight=1e-8,
+    boost_dict=None,   # e.g. {"r_2111_flux": 6.5}
+    min_value=1e-8,
     temperature=1.0
 ):
     """
@@ -314,7 +317,7 @@ def compute_output_sampling_weights(
         if col in stats.index:
             w_list.append(stats.loc[col, "log_abs_mean"])
         else:
-            w_list.append(min_weight)
+            w_list.append(min_value)
 
     weights = np.array(w_list, dtype=np.float64)
 
@@ -330,8 +333,8 @@ def compute_output_sampling_weights(
                 weights[idx] = weights[idx] * float(factor)
 
     # replace NaN, non-finite or zero with small weight
-    weights = np.nan_to_num(weights, nan=min_weight, posinf=min_weight, neginf=min_weight)
-    weights = np.where(weights == 0, min_weight, weights)
+    weights = np.nan_to_num(weights, nan=min_value, posinf=min_value, neginf=min_value)
+    weights = np.where(weights == 0, min_value, weights)
 
     # Softmax with temperature
     exp_weights = np.exp(weights / temperature)
@@ -366,7 +369,6 @@ def train_model(
         input_length=len(inputs)
     ).to(device)
     
-    #optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     optimizer = optim.AdamW(
         model.parameters(),
         lr=learning_rate,
@@ -422,19 +424,18 @@ def train_model(
                 )
                 chosen_global = chosen_relative + output_start_idx
                 sampled_indices = torch.tensor(chosen_global, device=device)
-                '''
-                n_sampled = max(1, int(total_outputs * output_sample_ratio))
-                sampled_indices = torch.tensor(
-                    random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
-                    device=device
-                )
-                '''
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
-            
-            target = batch_y[:, selected_indices, :]
 
-            loss = criterion(predictions, target)
+            sample_counter.update(selected_indices.cpu().numpy().tolist())
+
+            out_mask = selected_indices >= output_start_idx
+            pred_out = predictions[:, out_mask, :]
+            target_full = batch_y[:, selected_indices, :]
+            tgt_out = target_full[:, out_mask, :]
+
+            loss = criterion(pred_out, tgt_out)
+            
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -442,8 +443,8 @@ def train_model(
             epoch_train_loss += loss.item() * batch_X.size(0)
 
             # Explicitly free tensors
-            del predictions, loss, batch_X, batch_y
-            torch.cuda.empty_cache()
+            del predictions, loss, pred_out, tgt_out, target_full, batch_X, batch_y
+            #torch.cuda.empty_cache()
         
         epoch_train_loss /= len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
@@ -458,6 +459,7 @@ def train_model(
 
                 # Use full outputs during evaluation
                 sampled_indices = None
+                
                 '''
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
                 chosen_relative = torch.multinomial(
@@ -467,23 +469,22 @@ def train_model(
                 )
                 chosen_global = chosen_relative + output_start_idx
                 sampled_indices = torch.tensor(chosen_global, device=device)
-                
-                n_sampled = max(1, int(total_outputs * output_sample_ratio))
-                sampled_indices = torch.tensor(
-                    random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
-                    device=device
-                )
                 '''
 
                 predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
+                pred_out = predictions[:, output_start_idx:, :]
+                tgt_out = batch_y[:, output_start_idx:, :]
+
+                loss = criterion(pred_out, tgt_out)
+                '''
                 target = batch_y[:, selected_indices, :]
                 loss = criterion(predictions, target)
-
+                '''
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
-                del predictions, loss, batch_X, batch_y
-                torch.cuda.empty_cache()
+                del predictions, loss, pred_out, tgt_out, batch_X, batch_y
+                #torch.cuda.empty_cache()
         
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
@@ -509,27 +510,6 @@ def train_model(
     
     return train_losses, test_losses, model, optimizer
 
-def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
-    plt.figure(figsize=(14, 10))
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.plot(train_losses, label="Training Loss")
-    plt.plot(test_losses, label="Test Loss")
-    if log_scale:
-        plt.yscale('log')
-    plt.xlabel("Epoch", fontsize=18)
-    plt.ylabel("Loss", fontsize=18)
-    plt.title(f"Loss Curves (d={d_model}, h={n_heads}, l={n_layers}, ff={d_ff})", fontsize=20)
-    plt.grid(True)
-    plt.legend(fontsize=16)
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        plt.savefig(save_path)
-        print(f"\nTraining curve saved to {save_path}")
-        plt.close()
-    else:
-        plt.show()
-
 def calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=None):
     """
     Compute overall metrics (R^2 and MAE) on the output columns in mini-batches.
@@ -546,7 +526,7 @@ def calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=None)
             yb = y_test[i:i+batch_size].to(device)
 
             # forward pass
-            pb = model(xb.unsqueeze(-1))  # [B, V, 1]
+            pb, _ = model(xb.unsqueeze(-1))  # [B, V, 1]
 
             if yb.dim() == 2:
                 yb = yb.unsqueeze(-1)
@@ -573,11 +553,12 @@ if __name__ == "__main__":
     n_heads = 8
     n_layers = 3
     d_ff = 1024
-    batch_size = 8
-    num_epochs = 10
+    batch_size = 14
+    num_epochs = 20
     learning_rate = 1e-4
     dropout = 0.02
-    output_sample_ratio = 0.1
+    output_sample_ratio = 0.2
+    temperature = 5.0
     model_name = f"yeast9_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}_rs{str(output_sample_ratio).replace('.', '_')}"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -589,8 +570,8 @@ if __name__ == "__main__":
 
     #print_gpu_memory()
 
-    boost_dict = {"r_2111_flux": 7.0}
-    temperature = 1.0
+    #boost_dict = {"r_2111_flux": 6.7}
+    boost_dict = None
 
     weights_for_outputs, stats = compute_output_sampling_weights(
         data_path=DATA_PATH,
@@ -606,8 +587,6 @@ if __name__ == "__main__":
     train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio)
 
     today = date.today().isoformat()
-    # pic_dir = f"./pics/{today}/{model_name}"
-    # os.makedirs(pic_dir, exist_ok=True)
 
     model_save_dir = f"./models/{model_name}"
     model_save_path = f"{model_save_dir}/{model_name}.pth"
@@ -650,17 +629,11 @@ if __name__ == "__main__":
     
     checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
+    print(f"Temperature = {temperature}")
     print(f"Full checkpoint saved to {checkpoint_path}")
+    with open("selected_indices_histogram.txt", "w") as f:
+        for idx, count in sorted(sample_counter.items()):
+            f.write(f"{idx}: {count}\n")
 
-'''
-    plot_loss_curves(
-        train_loss, test_loss, 
-        d_model=d_model,
-        n_heads=n_heads,
-        n_layers=n_layers,
-        d_ff=d_ff,
-        save_path=f"{pic_dir}/training_curve.png"
-    )
+    metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=batch_size, device=device)
 
-    metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=device)
-'''
