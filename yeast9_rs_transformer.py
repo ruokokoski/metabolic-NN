@@ -384,6 +384,14 @@ def train_model(
     total_outputs = len(outputs)
     output_start_idx = len(inputs)
 
+    # Fixed set for evaluation
+    K = 512  # number of fixed eval outputs
+    fixed_eval_relative = np.argsort(weights_for_outputs)[-K:]
+    fixed_eval_global = torch.tensor(
+        fixed_eval_relative + output_start_idx,
+        device=device
+    )
+
     if os.path.exists(checkpoint_path):
         print(f"\nResuming training from checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
@@ -413,7 +421,7 @@ def train_model(
             batch_y = batch_y.to(device, non_blocking=True)
 
             # Randomly sample subset of outputs
-            if output_sample_ratio >= 1.0:
+            if output_sample_ratio >= 1.0: # full samples
                 sampled_indices = None  # pass None to FluxTransformer.forward()
             else:
                 n_sampled = max(1, int(total_outputs * output_sample_ratio))
@@ -444,7 +452,6 @@ def train_model(
 
             # Explicitly free tensors
             del predictions, loss, pred_out, tgt_out, target_full, batch_X, batch_y
-            #torch.cuda.empty_cache()
         
         epoch_train_loss /= len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
@@ -457,19 +464,8 @@ def train_model(
                 batch_X = batch_X.to(device, non_blocking=True)
                 batch_y = batch_y.to(device, non_blocking=True)
 
-                # Use full outputs during evaluation
+                '''# For using full outputs during evaluation
                 sampled_indices = None
-                
-                '''
-                n_sampled = max(1, int(total_outputs * output_sample_ratio))
-                chosen_relative = torch.multinomial(
-                    weights_t,
-                    num_samples=n_sampled,
-                    replacement=False
-                )
-                chosen_global = chosen_relative + output_start_idx
-                sampled_indices = torch.tensor(chosen_global, device=device)
-                '''
 
                 predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
                 pred_out = predictions[:, output_start_idx:, :]
@@ -477,14 +473,16 @@ def train_model(
 
                 loss = criterion(pred_out, tgt_out)
                 '''
-                target = batch_y[:, selected_indices, :]
-                loss = criterion(predictions, target)
-                '''
+                predictions, _ = model(batch_X, output_subset=fixed_eval_global)
+
+                pred_out = predictions
+                tgt_out = batch_y[:, fixed_eval_global, :]
+
+                loss = criterion(pred_out, tgt_out)
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
                 del predictions, loss, pred_out, tgt_out, batch_X, batch_y
-                #torch.cuda.empty_cache()
         
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
@@ -572,7 +570,7 @@ if __name__ == "__main__":
 
     #boost_dict = {"r_2111_flux": 6.7}
     boost_dict = None
-
+    t0 = time.time()
     weights_for_outputs, stats = compute_output_sampling_weights(
         data_path=DATA_PATH,
         inputs_list=inputs,
@@ -580,9 +578,11 @@ if __name__ == "__main__":
         boost_dict=boost_dict,
         temperature=temperature
     )
+    t1 = time.time()
 
     # weights_for_outputs is aligned with outputs (index 0 -> outputs[0] -> vocab index len(inputs)+0)
     print(f"Prepared sampling weights for {len(weights_for_outputs)} outputs. Sum={weights_for_outputs.sum():.6f}")
+    print(f"Weight computation took {t1-t0:.0f} seconds")
 
     train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio)
 
@@ -631,9 +631,14 @@ if __name__ == "__main__":
     torch.save(checkpoint, checkpoint_path)
     print(f"Temperature = {temperature}")
     print(f"Full checkpoint saved to {checkpoint_path}")
-    with open("selected_indices_histogram.txt", "w") as f:
+
+    hist_path = f"./models/yeast9_d{d_model}_selected_indices.txt"
+
+    with open(hist_path, "w") as f:
         for idx, count in sorted(sample_counter.items()):
             f.write(f"{idx}: {count}\n")
+
+    print(f"Selected indices histogram saved to {hist_path}")
 
     #metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=batch_size, device=device)
 
