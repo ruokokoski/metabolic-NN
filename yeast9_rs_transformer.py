@@ -473,16 +473,20 @@ def train_model(
 
                 loss = criterion(pred_out, tgt_out)
                 '''
-                predictions, _ = model(batch_X, output_subset=fixed_eval_global)
-
-                pred_out = predictions
-                tgt_out = batch_y[:, fixed_eval_global, :]
+                predictions, selected_indices = model(batch_X, output_subset=fixed_eval_global)
+        
+                out_mask = selected_indices >= output_start_idx
+                pred_out = predictions[:, out_mask, :]
+                
+                # Get corresponding targets
+                target_full = batch_y[:, selected_indices, :]
+                tgt_out = target_full[:, out_mask, :]
 
                 loss = criterion(pred_out, tgt_out)
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
                 # Explicitly free tensors
-                del predictions, loss, pred_out, tgt_out, batch_X, batch_y
+                del predictions, loss, pred_out, tgt_out, target_full, batch_X, batch_y
         
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
