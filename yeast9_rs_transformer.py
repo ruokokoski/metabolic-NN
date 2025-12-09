@@ -549,12 +549,12 @@ def calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=None)
 if __name__ == "__main__":
     #set_seed()
     
-    d_model = 256
+    d_model = 128
     n_heads = 8
     n_layers = 3
     d_ff = 1024
     batch_size = 14
-    num_epochs = 20
+    num_epochs = 60
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 0.2
@@ -635,5 +635,5 @@ if __name__ == "__main__":
         for idx, count in sorted(sample_counter.items()):
             f.write(f"{idx}: {count}\n")
 
-    metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=batch_size, device=device)
+    #metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=batch_size, device=device)
 
