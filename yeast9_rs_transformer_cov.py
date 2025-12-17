@@ -312,42 +312,38 @@ def precompute_flux_correlation(data_path, output_cols, device="cpu"):
           f"min {corr_tensor.min():.3f}, max {corr_tensor.max():.3f}")
     return corr_tensor
 
-def sample_output_subset(total_outputs, output_start_idx, corr_tensor, 
-                         output_sample_ratio=0.3, cov_prob=0.3):
-    """
-    Sample a subset of output flux indices for one batch.
-
-    Either uniformly at random or based on covariance (correlation).
-
-    Args:
-        total_outputs: int, number of outputs
-        output_start_idx: int, starting index of outputs in vocab
-        corr_tensor: torch.Tensor, correlation matrix [num_fluxes, num_fluxes]
-        output_sample_ratio: fraction of outputs to sample
-        cov_prob: probability to sample based on covariance
-
-    Returns:
-        sampled_indices: torch.Tensor of global indices (including input offset)
-    """
+def sample_output_subset(
+    total_outputs,
+    output_start_idx,
+    corr_tensor,
+    output_sample_ratio=0.3,
+    cov_prob=0.3
+):
+    device = corr_tensor.device
     n_sampled = max(1, int(total_outputs * output_sample_ratio))
 
     if np.random.rand() < cov_prob:
-        # pick one primary reaction uniformly at random
-        primary_idx = np.random.randint(0, total_outputs)
+        # primary reaction
+        primary_idx = torch.randint(
+            0, total_outputs, (1,), device=device
+        )
 
-        # include most correlated reactions
-        correlations = corr_tensor[primary_idx].clone()
-        correlations[primary_idx] = -1  # exclude self
+        correlations = corr_tensor[primary_idx.item()].clone()
+        correlations[primary_idx.item()] = -1  # exclude self
+
         n_correlated = max(1, n_sampled - 1)
         top_corr_idx = torch.topk(correlations, n_correlated).indices
-        selected = torch.cat([torch.tensor([primary_idx]), top_corr_idx])
-    else:
-        # uniform random sampling
-        selected = torch.randint(0, total_outputs, (n_sampled,))
 
-    # shift by output_start_idx to get global indices
-    sampled_global = selected + output_start_idx
-    return sampled_global
+        selected = torch.cat([primary_idx, top_corr_idx])
+
+    else:
+        # uniform sampling (on correct device)
+        selected = torch.randint(
+            0, total_outputs, (n_sampled,), device=device
+        )
+
+    return selected + output_start_idx
+
 
 def compute_output_sampling_weights(
     data_path=DATA_PATH,
@@ -495,7 +491,7 @@ def train_model(
                     corr_tensor=corr_tensor,
                     output_sample_ratio=output_sample_ratio,
                     cov_prob=0.3
-                ).to(device)
+                )
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
 
