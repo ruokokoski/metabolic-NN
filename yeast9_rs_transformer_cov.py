@@ -305,8 +305,9 @@ def precompute_flux_correlation(data_path, output_cols, device="cpu"):
 
     # Correlation
     std_dev = np.sqrt(np.diag(cov_matrix))
-    corr_matrix = cov_matrix / (std_dev[:, None] * std_dev[None, :])
-    corr_matrix = np.nan_to_num(corr_matrix)  # replace NaNs from zero variance
+    denom = std_dev[:, None] * std_dev[None, :]
+    denom[denom == 0] = 1.0
+    corr_matrix = cov_matrix / denom
     corr_tensor = torch.tensor(corr_matrix, dtype=torch.float32, device=device)
     print(f"\nCorrelation matrix computed: shape {corr_tensor.shape}, "
           f"min {corr_tensor.min():.3f}, max {corr_tensor.max():.3f}")
@@ -316,8 +317,8 @@ def sample_output_subset(
     total_outputs,
     output_start_idx,
     corr_tensor,
-    output_sample_ratio=0.3,
-    cov_prob=0.3
+    output_sample_ratio=0.5,
+    cov_prob=0.7
 ):
     device = corr_tensor.device
     n_sampled = max(1, int(total_outputs * output_sample_ratio))
@@ -329,18 +330,15 @@ def sample_output_subset(
         )
 
         correlations = corr_tensor[primary_idx.item()].clone()
-        correlations[primary_idx.item()] = -1  # exclude self
+        correlations[primary_idx.item()] = 0.0  # exclude self
 
         n_correlated = max(1, n_sampled - 1)
-        top_corr_idx = torch.topk(correlations, n_correlated).indices
+        top_corr_idx = torch.topk(correlations.abs(), n_correlated).indices
 
         selected = torch.cat([primary_idx, top_corr_idx])
 
     else:
-        # uniform sampling (on correct device)
-        selected = torch.randint(
-            0, total_outputs, (n_sampled,), device=device
-        )
+        selected = torch.randint(0, total_outputs, (n_sampled,), device=device)
 
     return selected + output_start_idx
 
@@ -490,7 +488,7 @@ def train_model(
                     output_start_idx=output_start_idx,
                     corr_tensor=corr_tensor,
                     output_sample_ratio=output_sample_ratio,
-                    cov_prob=0.3
+                    cov_prob=0.7
                 )
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
