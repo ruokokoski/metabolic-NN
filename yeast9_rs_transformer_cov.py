@@ -308,6 +308,7 @@ def precompute_flux_correlation(data_path, output_cols, device="cpu"):
     denom = std_dev[:, None] * std_dev[None, :]
     denom[denom == 0] = 1.0
     corr_matrix = cov_matrix / denom
+    corr_matrix = np.nan_to_num(corr_matrix)
     corr_tensor = torch.tensor(corr_matrix, dtype=torch.float32, device=device)
     print(f"\nCorrelation matrix computed: shape {corr_tensor.shape}, "
           f"min {corr_tensor.min():.3f}, max {corr_tensor.max():.3f}")
