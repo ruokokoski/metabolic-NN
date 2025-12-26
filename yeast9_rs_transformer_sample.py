@@ -351,7 +351,8 @@ def train_model(
         learning_rate=0.001, 
         dropout=0.02, 
         model_name="yeast9", 
-        output_sample_ratio=0.5
+        output_sample_ratio=0.5,
+        sample_prob=0.7
     ):
     start_time = time.time()
 
@@ -429,28 +430,40 @@ def train_model(
             if output_sample_ratio >= 1.0:  # full outputs
                 sampled_indices = None
             else:
-                # random dataset row
-                row_idx = np.random.randint(0, output_matrix.shape[0])
-                row = output_matrix[row_idx]
+                if np.random.rand() < sample_prob:
+                    # random dataset row
+                    row_idx = np.random.randint(0, output_matrix.shape[0])
+                    row = output_matrix[row_idx]
 
-                active = np.nonzero(row)[0]
-                inactive = np.where(row == 0)[0]
+                    active = np.nonzero(row)[0]
+                    inactive = np.where(row == 0)[0]
 
-                if len(active) >= n_sampled:
-                    chosen = np.random.choice(active, size=n_sampled, replace=False)
+                    if len(active) >= n_sampled:
+                        chosen = np.random.choice(active, size=n_sampled, replace=False)
+                    else:
+                        remaining = n_sampled - len(active)
+                        fill = np.random.choice(
+                            inactive,
+                            size=min(remaining, len(inactive)),
+                            replace=False
+                        )
+                        chosen = np.concatenate([active, fill])
+
+                    sampled_indices = torch.tensor(
+                        chosen + output_start_idx,
+                        device=device
+                    )
                 else:
-                    remaining = n_sampled - len(active)
-                    fill = np.random.choice(
-                        inactive,
-                        size=min(remaining, len(inactive)),
+                    # UNIFORM random sampling
+                    chosen = np.random.choice(
+                        total_outputs,
+                        size=n_sampled,
                         replace=False
                     )
-                    chosen = np.concatenate([active, fill])
-
-                sampled_indices = torch.tensor(
-                    chosen + output_start_idx,
-                    device=device
-                )
+                    sampled_indices = torch.tensor(
+                        chosen + output_start_idx,
+                        device=device
+                    )
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
 
@@ -579,8 +592,9 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 0.5
+    sample_prob = 0.7
     temperature = 5.0
-    model_name = f"yeast9_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}_sample{str(output_sample_ratio).replace('.', '_')}"
+    model_name = f"yeast9_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}_sample{str(output_sample_ratio).replace('.', '_')}_p{str(sample_prob).replace('.', '_')}"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -607,7 +621,7 @@ if __name__ == "__main__":
     print(f"Prepared weights for {len(weights_for_outputs)} outputs. Sum={weights_for_outputs.sum():.6f}")
     print(f"Weight computation took {t1-t0:.0f} seconds")
 
-    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio)
+    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio, sample_prob)
 
     today = date.today().isoformat()
 
