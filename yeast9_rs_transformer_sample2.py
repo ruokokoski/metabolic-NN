@@ -432,18 +432,27 @@ def train_model(
                 row = output_matrix[row_idx]
 
                 active = np.nonzero(row)[0]
+                inactive = np.where(row == 0)[0]
 
                 n_active = min(len(active), int(n_sampled * epsilon))
-                chosen_active = (
-                    np.random.choice(active, size=n_active, replace=False)
-                    if n_active > 0 else np.array([], dtype=int)
-                )
+
+                if n_active > 0:
+                    chosen_active = np.random.choice(active, size=n_active, replace=False)
+                else:
+                    chosen_active = np.empty(0, dtype=int)
 
                 remaining = n_sampled - len(chosen_active)
-                pool = np.setdiff1d(np.arange(total_outputs), chosen_active, assume_unique=True)
-                chosen_fill = np.random.choice(pool, size=remaining, replace=False)
 
-                chosen = np.concatenate([chosen_active, chosen_fill])
+                if remaining > 0:
+                    if len(inactive) >= remaining:
+                        chosen_fill = np.random.choice(inactive, size=remaining, replace=False)
+                    else:
+                        chosen_fill = np.random.choice(
+                            total_outputs, size=remaining, replace=False
+                        )
+                    chosen = np.concatenate([chosen_active, chosen_fill])
+                else:
+                    chosen = chosen_active
 
                 sampled_indices = torch.tensor(
                     chosen + output_start_idx,
@@ -515,42 +524,6 @@ def train_model(
     
     return train_losses, test_losses, model, optimizer
 
-def calculate_metrics(model, X_test, y_test, inputs, batch_size=64, device=None):
-    """
-    Compute overall metrics (R^2 and MAE) on the output columns in mini-batches.
-    """
-    n_inputs = len(inputs) if not isinstance(inputs, int) else inputs
-    device = device or next(model.parameters()).device
-
-    model.eval()
-    preds_list, trues_list = [], []
-
-    with torch.no_grad():
-        for i in range(0, X_test.size(0), batch_size):
-            xb = X_test[i:i+batch_size].to(device)
-            yb = y_test[i:i+batch_size].to(device)
-
-            # forward pass
-            pb, _ = model(xb.unsqueeze(-1))  # [B, V, 1]
-
-            if yb.dim() == 2:
-                yb = yb.unsqueeze(-1)
-
-            preds_list.append(pb[:, n_inputs:, 0].cpu())
-            trues_list.append(yb[:, n_inputs:, 0].cpu())
-
-    pred_outputs = torch.cat(preds_list).numpy()
-    true_outputs = torch.cat(trues_list).numpy()
-
-    # compute metrics
-    r2 = r2_score(true_outputs.ravel(), pred_outputs.ravel())
-    mae = mean_absolute_error(true_outputs.ravel(), pred_outputs.ravel())
-
-    print(f"Overall R²: {r2:.4f}")
-    print(f"Overall MAE: {mae:.4f}")
-
-    return {"r2": r2, "mae": mae}
-
 if __name__ == "__main__":
     #set_seed()
     
@@ -559,7 +532,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 1024
     batch_size = 16
-    num_epochs = 15
+    num_epochs = 5
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 0.5
@@ -574,9 +547,6 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    #print_gpu_memory()
-
-    #boost_dict = {"r_2111_flux": 6.7}
     boost_dict = None
     t0 = time.time()
     weights_for_outputs, stats = compute_output_sampling_weights(
@@ -647,6 +617,3 @@ if __name__ == "__main__":
             f.write(f"{idx}: {count}\n")
 
     print(f"Selected indices histogram saved to {hist_path}")
-
-    #metrics = calculate_metrics(model, X_test, y_test, inputs, batch_size=batch_size, device=device)
-
