@@ -331,13 +331,14 @@ def sample_output_subset(
         )
 
         correlations = corr_tensor[primary_idx.item()].clone()
-        correlations[primary_idx.item()] = 0.0  # exclude self
+        correlations[primary_idx.item()] = -1
+        #correlations[primary_idx.item()] = 0.0  # exclude self (using absolute correlations)
 
         n_correlated = max(1, n_sampled - 1)
-        top_corr_idx = torch.topk(correlations.abs(), n_correlated).indices
+        top_corr_idx = torch.topk(correlations, n_correlated).indices
+        #top_corr_idx = torch.topk(correlations.abs(), n_correlated).indices # absolute correlations
 
         selected = torch.cat([primary_idx, top_corr_idx])
-
     else:
         selected = torch.randint(0, total_outputs, (n_sampled,), device=device)
 
@@ -413,7 +414,8 @@ def train_model(
         learning_rate=0.001, 
         dropout=0.02, 
         model_name="yeast9", 
-        output_sample_ratio=0.5
+        output_sample_ratio=0.5,
+        cov_prob=0.7
     ):
     start_time = time.time()
 
@@ -489,7 +491,7 @@ def train_model(
                     output_start_idx=output_start_idx,
                     corr_tensor=corr_tensor,
                     output_sample_ratio=output_sample_ratio,
-                    cov_prob=0.7
+                    cov_prob=cov_prob
                 )
 
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
@@ -614,13 +616,14 @@ if __name__ == "__main__":
     n_heads = 8
     n_layers = 3
     d_ff = 1024
-    batch_size = 14
+    batch_size = 16
     num_epochs = 10
     learning_rate = 1e-4
     dropout = 0.02
-    output_sample_ratio = 0.5
+    output_sample_ratio = 0.4
+    cov_prob = 0.7
     temperature = 5.0
-    model_name = f"yeast9_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}_rs{str(output_sample_ratio).replace('.', '_')}"
+    model_name = f"yeast9_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}_rs{str(output_sample_ratio).replace('.', '_')}_p{str(cov_prob).replace('.', '_')}"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -648,7 +651,7 @@ if __name__ == "__main__":
     print(f"Prepared weights for {len(weights_for_outputs)} outputs. Sum={weights_for_outputs.sum():.6f}")
     print(f"Weight computation took {t1-t0:.0f} seconds")
 
-    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio)
+    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, model_name, output_sample_ratio, cov_prob)
 
     today = date.today().isoformat()
 
