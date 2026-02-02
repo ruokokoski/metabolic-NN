@@ -42,7 +42,11 @@ def generate_training_sample(carbon_subset, base_exchanges, amino_exchanges, out
 
         # Set uptake rates for selected carbon sources
         for ex in carbon_subset:
-            rate = random_rate(min_val=0.1, max_val=carbon_exhange_rate, log_uniform=False)
+            if ex == "EX_glyc_e":
+                rate = amino_rate  # fixed, same as amino acids
+            else:
+                rate = random_rate(min_val=0.1, max_val=carbon_exhange_rate, log_uniform=False)
+
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 
@@ -93,6 +97,14 @@ if __name__ == "__main__":
 
     print("Objective reaction:", model.objective)
 
+    # Faure simulation data for AMN-Reservoir: 
+    # Acetate, *Acetaldehyde, *Oxoglutarate, *Ethanol, *Formate, Fructose, 
+    # *Fumarate, *Glutamine, *Glutamate, Lactate, *Malate, Succinate, Pyruvate
+
+    # Experimental carbons missing from sim. data: 
+    # Ribose, Maltose, Melibiose, Trehalose, Galactose
+
+    # Faure experimental data:
     carbon_exchanges = [
         #'EX_glc__D_e',   # D-Glucose
         'EX_rib__D_e',   # Ribose
@@ -105,6 +117,8 @@ if __name__ == "__main__":
         'EX_lac__D_e',   # D-Lactate
         'EX_succ_e',     # Succinate
         'EX_pyr_e',      # Pyruvate
+
+        'EX_glyc_e',     # Glycerol (Faure experimental dataset, fixed value 2.2)
     ]
 
     base_exchanges = [
@@ -128,14 +142,14 @@ if __name__ == "__main__":
         'EX_cl_e', 
         'EX_o2_e',
 
+    # Experimental dataset contains also these:
         'EX_fe3_e', 
         'EX_sel_e', 
         'EX_tungs_e', 
-        'EX_slnt_e', 
-        'EX_glyc_e',
+        'EX_slnt_e',
     ]
     # Amino acids present in experimental dataset (Faure et al 2023).
-    # Always set to 2.2:
+    # These were set to 2.2:
     amino_exchanges = [
         'EX_ala__L_e', # Alanine
         'EX_pro__L_e', # Proline 
