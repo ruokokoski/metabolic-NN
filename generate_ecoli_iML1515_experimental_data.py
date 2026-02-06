@@ -45,20 +45,24 @@ def generate_training_sample(carbon_subset, base_exchanges, amino_exchanges, out
             if ex == "EX_glyc_e":
                 rate = amino_rate  # fixed, same as amino acids
             else:
-                rate = random_rate(min_val=0.1, max_val=carbon_exhange_rate, log_uniform=False)
+                rate = random_rate(min_val=1, max_val=carbon_exhange_rate, log_uniform=False)
 
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 
         # Set base exchange rates
         for ex in base_exchanges:
-            if ex == "EX_o2_e":
+            model.reactions.get_by_id(ex).lower_bound = -default_rate
+            data[ex] = default_rate
+            '''
+            if ex == "EX_o2_e": # variable oxygen
                 o2_rate = random_rate(min_val=1, max_val=default_rate, log_uniform=False)
                 model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
                 data["EX_o2_e"] = o2_rate
             else:
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
+            '''
 
         # Set amino acid exchange rates (fixed UB)
         for ex in amino_exchanges:
@@ -82,13 +86,13 @@ def generate_training_sample(carbon_subset, base_exchanges, amino_exchanges, out
         return None
 
 if __name__ == "__main__":
-    np.random.seed(42)
+    np.random.seed(9)
 
-    n_samples = 200000
+    n_samples = 100000
     default_rate = 50
     carbon_exhange_rate = 5 # 2.2 to match experimental set (Faure et al 2023)
     amino_rate = 2.2
-    batch_size = 500
+    batch_size = 1000
 
     # Load the E. coli iML1515 metabolic model
     model_dir ="./models"
