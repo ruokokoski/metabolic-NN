@@ -326,7 +326,7 @@ def train_model(
         n_layers=n_layers,
         d_ff=d_ff,
         dropout=dropout,
-        
+
     ).to(device)
     
     optimizer = optim.AdamW(
@@ -1035,7 +1035,7 @@ if __name__ == "__main__":
     num_epochs = 200
     learning_rate = 1e-4
     dropout = 0.02
-    output_sample_ratio = 0.5
+    output_sample_ratio = 1.0
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
