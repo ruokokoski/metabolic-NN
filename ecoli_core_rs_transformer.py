@@ -140,13 +140,13 @@ class FluxTransformerLayer(nn.Module):
 class FluxTransformer(nn.Module):
     def __init__(
         self,
-        vocab_size=2742,
+        vocab_size=115,
         d_model=128,
         n_heads=8,
         n_layers=3,
         d_ff=1024,
         dropout=0.2,
-        input_length=30
+        input_length=20
     ):
         super().__init__()
         self.vocab_size = vocab_size
@@ -325,7 +325,8 @@ def train_model(
         n_heads=n_heads,
         n_layers=n_layers,
         d_ff=d_ff,
-        dropout=dropout
+        dropout=dropout,
+        
     ).to(device)
     
     optimizer = optim.AdamW(
@@ -361,12 +362,20 @@ def train_model(
                     random.sample(range(output_start_idx, output_start_idx + total_outputs), n_sampled),
                     device=device
                 )
-
             predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
-            
+            # keep only output tokens (>= K)
+            mask = (selected_indices >= output_start_idx)  # output_start_idx == K == 20
+            sel_out = selected_indices[mask]
+
+            pred_out = predictions[:, mask, :]            # (B, S_out, 1)
+            tgt_out  = batch_y[:, sel_out, :]             # (B, S_out, 1)
+
+            loss = criterion(pred_out, tgt_out)
+            '''
             target = batch_y[:, selected_indices, :]
 
             loss = criterion(predictions, target)
+            '''
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -391,8 +400,17 @@ def train_model(
                 )
 
                 predictions, selected_indices = model(batch_X, output_subset=sampled_indices)
+
+                mask = (selected_indices >= output_start_idx)
+                sel_out = selected_indices[mask]
+                pred_out = predictions[:, mask, :]
+                tgt_out  = batch_y[:, sel_out, :]
+
+                loss = criterion(pred_out, tgt_out)
+                '''
                 target = batch_y[:, selected_indices, :]
                 loss = criterion(predictions, target)
+                '''
 
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
@@ -1026,14 +1044,13 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    #train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, output_sample_ratio)
+    train_loss, test_loss, model, optimizer = train_model(d_model, n_heads, n_layers, d_ff, num_epochs, learning_rate, dropout, output_sample_ratio)
 
     today = date.today().isoformat()
     model_name = f"ecoli_core_rs_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
     pic_dir = f"./pics/{today}/{model_name}"
     os.makedirs(pic_dir, exist_ok=True)
 
-    '''
     model_save_dir = f"./models/{model_name}"
     model_save_path = f"{model_save_dir}/{model_name}.pth"
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
@@ -1074,7 +1091,7 @@ if __name__ == "__main__":
     checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
-
+    '''
     plot_loss_curves(
         train_loss, test_loss, 
         d_model=d_model,
@@ -1084,7 +1101,7 @@ if __name__ == "__main__":
         save_path=f"{pic_dir}/training_curve.png"
     )
     plot_prediction_sample(X_test, y_test, model, save_path=f"{pic_dir}/prediction_sample.png")
-    '''
+    
     # Biomass column name in outputs
     biomass_col = 'Biomass_Ecoli_core'
 
@@ -1123,7 +1140,6 @@ if __name__ == "__main__":
         save_path=f"{pic_dir}/biomass_r2_vs_output_ratio.png"
     )
 
-    '''
     metrics = []
 
     model_cpu = model.to('cpu')  # move model to CPU 
