@@ -23,8 +23,8 @@ DATA_PATH = "./data/2025-07-15_full_training_data_98066_samples.csv"
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
     if torch.cuda.is_available():
-        torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
@@ -134,82 +134,82 @@ class FluxTransformerLayer(nn.Module):
 class FluxTransformer(nn.Module):
     def __init__(
         self,
-        vocab_size=95,
+        vocab_size: int,
+        input_token_indices,          # list[int] or 1D tensor[int64]
         d_model=128,
         n_heads=8,
         n_layers=3,
         d_ff=1024,
         dropout=0.05,
-        input_length=20
     ):
         super().__init__()
-        self.vocab_size = vocab_size
+        if vocab_size is None:
+            raise ValueError("vocab_size must be provided explicitly.")
+        self.vocab_size = int(vocab_size)
         self.d_model = d_model
-        self.input_length = input_length
 
-        self.input_embedding = nn.Embedding(vocab_size, d_model)
+        idx = torch.as_tensor(input_token_indices, dtype=torch.long)
+        if idx.ndim != 1:
+            raise ValueError("input_token_indices must be 1D.")
+        if (idx < 0).any() or (idx >= self.vocab_size).any():
+            raise ValueError("input_token_indices contains out-of-range indices.")
+        # Register as buffer so it moves with .to(device)
+        self.register_buffer("input_token_indices", idx, persistent=True)
+
+        self.input_embedding = nn.Embedding(self.vocab_size, d_model)
 
         self.layers = nn.ModuleList([
-            FluxTransformerLayer(
-                d_model=d_model,
-                n_heads=n_heads,
-                d_ff=d_ff,
-                dropout=dropout
-            )
+            FluxTransformerLayer(d_model=d_model, n_heads=n_heads, d_ff=d_ff, dropout=dropout)
             for _ in range(n_layers)
         ])
 
     def forward(self, c, output_subset=None, return_embedding=False):
         """
-        Args:
-            c: (batch, 1) or (batch, seq, 1) context tensor
-            output_subset: 1D tensor of indices (subset of outputs) or None
-            return_embedding: if True, return embeddings instead of c
-
-        Returns:
-            c: updated context
-            selected_indices: indices of tokens used
+        c: (batch, vocab_size, 1)
+        output_subset: 1D tensor of token indices to train on (typically excludes injected tokens)
         """
         batch_size = c.size(0)
 
-        # Always include input indices
-        input_indices = torch.arange(self.input_length, device=c.device)
+        always = self.input_token_indices  # (n_injected,)
 
         if output_subset is None:
             selected_indices = torch.arange(self.vocab_size, device=c.device)
         else:
-            # Concatenate inputs + sampled outputs
-            selected_indices = torch.cat([input_indices, output_subset.to(c.device)])
-            selected_indices = torch.unique(selected_indices, sorted=True)
+            output_subset = output_subset.to(c.device).long()
+            selected_indices = torch.unique(torch.cat([always, output_subset]), sorted=True)
 
-        # Expand indices for batch
-        y = selected_indices.unsqueeze(0).expand(batch_size, -1)  # (B, seq_subset)
-        x = self.input_embedding(y)  # (B, seq_subset, d_model)
+        y = selected_indices.unsqueeze(0).expand(batch_size, -1)      # (B, S)
+        x = self.input_embedding(y)                                    # (B, S, d_model)
 
-        # Slice c to selected indices
-        c_subset = c[:, selected_indices, :]
-        c_subset_all_layers = torch.zeros(batch_size, c_subset.size()[1], len(self.layers), device=c.device)
+        c_subset = c[:, selected_indices, :]                           # (B, S, 1)
+        c_subset_all_layers = torch.zeros(batch_size, c_subset.size(1), len(self.layers), device=c.device)
 
         for e, layer in enumerate(self.layers):
             x, c_subset = layer(x, c_subset)
             c_subset_all_layers[:, :, e] = c_subset.squeeze(-1)
 
         if return_embedding:
-            return x, selected_indices  # embeddings + indices
+            return x, selected_indices
 
         return c_subset_all_layers, selected_indices
 
+
 def load_data(filepath):
     """
-    Vocabulary = outputs only (V = len(outputs)).
-    Inputs are injected as scalars into the FIRST K token slots by reordering outputs so that
-    the K exchange flux tokens corresponding to 'inputs' come first.
+    Vocabulary = outputs only (token list == `outputs` in the given order).
+
+      - X_tok: zeros everywhere, except at indices of the exchange flux tokens
+               (e.g. 'EX_glc__D_e_flux') where we write the medium constraint value
+               from input column 'EX_glc__D_e'.
+      - y_tok: realized fluxes for all output tokens.
 
     Returns:
-      X_tok: (N, V)  inputs injected into first K positions, rest 0
-      y_tok: (N, V)  first K positions forced to 0, remaining are true outputs
-      inputs, outputs_ordered: lists
-      input_length, out_indices, perm (optional)
+      X_tok: (n_samples, n_tokens)
+      y_tok: (n_samples, n_tokens)
+      inputs: list[str]          (medium constraint columns)
+      outputs: list[str]         (flux token columns, defines token order)
+      input_token_indices: list[int]  indices in `outputs` corresponding to each input's *_flux token
+      out_indices: list[int]          all other token indices (non-injected tokens)
     """
     inputs = [
         'EX_glc__D_e', 'EX_fru_e', 'EX_lac__D_e', 'EX_pyr_e', 'EX_ac_e', 'EX_akg_e',
@@ -241,47 +241,43 @@ def load_data(filepath):
     ]
 
     df = pd.read_csv(filepath)
+
+    # Medium constraints: treat missing as "not provided" -> 0
     df[inputs] = df[inputs].fillna(0)
 
-    # Map each input token name -> corresponding output-token name
     input_flux_tokens = [f"{name}_flux" for name in inputs]
-
-    # Validate mapping exists in outputs
     missing = [t for t in input_flux_tokens if t not in outputs]
     if missing:
         raise ValueError(
-            "These mapped input flux tokens are missing from outputs:\n"
-            + "\n".join(missing)
+            "These mapped input flux tokens are missing from outputs:\n" + "\n".join(missing)
         )
 
-    # Reorder outputs: (input-mapped exchange flux tokens) first, then the rest
-    outputs_ordered = input_flux_tokens + [o for o in outputs if o not in set(input_flux_tokens)]
+    n_samples = len(df)
+    n_tokens = len(outputs)
 
-    # Build permutation from original outputs -> ordered outputs
-    perm = [outputs.index(o) for o in outputs_ordered]
+    # Realized flux targets
+    y_tok = df[outputs].to_numpy(dtype=np.float32)  # (n_samples, n_tokens)
 
-    # Read matrices
-    X_in = df[inputs].to_numpy(dtype=np.float32)            # (N, K)
-    y_out = df[outputs].to_numpy(dtype=np.float32)          # (N, V) original order
-    y_out = y_out[:, perm]                                  # (N, V) reordered to outputs_ordered
+    # Build X_tok by writing each medium value into its corresponding *_flux token index
+    X_tok = np.zeros((n_samples, n_tokens), dtype=np.float32)
 
-    K = len(inputs)
-    V = len(outputs_ordered)
+    X_in = df[inputs].to_numpy(dtype=np.float32)  # (n_samples, n_inputs)
+    input_token_indices = []
+    for j, tok in enumerate(input_flux_tokens):
+        tok_idx = outputs.index(tok)
+        input_token_indices.append(tok_idx)
+        X_tok[:, tok_idx] = X_in[:, j]
 
-    # Model input c: inject inputs into first K token slots; rest 0
-    X_tok = np.zeros((len(df), V), dtype=np.float32)
-    X_tok[:, :K] = X_in
+    injected_set = set(input_token_indices)
+    out_indices = [i for i in range(n_tokens) if i not in injected_set]
 
-    # Training target: force input slots to 0, train the rest to match y
-    y_tok = y_out.copy()
-    y_tok[:, :K] = 0.0
+    print(f"\nLoaded data with {n_samples} samples from {filepath}")
+    print(f"Number of medium inputs: {len(inputs)}")
+    print(f"Number of flux tokens:   {n_tokens}")
+    print("Medium constraints are injected into these token indices (in outputs order):")
+    print(input_token_indices)
 
-    out_indices = list(range(K, V))
-
-    print(f"\nLoaded data with {len(df)} samples from {filepath}")
-    print(f"Inputs (K): {K} injected into token slots [0..{K-1}]")
-    print(f"Vocab/outputs (V): {V} (outputs_ordered)")
-    return X_tok, y_tok, inputs, outputs_ordered, K, out_indices
+    return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
 
 def prepare_tensors(X, y, test_size=0.2, device="cpu"):
@@ -339,9 +335,9 @@ def train_model(
     train_loader,
     test_loader,
     device,
-    input_length,      # K
-    out_indices,       # indices K..V-1
-    vocab_size,        # V == len(outputs_ordered)
+    input_token_indices,   # list[int]
+    out_indices,           # list[int] (non-injected tokens to sample from)
+    vocab_size,            # int == len(outputs)
     d_model,
     n_heads,
     n_layers,
@@ -351,17 +347,17 @@ def train_model(
     dropout,
     output_sample_ratio=1.0
 ):
-    start_time = time.time()
-
     model = FluxTransformer(
         vocab_size=vocab_size,
+        input_token_indices=input_token_indices,
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
         d_ff=d_ff,
         dropout=dropout,
-        input_length=input_length  # <-- K
     ).to(device)
+
+    start_time = time.time()
 
     optimizer = optim.AdamW(
         model.parameters(),
@@ -457,7 +453,14 @@ def train_model(
     print(f"Training took {int(mins)} min {secs:.1f} sec.")
     print(f"Best test loss: {best_test_loss:.6f} at epoch {best_epoch}")
 
-    return train_losses, test_losses, model, optimizer
+    train_meta = {
+        "best_test_loss": float(best_test_loss),
+        "best_epoch": int(best_epoch),
+        "elapsed_sec": float(elapsed),
+        "num_epochs": int(num_epochs),
+        "output_sample_ratio": float(output_sample_ratio),
+    }
+    return train_losses, test_losses, model, optimizer, train_meta
 
 
 def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
@@ -482,7 +485,7 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
         plt.show()
 
 if __name__ == "__main__":
-    #set_seed()
+    set_seed()
     
     d_model = 128
     n_heads = 8
@@ -497,17 +500,17 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X, y, inputs, outputs_ordered, K, out_indices = load_data(DATA_PATH)
+    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-    train_loss, test_loss, model, optimizer = train_model(
+    train_loss, test_loss, model, optimizer, train_meta = train_model(
         train_loader=train_loader,
         test_loader=test_loader,
         device=device,
-        input_length=K,
+        input_token_indices=input_token_indices,
         out_indices=out_indices,
-        vocab_size=len(outputs_ordered),
+        vocab_size=len(outputs),
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
@@ -527,45 +530,49 @@ if __name__ == "__main__":
     model_save_path = f"{model_save_dir}/{model_name}.pth"
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     torch.save(model.state_dict(), model_save_path)
-    print(f"\nModel saved to {model_save_path}")
+    print(f"\nModel weights saved to {model_save_path}")
 
     checkpoint = {
-        'epoch': num_epochs,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'train_losses': train_loss,
-        'test_losses': test_loss,
-        'config': {
-            'd_model': d_model,
-            'n_heads': n_heads,
-            'n_layers': n_layers,
-            'd_ff': d_ff,
-            'dropout': dropout,
-            'batch_size': batch_size,
-            'learning_rate': learning_rate,
-            'num_epochs': num_epochs,
-            'vocab_size': len(outputs_ordered),
-            'input_length': K
+        "epoch": num_epochs,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "train_losses": train_loss,
+        "test_losses": test_loss,
+        "config": {
+            "d_model": d_model,
+            "n_heads": n_heads,
+            "n_layers": n_layers,
+            "d_ff": d_ff,
+            "dropout": dropout,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "num_epochs": num_epochs,
+            "vocab_size": len(outputs),
+            "input_token_indices": [int(i) for i in input_token_indices],
+            "output_sample_ratio": output_sample_ratio,
         },
-        'rng_state': {
-            'torch': torch.get_rng_state(),
-            'numpy': np.random.get_state(),
-            'cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+        "rng_state": {
+            "torch": torch.get_rng_state(),
+            "numpy": np.random.get_state(),
+            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            "python": random.getstate(),
         },
-        'data_info': {
-            'dataset': DATA_PATH,
-            'input_cols': inputs,
-            'output_cols': outputs_ordered,
-            'n_train': len(X_train),
-            'n_test': len(X_test)
-        }
+        "data_info": {
+            "dataset": DATA_PATH,
+            "input_cols": inputs,
+            "output_cols": outputs,
+            "n_train": int(len(X_train)),
+            "n_test": int(len(X_test)),
+            "input_token_indices": [int(i) for i in input_token_indices],
+            "out_indices": [int(i) for i in out_indices],
+        },
     }
-    
+
     checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
+    
 
-    '''
     plot_loss_curves(
         train_loss, test_loss, 
         d_model=d_model,
@@ -574,4 +581,3 @@ if __name__ == "__main__":
         d_ff=d_ff,
         save_path=f"{pic_dir}/training_curve.png"
     )
-    '''
