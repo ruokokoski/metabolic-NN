@@ -19,9 +19,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 #DATA_PATH = "./data/2025-07-28_full_training_data_98066_samples.csv"
-DATA_PATH = "./data/2025-09-10_iML1515_training_data_99157_samples.csv"
+DATA_PATH = "./data/iML1515_exp_212000_samples.csv"
 #MODEL_NAME = "ecoli_core"
-MODEL_NAME = "iML1515"
+MODEL_NAME = "iML1515_exp"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -480,14 +480,14 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
         plt.show()
 
 if __name__ == "__main__":
-    set_seed()
+    #set_seed()
     
-    d_model = 128
+    d_model = 256
     n_heads = 8
     n_layers = 3
-    d_ff = 640
-    batch_size = 128
-    num_epochs = 200
+    d_ff = 1024
+    batch_size = 32
+    num_epochs = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
@@ -496,7 +496,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
-    '''
+
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
@@ -568,7 +568,7 @@ if __name__ == "__main__":
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
     
-
+    '''
     plot_loss_curves(
         train_loss, test_loss, 
         d_model=d_model,
