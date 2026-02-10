@@ -101,13 +101,6 @@ if __name__ == "__main__":
 
     print("Objective reaction:", model.objective)
 
-    # Faure simulation data for AMN-Reservoir: 
-    # Acetate, *Acetaldehyde, *Oxoglutarate, *Ethanol, *Formate, Fructose, 
-    # *Fumarate, *Glutamine, *Glutamate, Lactate, *Malate, Succinate, Pyruvate
-
-    # Experimental carbons missing from sim. data: 
-    # Ribose, Maltose, Melibiose, Trehalose, Galactose
-
     # Faure experimental data:
     carbon_exchanges = [
         #'EX_glc__D_e',   # D-Glucose
