@@ -32,6 +32,8 @@ def set_seed(seed=42):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+    if torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
 
 def print_gpu_memory():
     """
@@ -44,8 +46,13 @@ def print_gpu_memory():
         reserved = torch.cuda.memory_reserved(device) / 1024**2
         print(f'Allocated memory: {allocated:.2f} MB')
         print(f'Reserved memory: {reserved:.2f} MB')
+    elif torch.backends.mps.is_available():
+        allocated = torch.mps.current_allocated_memory() / 1024**2
+        reserved = torch.mps.driver_allocated_memory() / 1024**2
+        print(f'MPS Allocated memory: {allocated:.2f} MB')
+        print(f'MPS Driver allocated memory: {reserved:.2f} MB')
     else:
-        print("CUDA is not available.")
+        print("CUDA or MPS is not available.")
 
 class AttentionBlock(nn.Module):
     """Custom multi-head attention block for metabolic modeling"""
@@ -274,7 +281,6 @@ def load_data(filepath):
 
     return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
-
 def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     """
     Split data into train/test and convert to PyTorch tensors.
@@ -486,7 +492,7 @@ if __name__ == "__main__":
     n_heads = 8
     n_layers = 3
     d_ff = 1024
-    batch_size = 32
+    batch_size = 8
     num_epochs = 10
     learning_rate = 1e-4
     dropout = 0.02
