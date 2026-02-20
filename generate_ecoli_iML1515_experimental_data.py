@@ -33,36 +33,34 @@ def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
         # Uniform sampling
         return round(np.random.uniform(min_val, max_val), 2)
 
-def generate_training_sample(carbon_subset, base_exchanges, amino_exchanges, outputs, default_rate):
+def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchanges, amino_exchanges, outputs, default_rate):
     data = {}
     try:
         # Reset all exchanges
         for rxn in model.exchanges:
             rxn.lower_bound = 0.0
 
-        # Set uptake rates for selected carbon sources
+        # Set uptake rates for selected variable carbon sources
         for ex in carbon_subset:
-            if ex == "EX_glyc_e":
-                rate = amino_rate  # fixed, same as amino acids
-            else:
-                rate = random_rate(min_val=1, max_val=carbon_exhange_rate, log_uniform=False)
+            rate = random_rate(min_val=0.05, max_val=carbon_exhange_rate, log_uniform=False)
 
             model.reactions.get_by_id(ex).lower_bound = -rate
             data[ex] = rate
 
+        # Set fixed carbon sources (e.g., glycerol fixed in experiments)
+        for ex in fixed_carbon_exchanges:
+            model.reactions.get_by_id(ex).lower_bound = -amino_rate
+            data[ex] = amino_rate
+
         # Set base exchange rates
         for ex in base_exchanges:
-            model.reactions.get_by_id(ex).lower_bound = -default_rate
-            data[ex] = default_rate
-            '''
-            if ex == "EX_o2_e": # variable oxygen
+            if ex == "EX_o2_e":  # variable oxygen
                 o2_rate = random_rate(min_val=1, max_val=default_rate, log_uniform=False)
                 model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
                 data["EX_o2_e"] = o2_rate
             else:
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
-            '''
 
         # Set amino acid exchange rates (fixed UB)
         for ex in amino_exchanges:
@@ -90,9 +88,9 @@ if __name__ == "__main__":
 
     n_samples = 100000
     default_rate = 50
-    carbon_exhange_rate = 5 # 2.2 to match experimental set (Faure et al 2023)
+    carbon_exhange_rate = 2.2 # 2.2 to match experimental set (Faure et al 2023)
     amino_rate = 2.2
-    batch_size = 1000
+    batch_size = 500
 
     # Load the E. coli iML1515 metabolic model
     model_dir ="./models"
@@ -114,8 +112,9 @@ if __name__ == "__main__":
         'EX_lac__D_e',   # D-Lactate
         'EX_succ_e',     # Succinate
         'EX_pyr_e',      # Pyruvate
-
-        'EX_glyc_e',     # Glycerol (Faure experimental dataset, fixed value 2.2)
+    ]
+    fixed_carbon_exchanges = [
+        'EX_glyc_e',     # Glycerol fixed in Faure experimental setup
     ]
 
     base_exchanges = [
@@ -156,7 +155,7 @@ if __name__ == "__main__":
 
     print(f"Generating {n_samples} FBA training samples...\n")
     outputs = [rxn.id for rxn in model.reactions]
-    input_cols = carbon_exchanges + base_exchanges + amino_exchanges
+    input_cols = carbon_exchanges + fixed_carbon_exchanges + base_exchanges + amino_exchanges
     output_cols = [f"{rxn}_flux" for rxn in outputs]
     ordered_columns = input_cols + output_cols
 
@@ -176,7 +175,14 @@ if __name__ == "__main__":
         for i in range(n_samples):
             carbon_subset = draw_subset(carbon_exchanges)
             
-            sample = generate_training_sample(carbon_subset, base_exchanges, amino_exchanges, outputs, default_rate)
+            sample = generate_training_sample(
+                carbon_subset,
+                fixed_carbon_exchanges,
+                base_exchanges,
+                amino_exchanges,
+                outputs,
+                default_rate
+            )
             if sample:
                 row = [sample.get(col, 0.0) for col in ordered_columns]
                 batch.append(row)
