@@ -1,5 +1,6 @@
 import os
 import csv
+import gc
 import numpy as np
 import pandas as pd
 from cobra.io import read_sbml_model
@@ -84,18 +85,20 @@ def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchang
         return None
 
 if __name__ == "__main__":
-    np.random.seed(9)
+    np.random.seed(9) # 2, 5, 7, 8, test data: 9
 
-    n_samples = 100000
-    default_rate = 50
+    n_samples = 50000
+    stitch_final_file = True
+    solver_reset_interval = 5000
+    default_rate = 10
     carbon_exhange_rate = 2.2 # 2.2 to match experimental set (Faure et al 2023)
     amino_rate = 2.2
-    batch_size = 500
+    batch_size = 1000
+    chunk_size = 10000
 
     # Load the E. coli iML1515 metabolic model
     model_dir ="./models"
     model = read_sbml_model(os.path.join(model_dir, "iML1515.xml"))
-    #model.objective = "BIOMASS_Ec_iML1515_WT_75p37M"
 
     print("Objective reaction:", model.objective)
 
@@ -159,20 +162,36 @@ if __name__ == "__main__":
     output_cols = [f"{rxn}_flux" for rxn in outputs]
     ordered_columns = input_cols + output_cols
 
-    # Prepare output file
+    # Prepare output files
     os.makedirs("./data", exist_ok=True)
-    today = datetime.today().strftime('%Y-%m-%d')
-    temp_filename = f"./data/{today}_iML1515_training_data_temp.csv"
+    chunk_dir = "./data/iML1515_exp_chunks"
+    os.makedirs(chunk_dir, exist_ok=True)
     start_time = time.time()
 
     sample_count = 0
+    chunk_count = 0
+    chunk_sample_count = 0
     batch = []
+    chunk_files = []
 
-    with open(temp_filename, 'w', newline='') as f:
-        writer = csv.writer(f)
+    def open_new_chunk_writer(chunk_index):
+        chunk_path = os.path.join(chunk_dir, f"chunk_{chunk_index:04d}.csv")
+        fh = open(chunk_path, 'w', newline='')
+        writer = csv.writer(fh)
         writer.writerow(ordered_columns)
-        
+        return fh, writer, chunk_path
+
+    chunk_file_handle, chunk_writer, chunk_path = open_new_chunk_writer(chunk_count)
+    chunk_files.append(chunk_path)
+
+    try:
         for i in range(n_samples):
+            if i > 0 and i % solver_reset_interval == 0:
+                # Periodic solver/model refresh for stability in very long runs
+                del model
+                gc.collect()
+                model = read_sbml_model(os.path.join(model_dir, "iML1515.xml"))
+
             carbon_subset = draw_subset(carbon_exchanges)
             
             sample = generate_training_sample(
@@ -188,24 +207,116 @@ if __name__ == "__main__":
                 batch.append(row)
                 sample_count += 1
 
-            # Write batch
+            # Write batch (split across chunk boundaries if needed)
             if len(batch) >= batch_size:
-                writer.writerows(batch)
-                f.flush()
+                pending_rows = batch
                 batch = []
+
+                while pending_rows:
+                    room = chunk_size - chunk_sample_count
+                    if room == 0:
+                        chunk_file_handle.flush()
+                        chunk_file_handle.close()
+                        chunk_count += 1
+                        chunk_sample_count = 0
+                        chunk_file_handle, chunk_writer, chunk_path = open_new_chunk_writer(chunk_count)
+                        chunk_files.append(chunk_path)
+                        room = chunk_size
+                    take = min(room, len(pending_rows))
+                    rows_now = pending_rows[:take]
+                    chunk_writer.writerows(rows_now)
+                    chunk_sample_count += take
+                    pending_rows = pending_rows[take:]
+
+                    if chunk_sample_count == chunk_size and pending_rows:
+                        chunk_file_handle.flush()
+                        chunk_file_handle.close()
+                        chunk_count += 1
+                        chunk_sample_count = 0
+                        chunk_file_handle, chunk_writer, chunk_path = open_new_chunk_writer(chunk_count)
+                        chunk_files.append(chunk_path)
+
+                chunk_file_handle.flush()
+
                 elapsed = time.time() - start_time
-                minutes, seconds = divmod(int(elapsed), 60)
+                hours, rem = divmod(int(elapsed), 3600)
+                minutes, _ = divmod(rem, 60)
+                now_str = datetime.now().strftime('%H:%M')
                 print(f"Generated {sample_count}/{n_samples} samples "
-                    f"({minutes}m {seconds}s elapsed)")
+                    f"({hours}h {minutes}m elapsed, time {now_str}, chunk {chunk_count + 1})")
 
         # Write remaining batch
         if batch:
-            writer.writerows(batch)
+            pending_rows = batch
+            while pending_rows:
+                room = chunk_size - chunk_sample_count
+                if room == 0:
+                    chunk_file_handle.flush()
+                    chunk_file_handle.close()
+                    chunk_count += 1
+                    chunk_sample_count = 0
+                    chunk_file_handle, chunk_writer, chunk_path = open_new_chunk_writer(chunk_count)
+                    chunk_files.append(chunk_path)
+                    room = chunk_size
+                take = min(room, len(pending_rows))
+                rows_now = pending_rows[:take]
+                chunk_writer.writerows(rows_now)
+                chunk_sample_count += take
+                pending_rows = pending_rows[take:]
 
-    # Rename with actual sample count
-    final_filename = f"./data/{today}_iML1515_exp_training_data_{sample_count}_samples.csv"
-    os.rename(temp_filename, final_filename)
+                if chunk_sample_count == chunk_size and pending_rows:
+                    chunk_file_handle.flush()
+                    chunk_file_handle.close()
+                    chunk_count += 1
+                    chunk_sample_count = 0
+                    chunk_file_handle, chunk_writer, chunk_path = open_new_chunk_writer(chunk_count)
+                    chunk_files.append(chunk_path)
+
+            chunk_file_handle.flush()
+    finally:
+        chunk_file_handle.close()
+
+    # Save chunk manifest and optionally stitch later
+    manifest_file = os.path.join(chunk_dir, "chunk_manifest.txt")
+    with open(manifest_file, "w", newline="") as mf:
+        for path in chunk_files:
+            mf.write(path + "\n")
+
+    final_filename = f"./data/iML1515_exp_training_data_{sample_count}_samples.csv"
+    if stitch_final_file:
+        # Stitch all chunk files into one final file (single header)
+        with open(final_filename, 'w', newline='') as fout:
+            final_writer = csv.writer(fout)
+            final_writer.writerow(ordered_columns)
+            for chunk_file in chunk_files:
+                with open(chunk_file, 'r', newline='') as fin:
+                    reader = csv.reader(fin)
+                    next(reader, None)  # skip chunk header
+                    final_writer.writerows(reader)
+
+        # Remove intermediate chunk files after successful stitching
+        for chunk_file in chunk_files:
+            try:
+                os.remove(chunk_file)
+            except OSError:
+                pass
+        try:
+            os.remove(manifest_file)
+        except OSError:
+            pass
+        try:
+            os.rmdir(chunk_dir)
+        except OSError:
+            pass
     
     total_time = time.time() - start_time
-    print(f"\nCompleted {sample_count} samples in {total_time:.2f} seconds")
-    print(f"Saved to {final_filename}")
+    total_hours, rem = divmod(int(total_time), 3600)
+    total_minutes, _ = divmod(rem, 60)
+    print(f"\nCompleted {sample_count} samples in {total_hours}h {total_minutes}m")
+    if stitch_final_file:
+        print("Intermediate chunk files removed")
+        print(f"Saved to {final_filename}")
+    else:
+        print(f"Saved chunk files in {chunk_dir} ({len(chunk_files)} files)")
+        print(f"Chunk manifest: {manifest_file}")
+        print("Final stitching skipped (set stitch_final_file=True to merge).")
