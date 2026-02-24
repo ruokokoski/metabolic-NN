@@ -117,7 +117,7 @@ if __name__ == "__main__":
         'EX_pyr_e',      # Pyruvate
     ]
     fixed_carbon_exchanges = [
-        'EX_glyc_e',     # Glycerol fixed in Faure experimental setup
+        'EX_glyc_e',     # Glycerol fixed (2.2) in Faure experimental setup
     ]
 
     base_exchanges = [
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         'EX_k_e', 
         'EX_na1_e', 
         'EX_cl_e', 
-        'EX_o2_e',
+        'EX_o2_e', # Fixed to 2.2 in Faure setup
 
     # Experimental dataset contains also these:
         'EX_fe3_e', 
