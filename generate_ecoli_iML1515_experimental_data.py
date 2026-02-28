@@ -55,6 +55,7 @@ def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchang
 
         # Set base exchange rates
         for ex in base_exchanges:
+            '''
             if ex == "EX_o2_e":  # variable oxygen
                 o2_rate = random_rate(min_val=1, max_val=default_rate, log_uniform=False)
                 model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
@@ -62,6 +63,9 @@ def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchang
             else:
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
+            '''
+            model.reactions.get_by_id(ex).lower_bound = -default_rate
+            data[ex] = default_rate
 
         # Set amino acid exchange rates (fixed UB)
         for ex in amino_exchanges:
@@ -85,12 +89,12 @@ def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchang
         return None
 
 if __name__ == "__main__":
-    np.random.seed(9) # 2, 5, 7, 8, test data: 9
+    np.random.seed(43) # 2, 5, 7, 8, test data: 9, 10
 
     n_samples = 50000
     stitch_final_file = True
     solver_reset_interval = 5000
-    default_rate = 10
+    default_rate = 2.2
     carbon_exhange_rate = 2.2 # 2.2 to match experimental set (Faure et al 2023)
     amino_rate = 2.2
     batch_size = 1000
@@ -282,7 +286,7 @@ if __name__ == "__main__":
         for path in chunk_files:
             mf.write(path + "\n")
 
-    final_filename = f"./data/iML1515_exp_training_data_{sample_count}_samples.csv"
+    final_filename = f"./data/iML1515_exp_training_data_{sample_count}_samples_o2.csv"
     if stitch_final_file:
         # Stitch all chunk files into one final file (single header)
         with open(final_filename, 'w', newline='') as fout:
