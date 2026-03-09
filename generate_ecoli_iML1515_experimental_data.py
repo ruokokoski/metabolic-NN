@@ -85,7 +85,7 @@ def generate_training_sample(carbon_subset, fixed_carbon_exchanges, base_exchang
         return None
 
 if __name__ == "__main__":
-    np.random.seed(44) # 2, 5, 7, 8, test data: 9, 10
+    np.random.seed(50) # 2, 5, 7, 8, test data: 9, 10
 
     n_samples = 50000
     stitch_final_file = True
