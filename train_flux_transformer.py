@@ -18,10 +18,10 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-#DATA_PATH = "./data/2025-07-28_full_training_data_98066_samples.csv"
-DATA_PATH = "./data/iML1515_exp_212000_samples.csv"
+DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
+#DATA_PATH = "./data/iML1515_exp_training_data_250000_samples_o2.csv"
 #MODEL_NAME = "ecoli_core"
-MODEL_NAME = "iML1515_exp"
+MODEL_NAME = "iML1515_500k"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -32,8 +32,6 @@ def set_seed(seed=42):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-    if torch.backends.mps.is_available():
-        torch.mps.manual_seed(seed)
 
 def print_gpu_memory():
     """
@@ -46,13 +44,8 @@ def print_gpu_memory():
         reserved = torch.cuda.memory_reserved(device) / 1024**2
         print(f'Allocated memory: {allocated:.2f} MB')
         print(f'Reserved memory: {reserved:.2f} MB')
-    elif torch.backends.mps.is_available():
-        allocated = torch.mps.current_allocated_memory() / 1024**2
-        reserved = torch.mps.driver_allocated_memory() / 1024**2
-        print(f'MPS Allocated memory: {allocated:.2f} MB')
-        print(f'MPS Driver allocated memory: {reserved:.2f} MB')
     else:
-        print("CUDA or MPS is not available.")
+        print("CUDA is not available.")
 
 class AttentionBlock(nn.Module):
     """Custom multi-head attention block for metabolic modeling"""
@@ -281,6 +274,7 @@ def load_data(filepath):
 
     return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
+
 def prepare_tensors(X, y, test_size=0.2, device="cpu"):
     """
     Split data into train/test and convert to PyTorch tensors.
@@ -346,7 +340,8 @@ def train_model(
     num_epochs,
     learning_rate,
     dropout,
-    output_sample_ratio=1.0
+    output_sample_ratio=1.0,
+    checkpoint_path=None
 ):
     model = FluxTransformer(
         vocab_size=vocab_size,
@@ -369,13 +364,59 @@ def train_model(
     )
     criterion = nn.HuberLoss()
 
+    start_epoch = 0
     best_test_loss = float("inf")
     best_epoch = -1
     train_losses, test_losses = [], []
 
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        print(f"Found checkpoint at {checkpoint_path}. Trying to resume training.")
+        try:
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        except TypeError:
+            checkpoint = torch.load(checkpoint_path, map_location=device)
+
+        try:
+            model.load_state_dict(checkpoint["model_state_dict"])
+        except Exception as err:
+            print(f"Could not load model weights from checkpoint. Starting fresh. Error: {err}")
+        else:
+            if "optimizer_state_dict" in checkpoint:
+                try:
+                    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+                except Exception as err:
+                    print(f"Could not load optimizer state. Continuing with fresh optimizer. Error: {err}")
+
+            start_epoch = int(checkpoint.get("epoch", 0))
+            train_losses = list(checkpoint.get("train_losses", []))
+            test_losses = list(checkpoint.get("test_losses", []))
+
+            if test_losses:
+                best_test_loss = float(min(test_losses))
+                best_epoch = int(np.argmin(test_losses) + 1)
+
+            print(f"Resumed from epoch {start_epoch}. Target epoch: {num_epochs}.")
+
+    if start_epoch >= num_epochs:
+        print(
+            f"Checkpoint already trained to epoch {start_epoch}, "
+            f"which is >= requested num_epochs={num_epochs}. Skipping training."
+        )
+        train_meta = {
+            "best_test_loss": float(best_test_loss) if best_test_loss != float("inf") else None,
+            "best_epoch": int(best_epoch),
+            "elapsed_sec": 0.0,
+            "num_epochs": int(num_epochs),
+            "output_sample_ratio": float(output_sample_ratio),
+            "start_epoch": int(start_epoch),
+            "end_epoch": int(start_epoch),
+            "resumed": bool(start_epoch > 0),
+        }
+        return train_losses, test_losses, model, optimizer, train_meta
+
     total_outputs = len(out_indices)
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         epoch_train_loss = 0.0
 
@@ -460,6 +501,9 @@ def train_model(
         "elapsed_sec": float(elapsed),
         "num_epochs": int(num_epochs),
         "output_sample_ratio": float(output_sample_ratio),
+        "start_epoch": int(start_epoch),
+        "end_epoch": int(num_epochs),
+        "resumed": bool(start_epoch > 0),
     }
     return train_losses, test_losses, model, optimizer, train_meta
 
@@ -487,7 +531,7 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 
 if __name__ == "__main__":
     #set_seed()
-    
+
     d_model = 256
     n_heads = 8
     n_layers = 3
@@ -497,7 +541,7 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
-    
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
@@ -505,6 +549,14 @@ if __name__ == "__main__":
 
     X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
+
+    today = date.today().isoformat()
+    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    pic_dir = f"./pics/{today}/{model_name}"
+    os.makedirs(pic_dir, exist_ok=True)
+
+    model_save_dir = f"./models/{model_name}"
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
     train_loss, test_loss, model, optimizer, train_meta = train_model(
         train_loader=train_loader,
@@ -520,22 +572,19 @@ if __name__ == "__main__":
         num_epochs=num_epochs,
         learning_rate=learning_rate,
         dropout=dropout,
-        output_sample_ratio=output_sample_ratio
+        output_sample_ratio=output_sample_ratio,
+        checkpoint_path=checkpoint_path
     )
 
-    today = date.today().isoformat()
-    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
-    pic_dir = f"./pics/{today}/{model_name}"
-    os.makedirs(pic_dir, exist_ok=True)
-
-    model_save_dir = f"./models/{model_name}"
     model_save_path = f"{model_save_dir}/{model_name}.pth"
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     torch.save(model.state_dict(), model_save_path)
     print(f"\nModel weights saved to {model_save_path}")
 
+    completed_epochs = int(train_meta.get("end_epoch", num_epochs))
+
     checkpoint = {
-        "epoch": num_epochs,
+        "epoch": completed_epochs,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
         "train_losses": train_loss,
@@ -548,7 +597,8 @@ if __name__ == "__main__":
             "dropout": dropout,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
-            "num_epochs": num_epochs,
+            "num_epochs": completed_epochs,
+            "requested_num_epochs": num_epochs,
             "vocab_size": len(outputs),
             "input_token_indices": [int(i) for i in input_token_indices],
             "output_sample_ratio": output_sample_ratio,
@@ -570,10 +620,9 @@ if __name__ == "__main__":
         },
     }
 
-    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
-    
+
     '''
     plot_loss_curves(
         train_loss, test_loss, 
