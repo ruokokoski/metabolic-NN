@@ -81,9 +81,9 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_ra
         return data
 
 if __name__ == "__main__":
-    np.random.seed(42)
+    np.random.seed(42) # test data: 9
     default_rate = 50
-    n_samples = 5000000
+    n_samples = 10000000
 
     # Load the simplified E. coli metabolic model
     model = load_model("textbook")
@@ -152,7 +152,7 @@ if __name__ == "__main__":
                     print(f"Generated {sample_count}/{n_samples}")
 
     # Rename with actual sample count
-    final_filename = f"./data/{today}_full_training_data_{sample_count}_samples.csv"
+    final_filename = f"./data/{today}_ecoli_core_training_data_{sample_count}_samples.csv"
     os.rename(temp_filename, final_filename)
     
     total_time = time.time() - start_time

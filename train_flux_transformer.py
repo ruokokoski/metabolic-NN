@@ -9,19 +9,17 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
-#DATA_PATH = "./data/iML1515_exp_training_data_250000_samples_o2.csv"
-#MODEL_NAME = "ecoli_core"
-MODEL_NAME = "iML1515_500k"
+#DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
+DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
+MODEL_NAME = "ecoli_core"
+#MODEL_NAME = "iML1515_500k"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -197,7 +195,12 @@ class FluxTransformer(nn.Module):
         return c_subset_all_layers, selected_indices
 
 
-def load_data(filepath):
+def _count_rows(filepath):
+    with open(filepath, "rb") as f:
+        return sum(1 for _ in f) - 1
+
+
+def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
     """
     Vocabulary = outputs only (token list == `outputs` inferred from CSV header order).
 
@@ -216,8 +219,7 @@ def load_data(filepath):
       input_token_indices: list[int]  indices in `outputs` corresponding to each input's *_flux token
       out_indices: list[int]          all other token indices (non-injected tokens)
     """
-    df = pd.read_csv(filepath)
-    columns = list(df.columns)
+    columns = list(pd.read_csv(filepath, nrows=0).columns)
 
     first_flux_idx = next((i for i, col in enumerate(columns) if col.endswith("_flux")), None)
     if first_flux_idx is None:
@@ -237,9 +239,6 @@ def load_data(filepath):
             + "\n".join(non_flux_outputs)
         )
 
-    # Medium constraints: treat missing as "not provided" -> 0
-    df[inputs] = df[inputs].fillna(0)
-
     input_flux_tokens = [f"{name}_flux" for name in inputs]
     missing = [t for t in input_flux_tokens if t not in outputs]
     if missing:
@@ -247,21 +246,50 @@ def load_data(filepath):
             "These mapped input flux tokens are missing from outputs:\n" + "\n".join(missing)
         )
 
-    n_samples = len(df)
+    n_samples = _count_rows(filepath)
     n_tokens = len(outputs)
 
-    # Realized flux targets
-    y_tok = df[outputs].to_numpy(dtype=np.float32)  # (n_samples, n_tokens)
+    input_token_indices = [outputs.index(tok) for tok in input_flux_tokens]
 
-    # Build X_tok by writing each medium value into its corresponding *_flux token index
-    X_tok = np.zeros((n_samples, n_tokens), dtype=np.float32)
+    os.makedirs(cache_dir, exist_ok=True)
+    base = os.path.splitext(os.path.basename(filepath))[0]
+    x_path = os.path.join(cache_dir, f"{base}_X_tok.float32.mmap")
+    y_path = os.path.join(cache_dir, f"{base}_y_tok.float32.mmap")
 
-    X_in = df[inputs].to_numpy(dtype=np.float32)  # (n_samples, n_inputs)
-    input_token_indices = []
-    for j, tok in enumerate(input_flux_tokens):
-        tok_idx = outputs.index(tok)
-        input_token_indices.append(tok_idx)
-        X_tok[:, tok_idx] = X_in[:, j]
+    X_tok = np.memmap(x_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
+    y_tok = np.memmap(y_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
+    X_tok[:] = 0.0
+
+    usecols = inputs + outputs
+    reader = pd.read_csv(
+        filepath,
+        usecols=usecols,
+        chunksize=chunksize,
+        dtype=np.float32,
+    )
+
+    row_start = 0
+    for chunk_idx, chunk in enumerate(reader, start=1):
+        if inputs:
+            chunk[inputs] = chunk[inputs].fillna(0.0)
+
+        n_chunk = len(chunk)
+        row_end = row_start + n_chunk
+
+        y_chunk = chunk[outputs].to_numpy(dtype=np.float32, copy=False)
+        y_tok[row_start:row_end, :] = y_chunk
+
+        if inputs:
+            X_in = chunk[inputs].to_numpy(dtype=np.float32, copy=False)
+            for j, tok_idx in enumerate(input_token_indices):
+                X_tok[row_start:row_end, tok_idx] = X_in[:, j]
+
+        row_start = row_end
+        if chunk_idx % 10 == 0:
+            print(f"Loaded {row_end:,}/{n_samples:,} rows...")
+
+    X_tok.flush()
+    y_tok.flush()
 
     injected_set = set(input_token_indices)
     out_indices = [i for i in range(n_tokens) if i not in injected_set]
@@ -275,49 +303,49 @@ def load_data(filepath):
     return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
 
-def prepare_tensors(X, y, test_size=0.2, device="cpu"):
-    """
-    Split data into train/test and convert to PyTorch tensors.
-    
-    Parameters:
-        X (ndarray): Input features.
-        y (ndarray): Output targets.
-        test_size (float): Fraction of data to reserve for testing.
-        device (str or torch.device): Device to move tensors to.
-    
-    Returns:
-        X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor (torch.Tensor)
-    """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+def prepare_split_indices(n_samples, test_size=0.2, random_state=42):
+    indices = np.arange(n_samples, dtype=np.int64)
+    train_idx, test_idx = train_test_split(indices, test_size=test_size, random_state=random_state, shuffle=True)
+    print(f"Training samples: {len(train_idx)}")
+    print(f"Test samples: {len(test_idx)}")
+    return train_idx, test_idx
 
-    print(f"Training samples: {len(X_train)}")
-    print(f"Test samples: {len(X_test)}")
 
-    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
+class IndexedFluxDataset(Dataset):
+    def __init__(self, X, y, indices):
+        self.X = X
+        self.y = y
+        self.indices = np.asarray(indices, dtype=np.int64)
 
-    return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
+    def __len__(self):
+        return len(self.indices)
 
-def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
-    """
-    Create PyTorch DataLoaders for training and testing.
+    def __getitem__(self, idx):
+        row = int(self.indices[idx])
+        x = np.asarray(self.X[row], dtype=np.float32)
+        y = np.asarray(self.y[row], dtype=np.float32)
+        return torch.from_numpy(x).unsqueeze(-1), torch.from_numpy(y).unsqueeze(-1)
 
-    Parameters:
-        X_train, y_train (Tensor): Training data and labels.
-        X_test, y_test (Tensor): Test data and labels.
-        batch_size (int): Batch size for loading.
 
-    Returns:
-        train_loader, test_loader (DataLoader): PyTorch DataLoaders.
-    """
-    train_dataset = TensorDataset(X_train.unsqueeze(-1), y_train.unsqueeze(-1))
-    test_dataset = TensorDataset(X_test.unsqueeze(-1), y_test.unsqueeze(-1))
+def create_dataloaders(X, y, train_indices, test_indices, batch_size, device, num_workers=0):
+    train_dataset = IndexedFluxDataset(X, y, train_indices)
+    test_dataset = IndexedFluxDataset(X, y, test_indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    pin_memory = device.type == "cuda"
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
     return train_loader, test_loader
 
 def _empty_cache(device):
@@ -421,6 +449,8 @@ def train_model(
         epoch_train_loss = 0.0
 
         for batch_X, batch_y in train_loader:
+            batch_X = batch_X.to(device, non_blocking=True)
+            batch_y = batch_y.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
 
             if output_sample_ratio >= 1.0:
@@ -456,6 +486,8 @@ def train_model(
         epoch_test_loss = 0.0
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
+                batch_X = batch_X.to(device, non_blocking=True)
+                batch_y = batch_y.to(device, non_blocking=True)
                 if output_sample_ratio >= 1.0:
                     sampled_indices = None
                 else:
@@ -479,8 +511,7 @@ def train_model(
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        if (epoch + 1) % 2 == 0:
-            print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {epoch_train_loss:.6f} | Test Loss: {epoch_test_loss:.6f}")
+        print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {epoch_train_loss:.6f} | Test Loss: {epoch_test_loss:.6f}")
 
         if epoch_test_loss < best_test_loss:
             best_test_loss = epoch_test_loss
@@ -532,12 +563,12 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 if __name__ == "__main__":
     #set_seed()
 
-    d_model = 256
+    d_model = 128
     n_heads = 8
     n_layers = 3
-    d_ff = 1024
-    batch_size = 8
-    num_epochs = 10
+    d_ff = 640
+    batch_size = 128
+    num_epochs = 15
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
@@ -546,9 +577,16 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
-
-    X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
-    train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
+    train_indices, test_indices = prepare_split_indices(len(X), test_size=0.2, random_state=42)
+    train_loader, test_loader = create_dataloaders(
+        X,
+        y,
+        train_indices,
+        test_indices,
+        batch_size=batch_size,
+        device=device,
+        num_workers=0,
+    )
 
     today = date.today().isoformat()
     model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
@@ -613,8 +651,8 @@ if __name__ == "__main__":
             "dataset": DATA_PATH,
             "input_cols": inputs,
             "output_cols": outputs,
-            "n_train": int(len(X_train)),
-            "n_test": int(len(X_test)),
+            "n_train": int(len(train_indices)),
+            "n_test": int(len(test_indices)),
             "input_token_indices": [int(i) for i in input_token_indices],
             "out_indices": [int(i) for i in out_indices],
         },
@@ -623,13 +661,14 @@ if __name__ == "__main__":
     torch.save(checkpoint, checkpoint_path)
     print(f"Full checkpoint saved to {checkpoint_path}")
 
-    '''
+    
     plot_loss_curves(
         train_loss, test_loss, 
         d_model=d_model,
         n_heads=n_heads,
         n_layers=n_layers,
         d_ff=d_ff,
-        save_path=f"{pic_dir}/training_curve.png"
+        save_path=None
+        #save_path=f"{pic_dir}/training_curve.png"
     )
-    '''
+
