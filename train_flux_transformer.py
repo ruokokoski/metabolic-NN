@@ -200,6 +200,31 @@ def _count_rows(filepath):
         return sum(1 for _ in f) - 1
 
 
+def cleanup_memmap_files(filepath, cache_dir="./tmp_memmap"):
+    base = os.path.splitext(os.path.basename(filepath))[0]
+    targets = [
+        os.path.join(cache_dir, f"{base}_X_tok.float32.mmap"),
+        os.path.join(cache_dir, f"{base}_y_tok.float32.mmap"),
+    ]
+
+    removed = []
+    for path in targets:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                removed.append(path)
+            except OSError as err:
+                print(f"Warning: could not remove {path}: {err}")
+
+    if os.path.isdir(cache_dir) and not os.listdir(cache_dir):
+        try:
+            os.rmdir(cache_dir)
+        except OSError:
+            pass
+
+    return removed
+
+
 def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
     """
     Vocabulary = outputs only (token list == `outputs` inferred from CSV header order).
@@ -540,11 +565,12 @@ def train_model(
 
 
 def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
+    epochs = np.arange(1, len(train_losses) + 1)
     plt.figure(figsize=(14, 10))
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.plot(train_losses, label="Training Loss")
-    plt.plot(test_losses, label="Test Loss")
+    plt.plot(epochs, train_losses, label="Training Loss")
+    plt.plot(epochs, test_losses, label="Test Loss")
     if log_scale:
         plt.yscale('log')
     plt.xlabel("Epoch", fontsize=18)
@@ -572,103 +598,118 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
+    cache_dir = "./tmp_memmap"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
-    train_indices, test_indices = prepare_split_indices(len(X), test_size=0.2, random_state=42)
-    train_loader, test_loader = create_dataloaders(
-        X,
-        y,
-        train_indices,
-        test_indices,
-        batch_size=batch_size,
-        device=device,
-        num_workers=0,
-    )
+    X = y = None
+    train_loader = test_loader = None
+    train_indices = test_indices = None
+    try:
+        X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
+        train_indices, test_indices = prepare_split_indices(len(X), test_size=0.2, random_state=42)
+        train_loader, test_loader = create_dataloaders(
+            X,
+            y,
+            train_indices,
+            test_indices,
+            batch_size=batch_size,
+            device=device,
+            num_workers=0,
+        )
 
-    today = date.today().isoformat()
-    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
-    pic_dir = f"./pics/{today}/{model_name}"
-    os.makedirs(pic_dir, exist_ok=True)
+        today = date.today().isoformat()
+        model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+        pic_dir = f"./pics/{today}/{model_name}"
+        os.makedirs(pic_dir, exist_ok=True)
 
-    model_save_dir = f"./models/{model_name}"
-    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+        model_save_dir = f"./models/{model_name}"
+        checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
-    train_loss, test_loss, model, optimizer, train_meta = train_model(
-        train_loader=train_loader,
-        test_loader=test_loader,
-        device=device,
-        input_token_indices=input_token_indices,
-        out_indices=out_indices,
-        vocab_size=len(outputs),
-        d_model=d_model,
-        n_heads=n_heads,
-        n_layers=n_layers,
-        d_ff=d_ff,
-        num_epochs=num_epochs,
-        learning_rate=learning_rate,
-        dropout=dropout,
-        output_sample_ratio=output_sample_ratio,
-        checkpoint_path=checkpoint_path
-    )
+        train_loss, test_loss, model, optimizer, train_meta = train_model(
+            train_loader=train_loader,
+            test_loader=test_loader,
+            device=device,
+            input_token_indices=input_token_indices,
+            out_indices=out_indices,
+            vocab_size=len(outputs),
+            d_model=d_model,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            d_ff=d_ff,
+            num_epochs=num_epochs,
+            learning_rate=learning_rate,
+            dropout=dropout,
+            output_sample_ratio=output_sample_ratio,
+            checkpoint_path=checkpoint_path
+        )
 
-    model_save_path = f"{model_save_dir}/{model_name}.pth"
-    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-    torch.save(model.state_dict(), model_save_path)
-    print(f"\nModel weights saved to {model_save_path}")
+        model_save_path = f"{model_save_dir}/{model_name}.pth"
+        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+        torch.save(model.state_dict(), model_save_path)
+        print(f"\nModel weights saved to {model_save_path}")
 
-    completed_epochs = int(train_meta.get("end_epoch", num_epochs))
+        completed_epochs = int(train_meta.get("end_epoch", num_epochs))
 
-    checkpoint = {
-        "epoch": completed_epochs,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "train_losses": train_loss,
-        "test_losses": test_loss,
-        "config": {
-            "d_model": d_model,
-            "n_heads": n_heads,
-            "n_layers": n_layers,
-            "d_ff": d_ff,
-            "dropout": dropout,
-            "batch_size": batch_size,
-            "learning_rate": learning_rate,
-            "num_epochs": completed_epochs,
-            "requested_num_epochs": num_epochs,
-            "vocab_size": len(outputs),
-            "input_token_indices": [int(i) for i in input_token_indices],
-            "output_sample_ratio": output_sample_ratio,
-        },
-        "rng_state": {
-            "torch": torch.get_rng_state(),
-            "numpy": np.random.get_state(),
-            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
-            "python": random.getstate(),
-        },
-        "data_info": {
-            "dataset": DATA_PATH,
-            "input_cols": inputs,
-            "output_cols": outputs,
-            "n_train": int(len(train_indices)),
-            "n_test": int(len(test_indices)),
-            "input_token_indices": [int(i) for i in input_token_indices],
-            "out_indices": [int(i) for i in out_indices],
-        },
-    }
+        checkpoint = {
+            "epoch": completed_epochs,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "train_losses": train_loss,
+            "test_losses": test_loss,
+            "config": {
+                "d_model": d_model,
+                "n_heads": n_heads,
+                "n_layers": n_layers,
+                "d_ff": d_ff,
+                "dropout": dropout,
+                "batch_size": batch_size,
+                "learning_rate": learning_rate,
+                "num_epochs": completed_epochs,
+                "requested_num_epochs": num_epochs,
+                "vocab_size": len(outputs),
+                "input_token_indices": [int(i) for i in input_token_indices],
+                "output_sample_ratio": output_sample_ratio,
+            },
+            "rng_state": {
+                "torch": torch.get_rng_state(),
+                "numpy": np.random.get_state(),
+                "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                "python": random.getstate(),
+            },
+            "data_info": {
+                "dataset": DATA_PATH,
+                "input_cols": inputs,
+                "output_cols": outputs,
+                "n_train": int(len(train_indices)),
+                "n_test": int(len(test_indices)),
+                "input_token_indices": [int(i) for i in input_token_indices],
+                "out_indices": [int(i) for i in out_indices],
+            },
+        }
 
-    torch.save(checkpoint, checkpoint_path)
-    print(f"Full checkpoint saved to {checkpoint_path}")
+        torch.save(checkpoint, checkpoint_path)
+        print(f"Full checkpoint saved to {checkpoint_path}")
 
-    
-    plot_loss_curves(
-        train_loss, test_loss, 
-        d_model=d_model,
-        n_heads=n_heads,
-        n_layers=n_layers,
-        d_ff=d_ff,
-        save_path=None
-        #save_path=f"{pic_dir}/training_curve.png"
-    )
+        plot_loss_curves(
+            train_loss, test_loss, 
+            d_model=d_model,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            d_ff=d_ff,
+            save_path=None
+            #save_path=f"{pic_dir}/training_curve.png"
+        )
+    finally:
+        train_loader = None
+        test_loader = None
+        X = None
+        y = None
+        gc.collect()
+        removed_files = cleanup_memmap_files(DATA_PATH, cache_dir=cache_dir)
+        if removed_files:
+            print("Removed memmap cache files:")
+            for path in removed_files:
+                print(f"  - {path}")
 
