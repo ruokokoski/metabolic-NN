@@ -9,17 +9,19 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-#DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
-DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
-MODEL_NAME = "ecoli_core"
-#MODEL_NAME = "iML1515_500k"
+DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
+#DATA_PATH = "./data/iML1515_exp_training_data_250000_samples_o2.csv"
+#MODEL_NAME = "ecoli_core"
+MODEL_NAME = "iML1515_500k"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -195,37 +197,7 @@ class FluxTransformer(nn.Module):
         return c_subset_all_layers, selected_indices
 
 
-def _count_rows(filepath):
-    with open(filepath, "rb") as f:
-        return sum(1 for _ in f) - 1
-
-
-def cleanup_memmap_files(filepath, cache_dir="./tmp_memmap"):
-    base = os.path.splitext(os.path.basename(filepath))[0]
-    targets = [
-        os.path.join(cache_dir, f"{base}_X_tok.float32.mmap"),
-        os.path.join(cache_dir, f"{base}_y_tok.float32.mmap"),
-    ]
-
-    removed = []
-    for path in targets:
-        if os.path.exists(path):
-            try:
-                os.remove(path)
-                removed.append(path)
-            except OSError as err:
-                print(f"Warning: could not remove {path}: {err}")
-
-    if os.path.isdir(cache_dir) and not os.listdir(cache_dir):
-        try:
-            os.rmdir(cache_dir)
-        except OSError:
-            pass
-
-    return removed
-
-
-def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
+def load_data(filepath):
     """
     Vocabulary = outputs only (token list == `outputs` inferred from CSV header order).
 
@@ -244,7 +216,8 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
       input_token_indices: list[int]  indices in `outputs` corresponding to each input's *_flux token
       out_indices: list[int]          all other token indices (non-injected tokens)
     """
-    columns = list(pd.read_csv(filepath, nrows=0).columns)
+    df = pd.read_csv(filepath)
+    columns = list(df.columns)
 
     first_flux_idx = next((i for i, col in enumerate(columns) if col.endswith("_flux")), None)
     if first_flux_idx is None:
@@ -264,6 +237,9 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
             + "\n".join(non_flux_outputs)
         )
 
+    # Medium constraints: treat missing as "not provided" -> 0
+    df[inputs] = df[inputs].fillna(0)
+
     input_flux_tokens = [f"{name}_flux" for name in inputs]
     missing = [t for t in input_flux_tokens if t not in outputs]
     if missing:
@@ -271,50 +247,21 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
             "These mapped input flux tokens are missing from outputs:\n" + "\n".join(missing)
         )
 
-    n_samples = _count_rows(filepath)
+    n_samples = len(df)
     n_tokens = len(outputs)
 
-    input_token_indices = [outputs.index(tok) for tok in input_flux_tokens]
+    # Realized flux targets
+    y_tok = df[outputs].to_numpy(dtype=np.float32)  # (n_samples, n_tokens)
 
-    os.makedirs(cache_dir, exist_ok=True)
-    base = os.path.splitext(os.path.basename(filepath))[0]
-    x_path = os.path.join(cache_dir, f"{base}_X_tok.float32.mmap")
-    y_path = os.path.join(cache_dir, f"{base}_y_tok.float32.mmap")
+    # Build X_tok by writing each medium value into its corresponding *_flux token index
+    X_tok = np.zeros((n_samples, n_tokens), dtype=np.float32)
 
-    X_tok = np.memmap(x_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
-    y_tok = np.memmap(y_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
-    X_tok[:] = 0.0
-
-    usecols = inputs + outputs
-    reader = pd.read_csv(
-        filepath,
-        usecols=usecols,
-        chunksize=chunksize,
-        dtype=np.float32,
-    )
-
-    row_start = 0
-    for chunk_idx, chunk in enumerate(reader, start=1):
-        if inputs:
-            chunk[inputs] = chunk[inputs].fillna(0.0)
-
-        n_chunk = len(chunk)
-        row_end = row_start + n_chunk
-
-        y_chunk = chunk[outputs].to_numpy(dtype=np.float32, copy=False)
-        y_tok[row_start:row_end, :] = y_chunk
-
-        if inputs:
-            X_in = chunk[inputs].to_numpy(dtype=np.float32, copy=False)
-            for j, tok_idx in enumerate(input_token_indices):
-                X_tok[row_start:row_end, tok_idx] = X_in[:, j]
-
-        row_start = row_end
-        if chunk_idx % 10 == 0:
-            print(f"Loaded {row_end:,}/{n_samples:,} rows...")
-
-    X_tok.flush()
-    y_tok.flush()
+    X_in = df[inputs].to_numpy(dtype=np.float32)  # (n_samples, n_inputs)
+    input_token_indices = []
+    for j, tok in enumerate(input_flux_tokens):
+        tok_idx = outputs.index(tok)
+        input_token_indices.append(tok_idx)
+        X_tok[:, tok_idx] = X_in[:, j]
 
     injected_set = set(input_token_indices)
     out_indices = [i for i in range(n_tokens) if i not in injected_set]
@@ -328,49 +275,49 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
     return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
 
-def prepare_split_indices(n_samples, test_size=0.2, random_state=42):
-    indices = np.arange(n_samples, dtype=np.int64)
-    train_idx, test_idx = train_test_split(indices, test_size=test_size, random_state=random_state, shuffle=True)
-    print(f"Training samples: {len(train_idx)}")
-    print(f"Test samples: {len(test_idx)}")
-    return train_idx, test_idx
+def prepare_tensors(X, y, test_size=0.2, device="cpu"):
+    """
+    Split data into train/test and convert to PyTorch tensors.
+    
+    Parameters:
+        X (ndarray): Input features.
+        y (ndarray): Output targets.
+        test_size (float): Fraction of data to reserve for testing.
+        device (str or torch.device): Device to move tensors to.
+    
+    Returns:
+        X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor (torch.Tensor)
+    """
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
+    print(f"Training samples: {len(X_train)}")
+    print(f"Test samples: {len(X_test)}")
 
-class IndexedFluxDataset(Dataset):
-    def __init__(self, X, y, indices):
-        self.X = X
-        self.y = y
-        self.indices = np.asarray(indices, dtype=np.int64)
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
 
-    def __len__(self):
-        return len(self.indices)
+    return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
 
-    def __getitem__(self, idx):
-        row = int(self.indices[idx])
-        x = np.asarray(self.X[row], dtype=np.float32)
-        y = np.asarray(self.y[row], dtype=np.float32)
-        return torch.from_numpy(x).unsqueeze(-1), torch.from_numpy(y).unsqueeze(-1)
+def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
+    """
+    Create PyTorch DataLoaders for training and testing.
 
+    Parameters:
+        X_train, y_train (Tensor): Training data and labels.
+        X_test, y_test (Tensor): Test data and labels.
+        batch_size (int): Batch size for loading.
 
-def create_dataloaders(X, y, train_indices, test_indices, batch_size, device, num_workers=0):
-    train_dataset = IndexedFluxDataset(X, y, train_indices)
-    test_dataset = IndexedFluxDataset(X, y, test_indices)
+    Returns:
+        train_loader, test_loader (DataLoader): PyTorch DataLoaders.
+    """
+    train_dataset = TensorDataset(X_train.unsqueeze(-1), y_train.unsqueeze(-1))
+    test_dataset = TensorDataset(X_test.unsqueeze(-1), y_test.unsqueeze(-1))
 
-    pin_memory = device.type == "cuda"
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-    )
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-    )
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
     return train_loader, test_loader
 
 def _empty_cache(device):
@@ -474,8 +421,6 @@ def train_model(
         epoch_train_loss = 0.0
 
         for batch_X, batch_y in train_loader:
-            batch_X = batch_X.to(device, non_blocking=True)
-            batch_y = batch_y.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
 
             if output_sample_ratio >= 1.0:
@@ -511,8 +456,6 @@ def train_model(
         epoch_test_loss = 0.0
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
-                batch_X = batch_X.to(device, non_blocking=True)
-                batch_y = batch_y.to(device, non_blocking=True)
                 if output_sample_ratio >= 1.0:
                     sampled_indices = None
                 else:
@@ -536,7 +479,8 @@ def train_model(
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {epoch_train_loss:.6f} | Test Loss: {epoch_test_loss:.6f}")
+        if (epoch + 1) % 2 == 0:
+            print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {epoch_train_loss:.6f} | Test Loss: {epoch_test_loss:.6f}")
 
         if epoch_test_loss < best_test_loss:
             best_test_loss = epoch_test_loss
@@ -565,12 +509,11 @@ def train_model(
 
 
 def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
-    epochs = np.arange(1, len(train_losses) + 1)
     plt.figure(figsize=(14, 10))
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.plot(epochs, train_losses, label="Training Loss")
-    plt.plot(epochs, test_losses, label="Test Loss")
+    plt.plot(train_losses, label="Training Loss")
+    plt.plot(test_losses, label="Test Loss")
     if log_scale:
         plt.yscale('log')
     plt.xlabel("Epoch", fontsize=18)
@@ -589,127 +532,104 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 if __name__ == "__main__":
     #set_seed()
 
-    d_model = 128
+    d_model = 256
     n_heads = 8
     n_layers = 3
-    d_ff = 640
-    batch_size = 128
-    num_epochs = 15
+    d_ff = 1024
+    batch_size = 8
+    num_epochs = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
-    cache_dir = "./tmp_memmap"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    X = y = None
-    train_loader = test_loader = None
-    train_indices = test_indices = None
-    try:
-        X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
-        train_indices, test_indices = prepare_split_indices(len(X), test_size=0.2, random_state=42)
-        train_loader, test_loader = create_dataloaders(
-            X,
-            y,
-            train_indices,
-            test_indices,
-            batch_size=batch_size,
-            device=device,
-            num_workers=0,
-        )
+    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
 
-        today = date.today().isoformat()
-        model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
-        pic_dir = f"./pics/{today}/{model_name}"
-        os.makedirs(pic_dir, exist_ok=True)
+    X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
+    train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
 
-        model_save_dir = f"./models/{model_name}"
-        checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+    today = date.today().isoformat()
+    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    pic_dir = f"./pics/{today}/{model_name}"
+    os.makedirs(pic_dir, exist_ok=True)
 
-        train_loss, test_loss, model, optimizer, train_meta = train_model(
-            train_loader=train_loader,
-            test_loader=test_loader,
-            device=device,
-            input_token_indices=input_token_indices,
-            out_indices=out_indices,
-            vocab_size=len(outputs),
-            d_model=d_model,
-            n_heads=n_heads,
-            n_layers=n_layers,
-            d_ff=d_ff,
-            num_epochs=num_epochs,
-            learning_rate=learning_rate,
-            dropout=dropout,
-            output_sample_ratio=output_sample_ratio,
-            checkpoint_path=checkpoint_path
-        )
+    model_save_dir = f"./models/{model_name}"
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
-        model_save_path = f"{model_save_dir}/{model_name}.pth"
-        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-        torch.save(model.state_dict(), model_save_path)
-        print(f"\nModel weights saved to {model_save_path}")
+    train_loss, test_loss, model, optimizer, train_meta = train_model(
+        train_loader=train_loader,
+        test_loader=test_loader,
+        device=device,
+        input_token_indices=input_token_indices,
+        out_indices=out_indices,
+        vocab_size=len(outputs),
+        d_model=d_model,
+        n_heads=n_heads,
+        n_layers=n_layers,
+        d_ff=d_ff,
+        num_epochs=num_epochs,
+        learning_rate=learning_rate,
+        dropout=dropout,
+        output_sample_ratio=output_sample_ratio,
+        checkpoint_path=checkpoint_path
+    )
 
-        completed_epochs = int(train_meta.get("end_epoch", num_epochs))
+    model_save_path = f"{model_save_dir}/{model_name}.pth"
+    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    torch.save(model.state_dict(), model_save_path)
+    print(f"\nModel weights saved to {model_save_path}")
 
-        checkpoint = {
-            "epoch": completed_epochs,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "train_losses": train_loss,
-            "test_losses": test_loss,
-            "config": {
-                "d_model": d_model,
-                "n_heads": n_heads,
-                "n_layers": n_layers,
-                "d_ff": d_ff,
-                "dropout": dropout,
-                "batch_size": batch_size,
-                "learning_rate": learning_rate,
-                "num_epochs": completed_epochs,
-                "requested_num_epochs": num_epochs,
-                "vocab_size": len(outputs),
-                "input_token_indices": [int(i) for i in input_token_indices],
-                "output_sample_ratio": output_sample_ratio,
-            },
-            "rng_state": {
-                "torch": torch.get_rng_state(),
-                "numpy": np.random.get_state(),
-                "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
-                "python": random.getstate(),
-            },
-            "data_info": {
-                "dataset": DATA_PATH,
-                "input_cols": inputs,
-                "output_cols": outputs,
-                "n_train": int(len(train_indices)),
-                "n_test": int(len(test_indices)),
-                "input_token_indices": [int(i) for i in input_token_indices],
-                "out_indices": [int(i) for i in out_indices],
-            },
-        }
+    completed_epochs = int(train_meta.get("end_epoch", num_epochs))
 
-        torch.save(checkpoint, checkpoint_path)
-        print(f"Full checkpoint saved to {checkpoint_path}")
+    checkpoint = {
+        "epoch": completed_epochs,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "train_losses": train_loss,
+        "test_losses": test_loss,
+        "config": {
+            "d_model": d_model,
+            "n_heads": n_heads,
+            "n_layers": n_layers,
+            "d_ff": d_ff,
+            "dropout": dropout,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "num_epochs": completed_epochs,
+            "requested_num_epochs": num_epochs,
+            "vocab_size": len(outputs),
+            "input_token_indices": [int(i) for i in input_token_indices],
+            "output_sample_ratio": output_sample_ratio,
+        },
+        "rng_state": {
+            "torch": torch.get_rng_state(),
+            "numpy": np.random.get_state(),
+            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            "python": random.getstate(),
+        },
+        "data_info": {
+            "dataset": DATA_PATH,
+            "input_cols": inputs,
+            "output_cols": outputs,
+            "n_train": int(len(X_train)),
+            "n_test": int(len(X_test)),
+            "input_token_indices": [int(i) for i in input_token_indices],
+            "out_indices": [int(i) for i in out_indices],
+        },
+    }
 
-        plot_loss_curves(
-            train_loss, test_loss, 
-            d_model=d_model,
-            n_heads=n_heads,
-            n_layers=n_layers,
-            d_ff=d_ff,
-            save_path=None
-            #save_path=f"{pic_dir}/training_curve.png"
-        )
-    finally:
-        train_loader = None
-        test_loader = None
-        X = None
-        y = None
-        gc.collect()
-        removed_files = cleanup_memmap_files(DATA_PATH, cache_dir=cache_dir)
-        if removed_files:
-            print("Removed memmap cache files:")
-            for path in removed_files:
-                print(f"  - {path}")
+    torch.save(checkpoint, checkpoint_path)
+    print(f"Full checkpoint saved to {checkpoint_path}")
 
+    '''
+    plot_loss_curves(
+        train_loss, test_loss, 
+        d_model=d_model,
+        n_heads=n_heads,
+        n_layers=n_layers,
+        d_ff=d_ff,
+        save_path=f"{pic_dir}/training_curve.png"
+    )
+    '''
