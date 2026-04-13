@@ -1,0 +1,899 @@
+Contents lists available at ScienceDirect
+Computational and Structural Biotechnology Journal  
+journal homepage: www.elsevier.com/locate/csbj
+Research Article
+MINN: A metabolic-informed neural network for integrating omics data 
+into genome-scale metabolic modeling
+GabrieleTazza a, ,∗,1, FrancescoMoro b, ,1, DarioRuggeri a, , BasTeusink b, , 
+LászlóVidács a,
+a Department of Software Engineering, University of Szeged, Szeged, Hungary
+b Systems Biology Lab, AIMMS/ALIFE, Vrije Universiteit Amsterdam, Amsterdam, the Netherlands
+A R T I C L E I N F O A B S T R A C T 
+Keywords:
+Hybrid model
+Machine learning
+Flux balance analysis
+Multi-omics
+Genome-scale metabolic modeling
+Neural-networks
+The understanding of cellular behavior relies on the integration of metabolism and its regulation. Multi-omics 
+data provide a detailed snapshot of the molecular processes underpinning cellular functions and their regulation, 
+describing the current state of the cell. While Machine Learning (ML) models can uncover complex patterns and 
+relationships within these data, they require large datasets for training and often lack interpretability. On the 
+other hand, mathematical models, such as Genome-Scale Metabolic Models (GEMs), oﬀer a structured framework 
+for analyzing the organization and dynamics of speciﬁc cellular mechanisms. At the same time, they don’t allow 
+for seamless integration of omics information. Recently, a new framework to embed GEMs in a neural network 
+has been introduced: these hybrid models combine the strengths of mechanistic and data-driven approaches, 
+oﬀering a promising platform for integrating diﬀerent data sources with mechanistic knowledge. In this study, we 
+present a Metabolic-Informed Neural Network (MINN) that utilizes multi-omics data to predict metabolic ﬂuxes 
+in Escherichia coli, under diﬀerent growth rates and gene knockouts. We test its performances against pure ML and 
+parsimonious Flux Balance Analysis (pFBA), demonstrating its eﬃcacy in improving prediction performances. We 
+also highlight how conﬂicts can emerge between the data-driven and the mechanistic objectives, and we propose 
+diﬀerent solutions to mitigate them. Finally, we illustrate a strategy to couple the MINN with pFBA, enhancing 
+the interpretability of the solution.
+1. Introduction
+The phenotype of a cell is a complex interplay between its metabolic 
+network, consisting of thousands of biochemical reactions, and the reg-
+ulatory mechanisms controlling diverse cellular functions. Mechanistic 
+models, such as GEMs [39], provide a structured framework to inte-
+grate and connect the available knowledge to ﬁnd emergent properties 
+in cellular systems. GEMs mathematically represent cellular metabolism, 
+summarizing our information about the biochemical processes present 
+in an organism [28,34,37]. One common approach to simulate cellu-
+lar behavior using GEMs is constraint-based modeling (CBM). Among 
+these methods, Flux Balance Analysis (FBA) [33,8,35] is particularly 
+notable. FBA applies linear programming to optimize the distribution 
+of metabolic ﬂuxes, aiming to maximize speciﬁc objectives like biomass 
+* Corresponding author.
+E-mail addresses: tazza@inf.u-szeged.hu(G. Tazza), f.moro@vu.nl(F. Moro), ruggeri@inf.u-szeged.hu(D. Ruggeri), b.teusink@vu.nl(B. Teusink), 
+lac@inf.u-szeged.hu(L. Vidács).
+1 Gabriele Tazza and Francesco Moro contributed equally to this work.
+production while considering nutrient availability constraints. However, 
+the predictive power of a mechanistic model like FBA is limited by the 
+completeness of our understanding of cellular processes. Moreover, FBA 
+typically has multiple feasible solutions. In such cases, the solution with 
+the lowest sum of ﬂuxes is usually selected, based on the assumption 
+that cells try to minimize their enzyme production [23]. However, this 
+assumption is often an oversimpliﬁcation, which does not account for 
+the complex regulatory mechanisms within cells.
+Omics data can be integrated in GEMs to enhance their predictive 
+power and tailor models to speciﬁc cellular contexts [26,40]. Transcrip-
+tomics and proteomics oﬀer indirect and direct proxies for metabolic 
+activity, respectively, and have been incorporated into GEMs using tools 
+such as GIMME [5] and CoCo [41] for gene expression data, and GECKO 
+[9] and sEnz [6] for enzyme abundances. Metabolomics and ﬂuxomics 
+https://doi.org/10.1016/j.csbj.2025.08.004
+Received 31 May 2025; Received in revised form 4 August 2025; Accepted 4 August 2025 
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+Available online 7 August 2025 
+2001-0370/© 2025 The Authors. Published by Elsevier B.V. on behalf of Research Network of Computational and Structural Biotechnology. This is an open access 
+article under the CC BY license ( http://creativecommons.org/licenses/by/4.0/ ). 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+provide additional constraints through extracellular metabolite levels 
+or isotope-labeling experiments [17,4]. While multi-omics integration 
+oﬀers a more comprehensive view of the cellular state [25], these ef-
+forts remain limited by standardization challenges and the diﬃculty of 
+mechanistically linking non-metabolic features to model reactions [24].
+On the other hand, data-driven machine learning (ML) models can 
+eﬀectively extract patterns in high-dimensional datasets, such as multi-
+omics data, without prior knowledge of underlying molecular mecha-
+nisms. These models often demonstrate strong predictive capabilities, 
+but are limited by the scarcity of biological datasets, frequently con-
+strained by experimental costs and time. In recent years, ML models 
+have also been explored for predicting metabolic ﬂuxes using multi-
+omics data. Although FBA remains the preferred mechanistic framework 
+for this task, integrating omics data into CBM frameworks remains a sig-
+niﬁcant challenge [26]. Interestingly, recent work [16] demonstrated 
+that purely ML-based approaches trained on omics data can outper-
+form FBA-based methods in metabolic ﬂux prediction. A more detailed 
+overview of the literature is provided in Section 1of the Supplementary 
+Materials.
+Given the complementary strengths and limitations of ML and GEMs, 
+there has been increasing interest in trying to combine these two ap-
+proaches [42,3,21]. Hybrid models that merge mechanistic knowledge 
+with the predictive capabilities of ML oﬀer a promising direction but so 
+far, as highlighted in Sahu et al. [36], the existing applications do not 
+truly integrate ML and FBA. Instead, they mostly combine them in two 
+separate steps: using ML as input for FBA [12,20,30], or using FBA as 
+input for ML [27,10].
+Recently, Faure et al. [13] developed a framework that truly com-
+bines CBM with ML in a neural network architecture called an Artiﬁcial 
+Metabolic Network (AMN). Their approach leveraged GEM structures 
+and FBA constraints within neural networks to predict growth rates from 
+media compositions.
+In Faure et al. [13], the authors suggested three diﬀerent possi-
+ble conﬁgurations for incorporating the GEM structure and the FBA 
+constraints in a neural network (NN). In this work, we selected one 
+of these conﬁgurations, inspired by Physics-Informed Neural Networks 
+(PINNs) [11], and we re-implemented and expanded it to integrate 
+multi-omics data as inputs. We will refer to this new architecture as 
+Metabolic-Informed Neural Network (MINN) with multi-omics integra-
+tion (Fig. 1). We applied this hybrid model to the dataset analyzed by 
+Gonçalves et al. [16], which examines how the metabolism of Escherichia 
+coli adapts to varying growth rates and single-gene knockouts [19]. As 
+discussed in Tazza et al. [38], the combination of ﬂuxes measured ex-
+perimentally lies outside the solution space of FBA, causing a conﬂict 
+between the optimization of the data-driven and the mechanistic objec-
+tives. To address this, we provide diﬀerent mitigation strategies. 
+To summarize, in this work:
+i. We describe the implementation of a MINN with multi-omics inte-
+gration, using an early concatenation approach.
+ii. We benchmark its predictive performances on the ISHII dataset, 
+compared to pure ML methods [16].
+iii. We recalculated the data to be in the FBA solution space and com-
+pared the predictive performances with those based on the original 
+measurements.
+iv. We explore diﬀerent hybrid optimization strategies to address the 
+conﬂict between the objectives, while using the original data.
+v. Finally, we adapt the MINN to a “reservoir” conﬁguration Faure 
+et al. [13], which uses the MINN predictions to directly constrain 
+pFBA, and compare its predictions with those of pFBA alone.
+With these analyses, we provide a detailed overview of methods and 
+strategies to adapt and use hybrid ML-FBA methods for multi-omics 
+integration. Our ﬁndings highlight the potential of hybrid models to 
+enhance the predictive accuracy and robustness of metabolic ﬂux predic-
+tions. This paves the way for more precise and comprehensive metabolic 
+network analyses, particularly for phenotypes where metabolism is sig-
+niﬁcantly inﬂuenced by other layers of cellular organization, which are 
+challenging to incorporate into FBA. Furthermore, with this work we 
+aim to provide a guide to the use of the MINN framework, helping re-
+searchers choose the most suitable conﬁguration based on the speciﬁc 
+objective of their study.
+2. Methods
+2.1. Dataset
+The dataset analyzed in this work was originally published by Ishii 
+et al. [19]and  consists of 29 chemostat experiments, in which E. coli was 
+grown in glucose minimal medium. Wild-type strain K-12 was grown at 
+5 diﬀerent dilution rates (D = 0.1, 0.2, 0.4, 0.5, and 0.7 h−1), while 24 
+diﬀerent single-knockout mutant strains were cultivated at ﬁxed dilu-
+tion rate (D = 0.2 h−1). The same dataset was already used by Gonçalves 
+et al. [16]t o test traditional ML for the prediction of metabolic ﬂuxes 
+from multi-omics data. 
+The dataset consists of transcriptomic, proteomic, and ﬂuxomic mea-
+surements. For each sample, microarrays were used to assess the ex-
+pression proﬁles of 79 genes and LC-MS/MS quantitative proteomics to 
+measure the abundances of 60 proteins. 13C-labeled metabolomics ex-
+periments were analyzed with MFA to estimate 47 metabolic ﬂuxes: 37 
+reactions of the central carbon metabolism, 9 exchange ﬂuxes (produc-
+tion or consumption of external metabolites) and biomass growth.
+The metabolic model used by Ishii et al. [19]t o perform MFA is 
+a core model that mainly represents the central carbon metabolism of 
+E. coli and how it connects to the measured external metabolites. This 
+model is much smaller and less complete than the GEM [14] integrated 
+in the MINN. For the GEM to grow, many more diﬀerent biomass compo-
+nents must be synthesized, diverting some metabolic precursors outside 
+the pathways represented in the MFA model. For this reason, the ﬂux-
+omics data from Ishii et al. [19]l i e outside the solution space [38]. In 
+most of our analyses we used the original ﬂuxomics data, to highlight the 
+ability of the MINN to reconcile MFA ﬂuxomics data with the structure 
+of the full-size GEMs. However, to investigate the impact of this discrep-
+ancy, we repeated some of the analyses with a second set of ﬂuxes, now 
+residing in the FBA solution space. This second set of ﬂuxomics data 
+is composed of the ﬂuxes with the minimum Euclidean distance from 
+the original ones, following an approach detailed in the Supplementary 
+Material of Machado and Herrgard [26]a n d we refer to it as FBA ﬁt 
+data.
+2.2. GEM preparation
+In this section we describe all the genome-scale metabolic recon-
+structions utilized to build the MINNs. The most recent GEM available 
+for E. coli K-12 is iML1515 [29], but we opted for iAF1260 [14]. The 
+two diﬀer mainly for the more comprehensive coverage of accessory 
+pathways of iML1515, which are relevant in complex environments like 
+the human gut, but not for growth on minimal medium. On the other 
+hand, the size of the GEM can heavily aﬀect the complexity of the MINN: 
+using a smaller GEM would improve the eﬃciency of our hybrid model 
+by reducing the computational resources required for training. Possibly, 
+it would also reduce the noise in the model, enhancing the prediction 
+accuracy. iAF1260 is reasonably smaller than iML1515 (2382 reactions 
+vs. 2712) and is also the same model used by Gonçalves et al. [16]i n 
+their analyses.
+We further reduced the size of the model by excluding all the re-
+actions which cannot carry ﬂux during growth in glucose minimal 
+medium. This was achieved performing Flux Variability Analysis (FVA) 
+and retaining only the reactions with a non-zero span. We refer to this 
+model as FVA-reduced GEM. We also tested a second strategy, inspired 
+from Faure et al. [13], to further reduce the model. We generated a 
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3610 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+Table 1
+Dimensions of all the GEM used in this analysis.
+GEMs 
+GEM name original splitted reactions reduced and splitted reactions 
+iAF1260 2957 NA 
+iAF1260 FVA-reduced 2957 1873 
+iAF1260 FBA-reduced 2957 587 
+e_coli_core 115 NA 
+iNF517 FVA-reduced 1022 704 
+dataset of 2000 FBA solutions by randomly selecting single-gene knock-
+outs and varying the maximum glucose uptake rate within the experi-
+mentally observed range. Reactions that consistently carried zero ﬂux 
+across all the simulations were removed from the model. We refer to this 
+model as FBA-reduced GEM. To investigate the impact of an extreme de-
+crease in the genome-scale reconstruction size, we also built a MINN 
+using the e_coli_core model [32], a manually reduced GEM focused on 
+central carbon metabolism, which is the smallest model available in the 
+BiGG database.
+Finally, to further test the role of the GEM and the underlining 
+metabolic network, we also tested our baseline conﬁguration including 
+the GEM of a diﬀerent organism. We used the iNF517 model [15] for 
+Lactococcus lactis subsp. cremoris MG1363. This microorganism is a lactic 
+acid bacterium, with an incomplete TCA cycle, which makes it an inter-
+esting comparison for E.coli, both in terms of structure of the network 
+in the central carbon metabolism and of general metabolic behavior. 
+The model was reduced using the FVA-guided reduction approach. The 
+results of this comparison are available in the Section 3.1of the Supple-
+mentary Materials.
+In Table 1 we summarize the dimensions of each GEM. The GEMs 
+were downloaded from the BiGG database [22] and handled/modiﬁed 
+using CBMPy 0.8.4 [31]. In each model, reversible reactions were split 
+into a forward and a reverse reaction using the built-in CBMPy function 
+cbmpy.CBTools.splitReversibleReactions.
+2.3. MINN architecture
+This study introduces a MINN architecture designed to predict mul-
+tiple ﬂuxes using multi-omics data, which provide key insights for 
+metabolic predictions but are challenging to integrate with FBA [26]. 
+Fig. 1illustrates the structure of our MINN architecture, built to predict 
+ﬂuxes measured in the ISHII dataset using proteomics, transcriptomics, 
+and the measurements of two exchange ﬂuxes, namely R_EX_glc__D_e, 
+R_EX_o2_e. The data are integrated using an early concatenation strategy 
+[1], where the three omics datasets are combined into a single matrix 
+that is fed into the MINN.
+The omics data are used in the ﬁrst part of the model (shown in red in 
+Fig. 1), which is a pure feed-forward neural network. Here, the network 
+is trained to learn a mapping from the input omics proﬁles to an initial 
+estimate of the ﬂux distribution, denoted as 𝑉0. The input dimension 
+𝑑in corresponds to the total number of features after concatenating the 
+transcriptomics, proteomics, and exchange ﬂux data, while the output 
+dimension 𝑑out corresponds to the total number of reactions in the GEM. 
+This part of the model is purely data-driven, meaning that it does not 
+rely on any mechanistic assumption or require prior knowledge such 
+as gene-protein-reaction (GPR) associations. Instead, it learns directly 
+from the data how to associate the omics features with a plausible ﬂux 
+conﬁguration. This makes the method ﬂexible and compatible with a 
+wide range of input omics data, including those not directly related to 
+metabolism but still informative of the broader cellular context.
+The second part, the mechanistic layer, blue in Fig. 1, consists of a 
+gradient descent optimization loop. This loop reﬁnes the output of the 
+ﬁrst neural network step by adjusting the ﬁnal predicted ﬂux distribu-
+tion 𝑉to better comply with the FBA constraints, minimizing the FBA 
+loss function 𝐿𝐹𝐵𝐴. The neural network weights are trained using a 
+Fig. 1. Schematic representation of the MINN architecture. Protein and gene 
+expression levels, and exchange ﬂux data are used as input to a feed-forward 
+neural network, which produces an initial estimate for the ﬂux distribution 𝑉0. 
+This estimate is reﬁned in a mechanistic layer via a gradient descent step to 
+better align with ﬂux balance constraints, resulting in the ﬁnal ﬂux distribution 
+𝑉𝑜𝑢𝑡. The custom loss function combines the discrepancy between the model 
+predictions and the target ﬂuxomics data with the violation of FBA constraints, 
+and is used to train the network via backpropagation.
+standard back-propagation algorithm and a custom loss function 𝐿MINN
+that considers both the data error and the FBA constraints.
+To formalize this, let the input data be 𝑋∈ℝ𝑁×𝑑𝑖𝑛where 𝑁is the 
+mini-batch dimension in the back-propagation algorithm and 𝑑𝑖𝑛is the 
+number of features of 𝑋. The ﬁrst NN part can be expressed as:
+𝑉0 =𝜎(𝑋𝑊ℎ+𝑏ℎ)𝑊𝑜𝑢𝑡+𝑏𝑜𝑢𝑡 (1)
+with 𝜎the ReLU activation function, 𝑊ℎ∈ℝ𝑑𝑖𝑛×𝑑ℎ, 𝑏ℎ∈ℝ1×𝑑ℎ, 𝑊𝑜𝑢𝑡∈
+ℝ𝑑ℎ×𝑑𝑜𝑢𝑡, 𝑏𝑜𝑢𝑡∈ℝ1×𝑑𝑜𝑢𝑡, the weight matrices and the biases of the input 
+and hidden layer respectively, where 𝑑ℎis the hidden layer dimension 
+and 𝑑𝑜𝑢𝑡is the output dimension, which coincides with the dimension 
+of the ﬂux distribution. Then, 𝑉_0 is reﬁned in the mechanistic layer 
+through a gradient descent optimization, using only the mechanistic 
+constraints. For simplicity, the notation refers to the simple case when 
+the loop has one iteration:
+𝑉𝑜𝑢𝑡=𝑉−𝑙𝑟𝜕𝐿FBA
+𝜕𝑉 (2)
+𝐿FBA = 1 
+𝑚|𝑆𝑉|2 + 1 
+𝑛in
+||ReLU(𝑃in𝑉−𝑉in)||
+2 + 1
+𝑛 |ReLU(−𝑉)|2
+The ﬁrst element represents the steady-state constraint of FBA, with 
+𝑆as the stoichiometric matrix of the GEM. The term 𝑚denotes the num-
+ber of metabolites and serves as the normalization term. The second 
+element represents the upper-bound constraint on the vector of ﬂuxes 
+𝑉𝑖𝑛. Here, 𝑃𝑖𝑛represents the projection matrix that projects the ﬂux dis-
+tribution vector 𝑉into the dimension of 𝑉𝑖𝑛, while the normalization 
+term 𝑛𝑖𝑛stands for the number of bounded ﬂuxes. Lastly, the last ele-
+ment symbolizes the lower bound constraint, which required since the 
+GEM is built to ensure that all the ﬂuxes are positive.
+The custom loss used to train the weights of the MINN is:
+𝐿MINN =𝐿1 +𝐿2 +𝐿3 +𝐿4 (3)
+=
+||𝑃ref𝑉−𝑉ref||
+𝑉ref
++ 1 
+𝑚|𝑆𝑉|2 + 1 
+𝑛in
+||ReLU(𝑃in𝑉−𝑉in)||
+2+ 1
+𝑛 |ReLU(−𝑉)|2
+where 𝑉𝑟𝑒𝑓is the vector with the measured ﬂuxes and 𝑃𝑟𝑒𝑓a projection 
+matrix that projects 𝑉to the dimension of 𝑉𝑟𝑒𝑓; while the other elements 
+represent the FBA constraints and are the same as in 𝐿𝐹𝐵𝐴. 
+In order to guide the reader through the understanding of the MINN 
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3611 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+Fig. 2. Two-step training strategy of the MINN-reservoir architecture: a) In the ﬁrst step, a MINN (with no omics data in input) is trained to approximate an FBA 
+solver, using a dataset of simulated FBA solutions. The network learns to predict the ﬂux distribution 𝑉𝑜𝑢𝑡from randomly sampled external ﬂuxes 𝑉𝑖𝑛(R_EX_glc__D_e, 
+R_EX_o2_e, R_EX_co2_e, R_EX_etoh_e and R_EX_ac_e). Once trained, its weights are frozen, and the resulting model is reused as a ﬁxed Pretrained block. b) In the second 
+step, this Pretrained block is embedded within a new architecture that takes omics data and medium exchange ﬂuxes (R_EX_glc__D_e, R_EX_o2_e) as input. A neural 
+network predicts 𝑉𝑖𝑛, which is then passed to the Pretrained block to compute 𝑉𝑜𝑢𝑡.
+architecture, we provide an illustrative toy example in Section 1 of the 
+Supplementary Material.
+In Faure et al. [13], the authors used Mean Squared Error (MSE) as 
+𝐿1 because they wanted to predict a single ﬂux, speciﬁcally the growth 
+rate. In our work, we use the Normalized Error (NE) [16] to have a scale-
+invariant 𝐿1 when predicting multiple ﬂuxes in order to avoid favoring 
+reactions with higher ﬂux values.
+In addition, during our analysis a conﬂict between the data-driven 
+and mechanistic losses emerged. In order to mitigate this issue, we mul-
+tiply 𝐿1with a constant 𝑐, which allow us to adjust the balance between 
+the two losses:
+𝐿MINN-balanced =𝑐⋅𝐿1 +𝐿2 +𝐿3 +𝐿4 (4)
+The 𝑐constant becomes a hyperparameter of the model, tuned us-
+ing k-fold cross-validation and the optimized value determines the best 
+balance between 𝐿1 and (𝐿2 +𝐿3 +𝐿4).
+It is important to note that the mechanistic part of the loss function 
+includes only terms enforcing FBA constraints, to reduce the solution 
+space, but does not include any term related to the FBA objective (e.g., 
+biomass maximization). As a result, the optimization is guided solely by 
+𝐿1, a data-driven objective, without imposing any predeﬁned metabolic 
+goal. This is particularly advantageous in cases where no clear cellular 
+objective exists, such as in gene knockout mutants.
+2.3.1. MINN-reservoir
+Similarly to Faure et al. [13], we tested an additional conﬁguration of 
+the MINN, named MINN-reservoir. The training of the MINN-reservoir 
+requires two steps, as shown in Fig. 2. In the ﬁrst step (2a), a MINN 
+(with no omics data in input) is trained only to reproduce FBA using 
+a dataset of FBA solutions. This dataset contains the results of 2000 
+FBA simulations, in which the reactions belonging to 𝑉𝑖𝑛(R_EX_glc__D_e, 
+R_EX_o2_e, R_EX_co2_e, R_EX_etoh_e and R_EX_ac_e) were assigned random 
+values, within the ranges of variability observed in the ISHII dataset. 
+This procedure creates a model that acts as a pure approximator of an 
+FBA solver (Pretrained block in Fig. 2), capable of predicting the optimal 
+ﬂux distributions from measurements of external metabolite ﬂuxes, sim-
+ilar to an FBA solver. In the second step (Fig. 2b), this Pretrained block 
+is embedded into a new MINN architecture, where it replaces the Mech-
+anistic Layer. The resulting architecture consists of a neural network 
+layer that predicts 𝑉𝑖𝑛from multi-omics data and medium exchange 
+ﬂuxes (R_EX_glc__D_e, R_EX_o2_e), followed by the Pretrained block, which 
+computes the ﬂux distribution 𝑉𝑜𝑢𝑡from the predicted 𝑉𝑖𝑛. The two-step 
+approach ensures that the predicted 𝑉𝑖𝑛values are compatible with FBA 
+and can be reliably used by the solver to produce a true, linear pro-
+gramming solution. For the test sample in each split, the predicted 𝑉𝑖𝑛
+are extracted and used as additional constraints for pFBA: increasing the 
+input information in a data-driven way while preserving the mechanis-
+tic structure of the model. Unlike the default conﬁguration of the MINN, 
+this approach produces as ﬁnal output not only the full ﬂux distribution, 
+but a complete solution from a Linear Programming solver, which can 
+be analyzed with all the tools developed for this purpose.
+2.3.2. Hybrid optimization strategies for data-driven and mechanistic 
+integration
+Equation (3) highlights how the loss of the MINN is composed of 
+two components: 𝐿1, which drives the optimization on the data, and 
+𝐿𝐹𝐵𝐴=𝐿2+𝐿3+𝐿4, which minimizes the divergence from the mecha-
+nistic constraints. In Equation (4), we already introduced the coeﬃcient 
+𝑐, which allows us to tweak the balance between the two components, ei-
+ther manually or through hyperparameter optimization. In this section, 
+we introduce three other methods to tune this balance while minimiz-
+ing the trade-oﬀ between the two components. 
+In developing hybrid models that integrate mechanistic constraints with 
+data-driven approaches, we propose diﬀerent strategies to balance the 
+objectives of maintaining adherence to the FBA constraints without sub-
+stantially compromising predictive performance. These methods address 
+the challenge posed by diﬀerent scales of mechanistic and data-driven 
+losses, ensuring that neither dominates the optimization process and 
+that the model generalizes well to unseen data.
+Bound on mechanistic loss The ﬁrst method introduced is a bound on 
+the mechanistic loss. This method ensures that the model’s predictions 
+do not deviate too far from the mechanistic solutions. A ﬁxed threshold 
+is set, and when the mechanistic loss exceeds this threshold, a multi-
+plicative factor is applied to penalize further deviations. This approach 
+softly constrains the model within a feasible solution space derived from 
+mechanistic constraints, preventing the model from paying an excessive 
+cost in terms of mechanistic loss to improve the data-driven one. To 
+provide a clear view of the described bound on the mechanistic loss, a 
+graphical representation is available in Section 2of the Supplementary 
+Material ﬁle.
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3612 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+Table 2
+Comparison of predictive performance between our proposed MINN-based ap-
+proaches and purely mechanistic and machine learning methods from Gonçalves 
+et al. [16]. Metrics average and standard deviation over 29 leave-one-out splits. All 
+the MINN models were generated using the iAF1260-FVA reduced GEM.
+ISHII 
+Model 𝑅2 MAE RMSE NE 
+pFBA* 0.823±0 .156 0.692±0 .733 1.058±1 .029 0.381±0 .185
+NN* 0.967±0 .036 0.652±0 .945 0.936±1 .314 0.338±0 .338
+RF* 0.970±0 .037 0.507±0 .804 0.729±1 .105 0.271±0 .347
+MINN-MSE-base 0.950±0 .060 0.525±0 .525 0.736±0 .703 0.287±0 .282
+MINN-unbalanced 0.951±0 .051 0.563±0 .739 0.814±1 .067 0.325±0 .442
+MINN-c-balanced 0.950±0 .055 0.473±0 .480 0.678±0 .653 0.272±0 .280
+*Results from Gonçalves et al. [16].
+Loss balancing A loss balancing mechanism was employed to handle 
+the diﬀerent scales of mechanistic and data-driven losses. This method 
+normalizes each loss dividing it by the exponential average of its pre-
+vious values, as detailed in Hu et al. [18]. Through this approach, both 
+losses are considered equally during gradient updates, preventing one 
+from outweighing the other during the training process. The loss bal-
+ancing ensures that the mechanistic loss, which would typically be un-
+derrepresented due to its smaller scale, contributes adequately to model 
+optimization alongside the data-driven loss.
+Loss weight scheduler Lastly, a dynamic loss weight scheduler was im-
+plemented to gradually shift the model’s focus between the mechanistic 
+and data-driven tasks over the course of training. For the ﬁrst phase, 
+the scheduler prioritizes the mechanistic loss, ensuring it starts from a 
+solution closer to the mechanistic model’s feasible space. As training 
+progresses, there is a transition phase where the scheduler gradually 
+increases the importance of the data-driven loss until it reaches the ﬁ-
+nal phase, where the data-driven loss has a higher weight, guiding the 
+model toward better predictive performance for the data-driven task. 
+The transitions between the three training phases were deﬁned based 
+on the learning curves of the validation data from the inner K-Fold 
+cross-validation loop (also used for hyperparameter optimization). The 
+transition phase was triggered once the mechanistic loss had converged, 
+which occurred at epoch 30. This phase lasted for 40 epochs, followed 
+by a ﬁnal phase of 80 epochs, during which the data-driven objective 
+was given higher priority. The loss balance in the initial phase was ﬁxed 
+at 90% mechanistic and 10% data-driven. In contrast, the balance pa-
+rameter for the ﬁnal phase was subject to hyperparameter tuning, with 
+a search space ranging from 80% to 100% data-driven loss (and the 
+remainder assigned to the mechanistic loss). For the sake of clarity, a 
+graphical representation of the weight scheduler is available in Section 2
+of the Supplementary Material ﬁle.
+These methods provide a comprehensive framework for balancing 
+the trade-oﬀs between data-driven accuracy and mechanistic integrity.
+2.4. Computational setup
+We adopted the same evaluation pipeline for all our MINN conﬁgura-
+tions to evaluate the MINN performance and have a fair comparison with 
+the results obtained by [16]. It consists of a dual-loop cross-validation 
+process. The outer loop is a leave-one-out, and in each train loop, there 
+is an inner loop of a k-fold with 𝑘=5 to tune the hyper-parameters. The 
+tuning concerns the dimension of the ﬁrst hidden layer, the learning 
+rate of the NN, the intensity of dropout and 𝐿2regularization, and the 
+𝑐constant for the 𝐿1 loss in the case of the MINN-c-balanced. Instead, 
+for the MINN-scheduler model, only the hyperparameter controlling the 
+balance between data-driven and mechanistic losses in the ﬁnal training 
+phase was tuned, where the data-driven component becomes predomi-
+nant. The initial balance and the epoch marking the transition between 
+phases were kept ﬁxed. For a consistent comparison with the work of 
+Gonçalves et al. [16], we employed identical metrics to evaluate all 
+our experiments: the regression coeﬃcient 𝑅2, the mean absolute er-
+ror (MAE), the root mean squared error (RMSE) and the normalized 
+error (NE). As described later, in some of our results, we also report the 
+𝐿2 as a metric to measure the quality of the predicted ﬂux distribution.
+3. Results and discussion
+This work aims to compare the predictive performance of the MINN 
+w.r.t. pure ML approaches and mechanistic models such as pFBA. For 
+clarity, we divide all the results and discussions into three groups. The 
+ﬁrst one (Table 2) contains the results of the performance comparison 
+between our approach and the pure ML ones presented in Gonçalves 
+et al. [16]. Here, we evaluate the predictive performance of diﬀerent 
+methods on the 45 reference ﬂuxes measured in the ISHII dataset. The 
+second one (Table 3) includes the results of the comparison between dif-
+ferent approaches employed to mitigate the issue of conﬂicting losses. 
+Here, we compare the performance of the diﬀerent methods on the mea-
+sured ﬂuxes and the quality of the predicted ﬂux distribution, which we 
+measure using, as a proxy, 𝐿2. The third group (Table 4), instead, com-
+pares the results obtained using the MINN-reservoir conﬁguration with 
+those of pFBA. 
+Lastly, we tested the impact of using diﬀerent GEMs in the mechanistic 
+layer of the MINN. In particular, when we included the GEM of Lacto-
+coccus lactis subsp. cremoris, a bacterium with an incomplete TCA cycle 
+compared to E. coli, we observed a decrease in the quality of the pre-
+dicted ﬂux distribution. Although the diﬀerence was moderate, probably 
+due to the conservation of central carbon metabolism, these results sug-
+gest that the biological relevance of the GEM has an important role in 
+the regularizing eﬀect of the mechanistic layer. A more detailed analysis 
+is available in Section 3.1of the Supplementary Materials.
+3.1. MINN to predict measured ﬂuxes
+In the ﬁrst group, as a baseline, we used the MINN architecture with 
+an MSE as 𝐿1 (MINN-MSE-base), as in Faure et al. [13]. As shown 
+in Table 2, the results are already comparable with a Random Forest 
+(RF), the best machine learning method in Gonçalves et al. [16], and 
+better than the NN approach. To avoid potential bias from the large 
+discrepancies (up to two orders in magnitude) between the values of 
+the ﬂuxes we are predicting, we replaced the MSE in 𝐿1 with a NE. 
+As detailed in the Section 2, we multiply 𝐿1 with a constant 𝑐, op-
+timized during the cross-validation. This method, incorporating the 𝑐
+parameter, is referred to as MINN-c-balanced, while the one without 
+this adjustment as MINN-unbalanced. Although the change from MSE 
+to NE ensures a scale-invariant 𝐿1, it also reduces its magnitude, am-
+plifying the conﬂict between losses as the mechanistic constraints gain 
+more inﬂuence. For this reason, the MINN-unbalanced obtained worse 
+results w.r.t. the MINN-MSE-base, but the MINN-c-balanced shows the 
+best results, achieving comparable or better performance than the RF in 
+three out of four metric averages.
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3613 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+Table 3
+Performance comparison of diﬀerent methods addressing the issue of conﬂicting losses. Metrics average and stan-
+dard deviation over 29 leave-one-out splits. All the models were generated using the iAF1260-FVA reduced GEM.
+ISHII 
+Model 𝑅2 MAE RMSE NE 𝐿2
+MINN-c-balanced 0.950±0 .055 0.473±0 .480 0.678±0 .653 0.272±0 .280 8.75 ⋅10−5±2.95 ⋅10−4
+MINN-c-balanced FBA ﬁt 0.957±0 .061 0.489±0 .497 0.706±0 .720 0.295±0 .403 2.98 ⋅10−5±8.75 ⋅10−5
+MINN-bound 0.949±0 .050 0.548±0 .556 0.790±0 .779 0.308±0 .314 7.1 ⋅10−5±2.1 ⋅10−4
+MINN-scheduler 0.949±0 .058 0.581±0 .823 0.833±1 .146 0.299±0 .320 1.60 ⋅10−5±7.63 ⋅10−5
+MINN-scheduler-bound 0.946±0 .062 0.560±0 .551 0.806±0 .761 0.304±0 .287 7.47 ⋅10−5±3.78 ⋅10−4
+MINN-divided loss 0.951±0 .050 0.489±0 .471 0.703±0 .648 0.281±0 .289 0.22±0 .29
+Moreover, the MINN-c-balanced shows a reduction in standard devi-
+ation. This suggests that the inclusion of biological constraints stabilizes 
+the learning process, reduces overﬁtting, and leads to more robust and 
+consistent predictions across the 29 leave-one-out splits. In addition, 
+MINN not only learn ﬂux values from data but also derive the entire 
+ﬂux distributions, as done by FBA simulations. These results suggest 
+that MINN is a promising hybrid approach for ﬂux prediction, showing 
+consistent improvements in both average performance and standard de-
+viation across all baselines, including pure mechanistic and ML methods. 
+However, the statistical signiﬁcance tests detailed in the Supplementary 
+Material (Section 3.2) indicate that the diﬀerence between MINN-c-
+balanced and Random Forest is not statistically signiﬁcant. This, to-
+gether with the fact that our analysis was limited to a single microorgan-
+ism, highlights the need for further investigations to better understand 
+the eﬀectiveness of hybrid approaches in the context of ﬂux prediction. 
+The challenge of predicting multiple ﬂuxes, with signiﬁcant variability 
+in their values, was eﬀectively addressed by substituting the MSE with 
+an NE for the 𝐿1 and adding the 𝑐constant that handled the emerg-
+ing imbalances. The MINN’s ﬂexibility also makes it a powerful tool for 
+integrating multi-omics and potentially other kinds of data with GEMs, 
+enabling its application in diverse systems biology contexts.
+3.2. MINN to predict a qualitative ﬂux distribution
+Regarding the second group of results, we aim to compare diﬀerent 
+methods to mitigate the issue of the conﬂicting losses already introduced 
+in Section 2. We address this problem from two diﬀerent points of view. 
+First, we act on the mechanistic aspects of the MINN: the reference data. 
+In contrast, the second perspective addresses the optimization process of 
+the MINN, where we apply various hybrid optimization strategies dis-
+cussed in Section 2.3.2 As a baseline, we employ our best method in 
+terms of prediction performance, hence MINN-c-balanced. 
+In the ﬁrst case, we compare it with a conﬁguration of the same MINN-
+c-balanced which uses diﬀerent ﬂuxes data, recalculated to be in the 
+solution space of FBA. We described this process in Section 2.1. As 
+shown in the ﬁrst section of Table 3, this approach, named MINN-c-
+balanced FBA ﬁt, does not reduce the quality of the ﬂuxes prediction, 
+represented by the four metrics, but it improves the 𝐿2 by reducing its 
+value by a third.
+The results show that MINN maintains strong predictive performance 
+even when the ﬂux data are not in the FBA solution space. This sug-
+gests that its data-driven component can compensate for deviations from 
+mechanistic constraints. However, using ﬂux data that aligns with the 
+FBA solution space improves the quality of the predicted ﬂux distribu-
+tion. This correction makes the optimization process easier by alleviat-
+ing the issue of conﬂicting losses.
+Regarding the hybrid optimization strategies, we compare the MINN-
+c-balanced with three other methods previously introduced in Sec-
+tion 2.3.2: MINN-bound, which penalizes violations of the mechanistic 
+loss that exceed a threshold; MINN-scheduler, which gradually shifts the 
+focus from mechanistic to data-driven loss during training; and MINN-
+scheduler-bound, which combines both approaches. From the second sec-
+tion of the table, we observe that the MINN-c-balanced model achieves 
+Fig. 3. Comparison of diﬀerent methods based on data-driven task performance 
+(RMSE) and mechanistic ﬁt (𝐿2 loss), highlighting the trade-oﬀ between the two 
+objectives.
+the lowest RMSE, indicating the best performance on the data-driven 
+task. However, this comes at the cost of a higher 𝐿2, suggesting a trade-
+oﬀ where improved performance is achieved at the expense of mechanis-
+tic ﬁdelity. On the other hand, the models incorporating a mechanistic 
+bound, such as MINN-bound and MINN-scheduler-bound, show a small 
+increase in RMSE and a modest reduction in 𝐿2, suggesting a limited 
+eﬀect on improving the trade-oﬀ between mechanistic accuracy and 
+data-driven performance. Interestingly, the MINN-scheduler model ﬁnds 
+a better compromise between these objectives: at the cost of a moder-
+ate RMSE worsening, it achieves the lowest 𝐿2 by a consistent margin. 
+This demonstrates the strength of dynamic scheduling in keeping the 
+solution close to the FBA feasible space, without heavily impacting data-
+driven performance. Interestingly, the balance parameter between the 
+data-driven and mechanistic losses of the last phase, optimized during 
+hyperparameter tuning, converged to values around 90–95% in favor 
+of the data-driven loss, rather than the maximum of 100%, suggesting 
+that the mechanistic component remained beneﬁcial even during the 
+data-driven–oriented phase.
+Fig. 3 provides a visual comparison of the performance of these 
+methods, focusing on the trade-oﬀs between mechanistic ﬁt and data-
+driven task performance. The MINN-scheduler model demonstrates a 
+balanced performance across both objectives, with a moderate decline 
+in data-driven accuracy but a substantial reduction in mechanistic loss, 
+positioning it much closer to the FBA feasible solution. On the other 
+hand, the models incorporating a mechanistic bound (MINN-bound and 
+MINN-scheduler-bound) show improvements in mechanistic ﬁt but at a 
+comparable cost in terms of data-driven performance.
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3614 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+Table 4
+Performance comparison between the standard pFBA and MINN-reservour + pFBA. The 
+results evaluate the eﬀectiveness of the MINN-reservoir approach to enrich the input for 
+pFBA in comparison to standard pFBA. Metrics average and standard deviation over 29 
+leave-one-out splits. The MINN-reservoir model was generated using the iAF1260-FBA 
+reduced GEM.
+ISHII 
+Model 𝑅2 MAE RMSE NE 
+pFBA 0.892±0 .127 0.496±0 .353 0.836±0 .625 0.306±0 .367
+MINN-reservoir + pFBA 0.910±0 .091 0.445±0 .261 0.740±0 .421 0.253±0 .159
+These results highlight a clear trade-oﬀ between optimizing for 
+mechanistic ﬁdelity and predictive accuracy. While the MINN-c-balanced 
+method achieves the lowest RMSE, indicating better performance on the 
+data-driven task, its high mechanistic loss shows that the model priori-
+tizes predictive accuracy over adherence to mechanistic constraints. In 
+contrast, the MINN-scheduler method eﬀectively reduces the mechanis-
+tic loss, with only a marginal increase in RMSE.
+Overall, these results emphasize the need to carefully select hybrid 
+optimization methods based on the speciﬁc priorities of the task. In cases 
+where mechanistic accuracy is crucial, dynamic scheduling methods like 
+MINN-scheduler provide a balanced solution, allowing the model to grad-
+ually adjust the emphasis between mechanistic ﬁdelity and data-driven 
+optimization.
+Additionally, as shown in the third section of Table 3, we tested a 
+conﬁguration of the MINN, called MINN-divided loss, where the loss 
+is purely data-driven (𝐿𝑀𝐼𝑁𝑁=𝐿1), to check if we could further im-
+prove the prediction performance at the cost of 𝐿2. The results show 
+that the improvement in terms of prediction performance is marginal 
+w.r.t. the substantial (four orders of magnitude) increase in the 𝐿2 value. 
+This conﬁrms that the regularization eﬀect happens exclusively in the 
+Mechanistic Layer, while the complete 𝐿𝑀𝐼𝑁𝑁is needed to obtain a 
+qualitative ﬂux distribution as output of the MINN.
+3.3. MINN-reservoir to improve pFBA predictions
+In this third group, we present results for the MINN-reservoir 
+method, which extends the use of MINN beyond applications focused 
+solely on prediction. As introduced by Faure et al. [13], the MINN-
+reservoir can be used to generate constraints for a mechanistic model in 
+a data-driven manner. In our case, we trained the MINN-reservoir to pre-
+dict three arbitrarily selected exchange ﬂuxes (R_EX_co2_e, R_EX_etoh_e 
+and R_EX_ac_e) which were then used as additional inputs for pFBA. 
+FBA relies on optimization and is generally more accurate in predicting 
+metabolic shifts caused by gene knockouts only after the microbial pop-
+ulation has undergone an adaptation period. It is therefore of interest 
+to explore whether the data-driven insights provided by the MINN-
+reservoir can help overcome this limitation in the case of the newly 
+generated knockout strains from the ISHII dataset. Our baseline consists 
+of a standard pFBA model that uses only the uptake rates of glucose 
+(R_EX_glc__D_e) and oxygen (R_EX_o2_e) as inputs. We compare it with 
+pFBA when it is provided with the same inputs plus the three extra 
+constraints generated by the MINN-reservoir. This setup reﬂects a real-
+istic use case, in which multi-omics data are available for all samples, 
+while ﬂuxomics data are only partially available. In this context, the 
+MINN-reservoir allows us to estimate missing input ﬂuxes from omics 
+measurements, avoiding the need to experimentally quantify them for 
+every sample.
+The advantage of this neural network-based approach is that, once 
+trained, it can generate additional inputs for pFBA based on initial con-
+ditions alone, enabling a more informative and automated modeling 
+pipeline. As shown in Table 4, the enhanced version (MINN-reservoir 
++ pFBA) slightly improves the performance in terms of average metrics 
+across the 47 ﬂuxes. However, the most evident beneﬁt is the reduction 
+in the standard deviation, which indicates that the model produces more 
+stable and consistent predictions across the 29 leave-one-out splits.
+4. Conclusion
+Faure et al. [13]introduced  a new hybrid architecture, which incor-
+porates a Genome-Scale Metabolic Model in a neural network structure, 
+and used it to predict E. coli growth rates in diﬀerent growth media. In 
+our work, we adapted this framework into a Metabolic-Informed Neural 
+Network, which also uses multi-omics data as input, and tested it with 
+a more challenging task: predicting metabolic ﬂuxes for diﬀerent E. coli
+single-gene KO strains grown in minimal glucose medium. The MINN 
+showed improved performance compared to traditional machine learn-
+ing, and the mechanistic component exerted a regularizing eﬀect on the 
+predictions. We then explored the eﬀect of diﬀerent components of the 
+architecture on the predictions and their accuracy. Finally, we tested 
+the ability of the MINN to reconcile data and models in a ﬂexible way, 
+even in scenarios where data-driven and mechanistic optimization show 
+a trade-oﬀ. To achieve this, we suggested diﬀerent hybrid optimization 
+strategies. 
+We chose a naive multi-omics integration approach, such as early con-
+catenation. While the predictive performances are encouraging, as dis-
+cussed in [7], mixed integration strategies are often to be preferred and 
+they could be tested to further improve the prediction power of a MINN-
+based method. Moreover, GPR rules could be leveraged to more directly 
+link omics data to metabolic ﬂuxes, for example by incorporating into 
+future versions of MINN a loss term that maximizes the correlation be-
+tween expression levels and predicted ﬂuxes [2].
+Additionally, more work is needed for assessing the interpretability 
+of the ﬂux distribution. As a ﬁrst step in this direction, in our simulation 
+we kept track of 𝐿2, as a proxy for how much the predicted metabolic 
+proﬁle complies with the theoretical assumptions of FBA. Moreover, this 
+novel framework has been tested only for E. coli, the classical “work-
+horse” of microbial physiology. We hope the promising result of these 
+works will prompt the creation of suitable datasets to apply these tech-
+niques to other microorganisms and to more diverse scenarios, in which 
+secondary metabolism plays a bigger role and the information provided 
+by the GEM is potentially even more eﬀective in complementing the 
+data-driven learning. In addition, the mechanistic component of MINN 
+holds strong potential to improve predictions in more complex systems, 
+such as eukaryotic cells or microbial communities, and the architecture 
+of MINN is designed to scale seamlessly to these settings. 
+Although this was not the most favorable scenario for FBA, the results 
+of the MINN-reservoir highlight its potential as a promising strategy to 
+enable the full integration of FBA into a machine learning framework, ef-
+fectively combining the advantages of both mechanistic and data-driven 
+approaches. 
+Finally, with this work we provide a practical guide for choosing the 
+most suitable MINN conﬁguration based on the modeling objective. 
+If the goal is only to achieve high predictive performance, the stan-
+dard MINN conﬁguration is suﬃcient. When the aim is to improve the 
+quality of the predicted ﬂux distribution, the optimization strategies pre-
+sented here can reduce the mechanistic constraints violation. Lastly, if 
+the objective is to enrich mechanistic models with additional inputs, the 
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3615 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+MINN-reservoir oﬀers a viable solution to generate constraints in a data-
+driven way, while keeping the structure and interpretability of classical 
+FBA.
+CRediT authorship contribution statement
+Gabriele Tazza: Writing – review & editing, Writing – original draft, 
+Visualization, Software, Methodology, Formal analysis, Conceptualiza-
+tion. Francesco Moro: Writing – review & editing, Writing – origi-
+nal draft, Software, Methodology, Formal analysis, Conceptualization. 
+Dario Ruggeri: Writing – review & editing, Writing – original draft, 
+Visualization, Software, Methodology, Formal analysis. Bas Teusink: 
+Writing – review & editing, Supervision, Funding acquisition, Concep-
+tualization. László Vidács: Writing – review & editing, Supervision, 
+Funding acquisition, Conceptualization.
+Code availability
+The code used for the analyses presented in this work is available at 
+https://github.com/gabrieletaz/MINN.
+Funding
+This work was supported by the E-MUSE project funded by the Euro-
+pean Union’s Horizon 2020 Research and Innovation Programme [Marie 
+Skłodowska-Curie Grant Agreement number 956126].
+Declaration of competing interest
+The authors declare that they have no known competing ﬁnancial in-
+terests or personal relationships that could inﬂuence the work reported 
+in this paper. Any opinions, ﬁndings, conclusions or recommendations 
+expressed in this material are those of the authors and do not necessarily 
+reﬂect the views of the funding bodies. Therefore, the authors declare 
+that they have no conﬂicts of interest.
+Acknowledgements
+We thank the members of the Systems Biology Lab at VU Amsterdam 
+for insightful discussions during the early stages of conceptualization, 
+and in particular Pranas Grigaitis for sharing his expertise on omics in-
+tegration in constraint-based modeling. We also thank all members of 
+the E-MUSE ITN network for their valuable feedback during the Consor-
+tium Meetings.
+Appendix A. Supplementary material
+Supplementary material related to this article can be found online at 
+https://doi.org/10.1016/j.csbj.2025.08.004. 
+References
+[1] Adossa N, Khan S, Rytkönen KT, Elo LL. Computational strategies for single-cell 
+multi-omics integration. Comput Struct Biotechnol J 2021;19:2588–96. https://doi.
+org/10.1016/j.csbj.2021.04.060.
+[2] Alghamdi N, Chang W, Dang P, Lu X, Wan C, Gampala S, et al. A graph neural 
+network model to estimate cell-wise metabolic ﬂux using single-cell RNA-seq data. 
+Genome Res 2021;31:1867–84. https://doi.org/10.1101/gr.271205.120.
+[3] Antonakoudis A, Barbosa R, Kotidis P, Kontoravdi C. The era of big data: 
+genome-scale modelling meets machine learning. Comput Struct Biotechnol J 
+2020;18:3287–300. https://doi.org/10.1016/j.csbj.2020.10.011.
+[4] Antoniewicz MR. A guide to metabolic ﬂux analysis in metabolic engineering: meth-
+ods, tools and applications. Metab Eng 2021;63:2–12. https://doi.org/10.1016/j.
+ymben.2020.11.002.
+[5] Becker SA, Palsson BO. Context-speciﬁc metabolic networks are consistent with ex-
+periments. PLoS Comput Biol 2008;4:e1000082. https://doi.org/10.1371/journal.
+pcbi.1000082. Publisher: Public Library of Science.
+[6] van den Bogaard S, Saa PA, Alter TB. Sensitivities in protein allocation models reveal 
+distribution of metabolic capacity and ﬂux control. Bioinformatics 2024;40:btae691. 
+https://doi.org/10.1093/bioinformatics/btae691.
+[7] Briscik M, Tazza G, Vidács L, Dillies MA, Déjean S. Supervised multiple kernel 
+learning approaches for multi-omics data integration. BioData Min 2024;17(1):1–25. 
+https://doi.org/10.1186/s13040-024-00406-9. Publisher: BioMed Central.
+[8] Bruggeman FJ, Planqué R, Molenaar D, Teusink B. Searching for principles of mi-
+crobial physiology. FEMS Microbiol Rev 2020;44:821–44. https://doi.org/10.1093/
+femsre/fuaa034.
+[9] Chen Y, Gustafsson J, Tafur Rangel A, Anton M, Domenzain I, Kittikunapong C, et 
+al. Reconstruction, simulation and analysis of enzyme-constrained metabolic models 
+using GECKO Toolbox 3.0. Nat Protoc 2024;19:629–67. https://doi.org/10.1038/
+s41596-023-00931-7. Publisher: Nature Publishing Group.
+[10] Culley C, Vijayakumar S, Zampieri G, Angione C. A mechanism-aware and multiomic 
+machine-learning pipeline characterizes yeast cell growth. Proc Natl Acad Sci USA 
+2020;117:18869–79. https://doi.org/10.1073/pnas.2002959117.
+[11] Cuomo S, Di Cola VS, Giampaolo F, Rozza G, Raissi M, Piccialli F. Scientiﬁc machine 
+learning through physics–informed neural networks: where we are and what’s next. 
+J Sci Comput 2022;92. https://doi.org/10.1007/s10915-022-01939-z.
+[12] Dai D, Horvath N, Varner J. Dynamic sequence speciﬁc constraint-based model-
+ing of cell-free protein synthesis. Processes 2018;6:132. https://doi.org/10.3390/
+pr6080132.
+[13] Faure L, Mollet B, Liebermeister W, Faulon JL. A neural-mechanistic hybrid approach 
+improving the predictive power of genome-scale metabolic models. Nat Commun 
+2023. https://doi.org/10.1038/s41467-023-40380-0.
+[14] Feist AM, Henry CS, Reed JL, Krummenacker M, Joyce AR, Karp PD, et al. A genome-
+scale metabolic reconstruction for Escherichia coli K-12 MG1655 that accounts for 
+1260 ORFs and thermodynamic information. Mol Syst Biol 2007:121. https://doi.
+org/10.1038/msb4100155.
+[15] Flahaut NAL, Wiersma A, van de Bunt B, Martens DE, Schaap PJ, Sijtsma L, 
+et al. Genome-scale metabolic model for Lactococcus lactis MG1363 and 
+its application to the analysis of ﬂavor formation. Appl Microbiol Biotech-
+nol 2013;97(19):8729–39. https://doi.org/10.1007/s00253-013-5140-2. Company: 
+Springer Distributor: Springer Institution: Springer Label: Springer Publisher: 
+Springer Berlin Heidelberg.
+[16] Gonçalves DM, Henriques R, Costa RS. Predicting metabolic ﬂuxes from omics 
+data via machine learning: moving from knowledge-driven towards data-driven ap-
+proaches. Comput Struct Biotechnol J 2023:4960–73. https://doi.org/10.1016/j.
+csbj.2023.10.002.
+[17] Henriques D, Minebois R, Mendoza SN, Macías LG, Pérez-Torrado R, Barrio E, et al. A 
+multiphase multiobjective dynamic genome-scale model shows diﬀerent redox bal-
+ancing among yeast species of the saccharomyces genus in fermentation. mSystems 
+2021;6:e0026021. https://doi.org/10.1128/mSystems.00260-21. Publisher: Ameri-
+can Society for Microbiology.
+[18] Hu H, Dey D, Hebert M, Bagnell JA. Learning anytime predictions in neural networks 
+via adaptive loss balancing. arXiv:1708.06832, 2018.
+[19] Ishii N, Nakahigashi K, Baba T, Robert M, Soga T, Kanai A, et al. Multiple high-
+throughput analyses monitor the response of e. coli to perturbations. Science 
+2007;316:593–7. https://doi.org/10.1126/science.1132067.
+[20] Kim M, Rai N, Zorraquino V, Tagkopoulos I. Multi-omics integration accurately 
+predicts cellular state in unexplored conditions for escherichia coli. Nat Commun 
+2016;7. https://doi.org/10.1038/ncomms13090.
+[21] Kim Y, Kim GB, Lee SY. Machine learning applications in genome-scale metabolic 
+modeling. Curr Opin Syst Biol 2021;25:42–9. https://doi.org/10.1016/j.coisb.2021.
+03.001.
+[22] King ZA, Lu J, Dräger A, Miller P, Federowicz S, Lerman JA, et al. BiGG models: 
+a platform for integrating, standardizing and sharing genome-scale models. Nucleic 
+Acids Res 2016;44:D515–22. https://doi.org/10.1093/nar/gkv1049.
+[23] Lewis NE, Hixson KK, Conrad TM, Lerman JA, Charusanti P, Polpitiya AD, et al. Omic 
+data from evolved E. coli are consistent with computed optimal growth from genome-
+scale models. Mol Syst Biol 2010;6:390. https://doi.org/10.1038/msb.2010.47.
+[24] Liebermeister W, Noor E, Flamholz A, Davidi D, Bernhardt J, Milo R. Vi-
+sual account of protein investment in cellular functions. Proc Natl Acad 
+Sci USA 2014;111:8488–93. https://doi.org/10.1073/pnas.1314810111. Publisher: 
+Proceedings of the National Academy of Sciences.
+[25] Lu H, Cao W, Liu X, Sui Y, Ouyang L, Xia J, et al. Multi-omics integrative analysis with 
+genome-scale metabolic model simulation reveals global cellular adaptation of As-
+pergillus niger under industrial enzyme production condition. Sci Rep 2018;8:14404. 
+https://doi.org/10.1038/s41598-018-32341-1. Publisher: Nature Publishing Group.
+[26] Machado D, Herrgard M. Systematic evaluation of methods for integration of tran-
+scriptomic data into constraint-based models of metabolism. PLoS Comput Biol 
+2014;10:e1003580. https://doi.org/10.1371/journal.pcbi.1003580.
+[27] Magazzù G, Zampieri G, Angione C. Multimodal regularized linear models with 
+ﬂux balance analysis for mechanistic integration of omics data. Bioinformatics 
+2021;37:3546–52. https://doi.org/10.1093/bioinformatics/btab324.
+[28] Monk J, Nogales J, Palsson BO. Optimizing genome-scale network reconstructions. 
+Nat Biotechnol 2014;32:447–52. https://doi.org/10.1038/nbt.2870. publisher: Na-
+ture Publishing Group.
+[29] Monk JM, Lloyd CJ, Brunk E, Mih N, Sastry A, King Z, et al. iML1515, a knowl-
+edgebase that computes Escherichia coli traits. Nat Biotechnol 2017;35(10):904–8. 
+https://doi.org/10.1038/nbt.3956. Publisher: Nature Publishing Group.
+[30] Morrissey J, Barberi G, Strain B, Facco P, Kontoravdi C. Next-fba: a hybrid stoichio-
+metric/data-driven approach to improve intracellular ﬂux predictions. Metab Eng 
+2025. https://doi.org/10.1016/j.ymben.2025.03.010.
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3616 
+G. Tazza, F. Moro, D. Ruggeri et al. 
+[31] Olivier B, Gottstein W, Molenaar D, Teusink B. CBMPy release 0.8.4. https://doi.
+org/10.5281/zenodo.7679232, 2023.
+[32] Orth JD, Fleming RMT, Palsson B. Reconstruction and use of microbial metabolic 
+networks: the core escherichia coli metabolic model as an educational guide. EcoSal 
+Plus 2010;4. https://doi.org/10.1128/ecosalplus.10.2.1.
+[33] Orth JD, Thiele I, Palsson B. What is ﬂux balance analysis? Nat Biotechnol 
+2010;28(3):245–8. https://doi.org/10.1038/nbt.1614. Publisher: Nature Publishing 
+Group.
+[34] O’Brien E, Monk J, Palsson BO. Using genome-scale models to predict biological 
+capabilities. Cell 2015;161:971–87. https://doi.org/10.1016/j.cell.2015.05.019.
+[35] Palsson BO. Systems biology: constraint-based reconstruction and analysis; 2015.
+[36] Sahu A, Blätke MA, Szymański JJ, Töpfer N. Advances in ﬂux balance analysis by in-
+tegrating machine learning and mechanism-based models. Comput Struct Biotechnol 
+J 2021;19:4626–40. https://doi.org/10.1016/j.csbj.2021.08.004.
+[37] Somerville V, Grigaitis P, Battjes J, Moro F, Teusink B. Use and limitations of genome-
+scale metabolic models in food microbiology. Curr Opin Food Sci 2022;43:225–31. 
+https://doi.org/10.1016/j.cofs.2021.12.010.
+[38] Tazza G, Moro F, Teusink B, Vidács L. Metabolic-informed neural network for multi-
+omics data integration. In: Van Impe J, Polańska M, editors. 13th international 
+conference on simulation and modelling in the food and bio-industry (FOODSIM 
+2024), Eurosis-ETI; 2024. p. 193–7.
+[39] Thiele I, Palsson B. A protocol for generating a high-quality genome-scale metabolic 
+reconstruction. Nat Protoc 2010;5:93–121. https://doi.org/10.1038/nprot.2009.
+203. publisher: Nature Publishing Group.
+[40] Yizhak K, Benyamini T, Liebermeister W, Ruppin E, Shlomi T. Integrating quantita-
+tive proteomics and metabolomics with a genome-scale metabolic network model. 
+Bioinformatics 2010;26:i255–60. https://doi.org/10.1093/bioinformatics/btq183.
+[41] Zampieri G, Campanaro S, Angione C, Treu L. Metatranscriptomics-guided genome-
+scale metabolic modeling of microbial communities. Cell Rep Methods 2023;3. 
+https://doi.org/10.1016/j.crmeth.2022.100383. Publisher: Elsevier.
+[42] Zampieri G, Vijayakumar S, Yaneske E, Angione C. Machine and deep learning meet 
+genome-scale metabolic modeling. PLoS Comput Biol 2019;15. https://doi.org/10.
+1371/journal.pcbi.1007084.
+Computational and Structural Biotechnology Journal 27 (2025) 3609–3617 
+3617 
