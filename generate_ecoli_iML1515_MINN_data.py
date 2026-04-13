@@ -6,6 +6,7 @@ from datetime import datetime
 import warnings
 import numpy as np
 from cobra.io import read_sbml_model
+from cobra.flux_analysis import pfba
 
 warnings.filterwarnings("ignore", message="Solver status is 'infeasible'")
 
@@ -26,6 +27,7 @@ def generate_training_sample(
     default_rate,
     carbon_exchange_rate,
     log_uniform,
+    flux_solver_mode,
 ):
     data = {}
     try:
@@ -58,8 +60,15 @@ def generate_training_sample(
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
 
-        solution = model.optimize()
-        if solution.status != "optimal":
+        if flux_solver_mode == "pfba":
+            solution = pfba(model)
+        elif flux_solver_mode == "fba":
+            solution = model.optimize()
+        else:
+            raise ValueError("flux_solver_mode must be 'pfba' or 'fba'")
+
+        solution_status = getattr(solution, "status", "optimal")
+        if solution_status != "optimal":
             return None
 
         for rxn_id in outputs:
@@ -80,7 +89,8 @@ if __name__ == "__main__":
     carbon_exhange_rate = 10
     batch_size = 500
     log_uniform_sampling = False
-    objective_variant = "core"  # "core" or "wt"
+    objective_variant = "wt"  # "core" or "wt"
+    flux_solver_mode = "pfba"  # "pfba" or "fba"
 
     # Load the E. coli iML1515 metabolic model.
     model_dir = "./models"
@@ -92,9 +102,12 @@ if __name__ == "__main__":
     }
     if objective_variant not in objective_map:
         raise ValueError("objective_variant must be 'core' or 'wt'")
+    if flux_solver_mode not in ["pfba", "fba"]:
+        raise ValueError("flux_solver_mode must be 'pfba' or 'fba'")
     model.objective = objective_map[objective_variant]
 
     print(f"Objective variant: {objective_variant}")
+    print(f"Flux solver mode: {flux_solver_mode}")
     print("Objective reaction:", model.objective)
     print(f"Sampling mode: {'log-uniform' if log_uniform_sampling else 'uniform'}")
 
@@ -131,7 +144,7 @@ if __name__ == "__main__":
         "EX_cbl1_e", # required for wt
     ]
 
-    print(f"Generating {n_samples} FBA training samples...\n")
+    print(f"Generating {n_samples} {flux_solver_mode.upper()} training samples...\n")
     outputs = [rxn.id for rxn in model.reactions]
     input_cols = variable_carbon_exchanges + base_exchanges
     output_cols = [f"{rxn}_flux" for rxn in outputs]
@@ -157,6 +170,7 @@ if __name__ == "__main__":
                 default_rate=default_rate,
                 carbon_exchange_rate=carbon_exhange_rate,
                 log_uniform=log_uniform_sampling,
+                flux_solver_mode=flux_solver_mode,
             )
             if sample:
                 row = [sample.get(col, 0.0) for col in ordered_columns]
