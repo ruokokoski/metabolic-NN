@@ -28,6 +28,7 @@ def generate_training_sample(
     carbon_exchange_rate,
     log_uniform,
     flux_solver_mode,
+    pfba_fraction_of_optimum,
 ):
     data = {}
     try:
@@ -49,7 +50,7 @@ def generate_training_sample(
         # EX_o2_e and EX_co2_e are sampled.
         for ex in base_exchanges:
             if ex == "EX_o2_e":
-                rate = random_rate(min_val=0.1, max_val=default_rate, log_uniform=log_uniform)
+                rate = random_rate(min_val=1.0, max_val=default_rate, log_uniform=log_uniform)
                 model.reactions.get_by_id(ex).lower_bound = -rate
                 data[ex] = rate
             elif ex == "EX_co2_e":
@@ -61,7 +62,7 @@ def generate_training_sample(
                 data[ex] = default_rate
 
         if flux_solver_mode == "pfba":
-            solution = pfba(model)
+            solution = pfba(model, fraction_of_optimum=pfba_fraction_of_optimum)
         elif flux_solver_mode == "fba":
             solution = model.optimize()
         else:
@@ -82,15 +83,16 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(42)
+    np.random.seed(42) # 9 test
 
-    n_samples = 10
+    n_samples = 500000
     default_rate = 50
     carbon_exhange_rate = 10
     batch_size = 500
     log_uniform_sampling = False
     objective_variant = "wt"  # "core" or "wt"
     flux_solver_mode = "pfba"  # "pfba" or "fba"
+    pfba_fraction_of_optimum = 0.999
 
     # Load the E. coli iML1515 metabolic model.
     model_dir = "./models"
@@ -104,10 +106,14 @@ if __name__ == "__main__":
         raise ValueError("objective_variant must be 'core' or 'wt'")
     if flux_solver_mode not in ["pfba", "fba"]:
         raise ValueError("flux_solver_mode must be 'pfba' or 'fba'")
+    if not (0 < pfba_fraction_of_optimum <= 1):
+        raise ValueError("pfba_fraction_of_optimum must be in (0, 1]")
     model.objective = objective_map[objective_variant]
 
     print(f"Objective variant: {objective_variant}")
     print(f"Flux solver mode: {flux_solver_mode}")
+    if flux_solver_mode == "pfba":
+        print(f"pFBA fraction_of_optimum: {pfba_fraction_of_optimum}")
     print("Objective reaction:", model.objective)
     print(f"Sampling mode: {'log-uniform' if log_uniform_sampling else 'uniform'}")
 
@@ -171,6 +177,7 @@ if __name__ == "__main__":
                 carbon_exchange_rate=carbon_exhange_rate,
                 log_uniform=log_uniform_sampling,
                 flux_solver_mode=flux_solver_mode,
+                pfba_fraction_of_optimum=pfba_fraction_of_optimum,
             )
             if sample:
                 row = [sample.get(col, 0.0) for col in ordered_columns]
