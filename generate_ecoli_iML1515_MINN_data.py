@@ -83,9 +83,9 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(42) # 9 test
+    np.random.seed(43) # 9 test
 
-    n_samples = 500000
+    n_samples = 250000
     default_rate = 50
     carbon_exhange_rate = 10
     batch_size = 500
