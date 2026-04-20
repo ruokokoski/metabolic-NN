@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class AttentionBlock(nn.Module):
     """Custom multi-head attention block for metabolic modeling"""
-    def __init__(self, d_model=128, n_heads=8, dropout=0.2):
+    def __init__(self, d_model=128, n_heads=8, dropout=0.05):
         super().__init__()
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
@@ -37,11 +37,9 @@ class AttentionBlock(nn.Module):
         c_out = c_att + c
 
         return x_out, c_out
-        
-# pre-norm
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, d_model, d_ff, dropout=0.2):
+    def __init__(self, d_model, d_ff, dropout=0.05):
         super().__init__()
 
         self.d_model = d_model + 1
@@ -66,7 +64,7 @@ class FeedForwardBlock(nn.Module):
         
 class FluxTransformerLayer(nn.Module):
     """Single transformer block without embedding layer"""
-    def __init__(self, d_model=128, n_heads=8, d_ff=1024, dropout=0.2):
+    def __init__(self, d_model=128, n_heads=8, d_ff=1024, dropout=0.05):
         super().__init__()
         self.d_model = d_model
         
@@ -94,43 +92,61 @@ class FluxTransformerLayer(nn.Module):
 class FluxTransformer(nn.Module):
     def __init__(
         self,
-        vocab_size=2742,
+        vocab_size: int,
+        input_token_indices,          # list[int] or 1D tensor[int64]
         d_model=128,
         n_heads=8,
         n_layers=3,
         d_ff=1024,
-        dropout=0.2
+        dropout=0.05,
     ):
         super().__init__()
-        self.vocab_size = vocab_size
+        if vocab_size is None:
+            raise ValueError("vocab_size must be provided explicitly.")
+        self.vocab_size = int(vocab_size)
         self.d_model = d_model
-        
-        self.input_embedding = nn.Embedding(vocab_size, d_model)
-        
+
+        idx = torch.as_tensor(input_token_indices, dtype=torch.long)
+        if idx.ndim != 1:
+            raise ValueError("input_token_indices must be 1D.")
+        if (idx < 0).any() or (idx >= self.vocab_size).any():
+            raise ValueError("input_token_indices contains out-of-range indices.")
+        # Register as buffer so it moves with .to(device)
+        self.register_buffer("input_token_indices", idx, persistent=True)
+
+        self.input_embedding = nn.Embedding(self.vocab_size, d_model)
+
         self.layers = nn.ModuleList([
-            FluxTransformerLayer(
-                d_model=d_model,
-                n_heads=n_heads,
-                d_ff=d_ff,
-                dropout=dropout
-            )
+            FluxTransformerLayer(d_model=d_model, n_heads=n_heads, d_ff=d_ff, dropout=dropout)
             for _ in range(n_layers)
         ])
 
-    def forward(self, c, return_embedding=False):
+    def forward(self, c, output_subset=None, return_embedding=False):
+        """
+        c: (batch, vocab_size, 1)
+        output_subset: 1D tensor of token indices to train on (typically excludes injected tokens)
+        """
         batch_size = c.size(0)
-        
-        # Create token indices once
-        y = torch.arange(self.vocab_size, device=c.device)
-        y = y.unsqueeze(0).expand(batch_size, -1)  # (batch, seq)
-        
-        # Embed tokens once
-        x = self.input_embedding(y)  # (batch, seq, d_model)
-        
-        for layer in self.layers:
-            x, c = layer(x, c)
+
+        always = self.input_token_indices  # (n_injected,)
+
+        if output_subset is None:
+            selected_indices = torch.arange(self.vocab_size, device=c.device)
+        else:
+            output_subset = output_subset.to(c.device).long()
+            selected_indices = torch.unique(torch.cat([always, output_subset]), sorted=True)
+
+        y = selected_indices.unsqueeze(0).expand(batch_size, -1)      # (B, S)
+        x = self.input_embedding(y)                                    # (B, S, d_model)
+
+        c_subset = c[:, selected_indices, :]                           # (B, S, 1)
+        c_subset_all_layers = torch.zeros(batch_size, c_subset.size(1), len(self.layers), device=c.device)
+
+        for e, layer in enumerate(self.layers):
+            x, c_subset = layer(x, c_subset)
+            c_subset_all_layers[:, :, e] = c_subset.squeeze(-1)
 
         if return_embedding:
-            return x  # Return embeddings (batch, seq, d_model)
-        
-        return c
+            return x, selected_indices
+
+        return c_subset_all_layers, selected_indices
