@@ -55,9 +55,17 @@ This document captures the main points an agent should follow when working on th
 - HPO:
   - `drop_rate`, `learning_rate`, `weight_decay`
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
+  - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
+  - current default trials: `minn_cv_max_trials=70`
+  - objective is stability-aware:
+    - `mean(inner_fold_val_loss)`
+    - `+ MINN_INNER_CV_STD_PENALTY * std(inner_fold_val_loss)`
 - Loss:
   - flux loss on transformer target channels
   - plus auxiliary front-MLP constraint loss (weighted)
+- Training stabilization:
+  - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
+  - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
 - AMP:
   - use `torch.amp.autocast(...)`
   - use `torch.amp.GradScaler(...)`
@@ -66,6 +74,7 @@ This document captures the main points an agent should follow when working on th
 - Config keys:
   - `minn_cv_early_stopping_patience`
   - `minn_cv_early_stopping_min_delta`
+- Current default: `minn_cv_early_stopping_patience=20`
 - Behavior:
   - evaluate validation loss each epoch
   - keep best front-MLP state
@@ -75,15 +84,21 @@ This document captures the main points an agent should follow when working on th
 ## 7) Outputs to preserve
 - OOF transformer-target predictions (`oof_pred`) and truths (`oof_true`).
 - OOF front-MLP constraints (`oof_pred_constraints`) for MINN+pFBA cells.
-- Per-LOO metrics (Q2/MAE/RMSE/NE).
+- Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
+- Epoch diagnostics:
+  - per-LOO `epochs_trained`
+  - summary of mean/min/max trained epochs
 
 ## 8) pFBA evaluation notes
 - Baseline pFBA and MINN+pFBA should be separate sections.
 - Keep experiment order aligned exactly with OOF rows when merging constraints.
 - Ensure token indices and iML1515 reaction order are unchanged.
 - Verify feasibility counts and print failed samples for debugging.
+- Aux-weight selection mode:
+  - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
+  - fallback mode `"oof"` selects by pooled OOF metrics.
 
 ## 9) Common failure modes
 - CUDA OOM in diagnostics/training:
