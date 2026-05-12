@@ -23,7 +23,7 @@ This document captures the main points an agent should follow when working on th
 - MINN-style data directory: `./MINN_data`.
 - Inputs include:
   - transcriptomics
-- proteomics
+  - proteomics
   - measured flux inputs (`R_EX_glc__D_e_rev`, `R_EX_o2_e_rev`)
 - Predicted 5 source channels:
   - `R_EX_glc__D_e_rev`
@@ -100,6 +100,22 @@ This document captures the main points an agent should follow when working on th
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
   - fallback mode `"oof"` selects by pooled OOF metrics.
 
+## 8.1) TabPFN ML-to-flux benchmark
+- The TabPFN section at the end of `ecoli_iML1515_MINN_model_testing.ipynb` should mirror the Goncalves/ML2Flux benchmark used in Tazza et al. Table 2.
+- Use `MINN_data/fluxomics.csv` for the original signed Ishii/Goncalves flux targets, not the split/FBA-fit MINN fluxomics file.
+- Inputs:
+  - transcriptomics
+  - proteomics
+  - measured uptake fluxes (`R_EX_glc_e_`, `R_EX_o2_e_`)
+- Targets:
+  - all fluxomics columns except the two fixed uptake fluxes
+  - expected shape: 45 target fluxes over 29 samples
+- Protocol:
+  - Leave-One-Out CV using `KFold(n_splits=len(X), shuffle=True, random_state=12345)`
+  - fit `StandardScaler` for `X` and `y` inside each fold only
+  - fit one `TabPFNRegressor` per target flux because TabPFN regression is single-output
+  - report R2, MAE, RMSE, and NE as mean +/- std across LOO samples, Table 2 style
+
 ## 9) Common failure modes
 - CUDA OOM in diagnostics/training:
   - lower batch size
@@ -107,6 +123,7 @@ This document captures the main points an agent should follow when working on th
 - Mapping mismatch between source columns and output tokens.
 - Wrong sign when converting predicted magnitudes to pFBA bounds.
 - Misaligned experiment ordering when attaching OOF predictions.
+- Missing TabPFN benchmark dependencies in the active Python environment (`pandas`, `scikit-learn`/`sklearn`, `tabpfn`).
 
 ## 10) Recommended sanity checks
 - Assert all required token names exist in `outputs`.
@@ -114,3 +131,4 @@ This document captures the main points an agent should follow when working on th
 - Print prediction/target magnitude summaries for the 5 constraints.
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
+- For the TabPFN benchmark, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
