@@ -7,12 +7,13 @@ This document captures the main points an agent should follow when working on th
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.
-- Front MLP predicts 5 constraint channels.
+- Front MLP predicts the same 5-channel reservoir context used by MINN.
 - Reconstruct full transformer input as:
   - predicted 5 channels
   - fixed `base_exchanges`
   - zeros for other channels
 - Run transformer forward with full vocab output.
+- For FluxTransformer->pFBA, keep glucose/oxygen as measured inputs and add only the predicted CO2/ethanol/acetate constraints.
 
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_MINN_data.py`.
@@ -25,9 +26,13 @@ This document captures the main points an agent should follow when working on th
   - transcriptomics
   - proteomics
   - measured flux inputs (`R_EX_glc__D_e_rev`, `R_EX_o2_e_rev`)
-- Predicted 5 source channels:
+- Front-MLP 5 reservoir context source channels:
   - `R_EX_glc__D_e_rev`
   - `R_EX_o2_e_rev`
+  - `R_EX_co2_e_fwd`
+  - `R_EX_etoh_e`
+  - `R_EX_ac_e`
+- pFBA extra predicted constraints:
   - `R_EX_co2_e_fwd`
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
@@ -35,12 +40,15 @@ This document captures the main points an agent should follow when working on th
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
 - `*_rev` source columns are positive magnitudes in the split data but represent uptake direction.
-- During training, auxiliary constraint targets are recovered from signed flux targets using `target_signs` and clamped to nonnegative magnitudes.
+- During training, auxiliary constraint targets for the 5 reservoir context channels are recovered from signed flux targets using `target_signs` and clamped to nonnegative magnitudes.
+- During FluxTransformer->pFBA evaluation, do not use front-MLP predictions for glucose/oxygen; use the measured `R_EX_glc__D_e_rev` and `R_EX_o2_e_rev` columns.
 - For pFBA constraints in COBRA, apply correct bound direction/sign (especially for uptake-style exchanges).
 
 ## 3.1) Transformer source file
 - `FluxTransformer` class is defined in: `flux_transformer.py`.
 - When validating forward behavior or input/output shape assumptions, check this file first.
+- For FluxTransformer-based MINN experiments in this repo, `iML1515` is the correct model/GEM context. Do not switch the FluxTransformer pFBA path to the paper's iAF1260-FBA reduced GEM just because Table 4 used it.
+- FluxTransformer uses the unsplit, unpruned iML1515 reaction/token vocabulary. Do not split reversible reactions or prune reactions when mapping FluxTransformer inputs, outputs, or pFBA reactions.
 
 ## 4) Model architecture
 - Wrapper: frozen transformer + trainable front MLP.
@@ -56,7 +64,8 @@ This document captures the main points an agent should follow when working on th
   - `drop_rate`, `learning_rate`, `weight_decay`
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
-  - current default trials: `minn_cv_max_trials=70`
+  - current default trials: `minn_cv_max_trials=50`
+  - best hyperparameters must be printed immediately after HPO trials complete
   - objective is stability-aware:
     - `mean(inner_fold_val_loss)`
     - `+ MINN_INNER_CV_STD_PENALTY * std(inner_fold_val_loss)`
@@ -83,7 +92,7 @@ This document captures the main points an agent should follow when working on th
 
 ## 7) Outputs to preserve
 - OOF transformer-target predictions (`oof_pred`) and truths (`oof_true`).
-- OOF front-MLP constraints (`oof_pred_constraints`) for MINN+pFBA cells.
+- OOF front-MLP 5-channel reservoir context (`oof_pred_constraints`) for diagnostics and FluxTransformer+pFBA cells.
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
@@ -92,9 +101,14 @@ This document captures the main points an agent should follow when working on th
   - summary of mean/min/max trained epochs
 
 ## 8) pFBA evaluation notes
-- Baseline pFBA and MINN+pFBA should be separate sections.
+- Baseline pFBA and FluxTransformer+pFBA should be separate sections.
 - Keep experiment order aligned exactly with OOF rows when merging constraints.
 - Ensure token indices and iML1515 reaction order are unchanged.
+- Use `models/iML1515.xml` for FluxTransformer->pFBA evaluation in the MINN notebook.
+- Set the iML1515 pFBA objective to `BIOMASS_Ec_iML1515_WT_75p37M`, matching `generate_ecoli_iML1515_MINN_data.py`.
+- Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
+- FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower bounds.
+- FluxTransformer->pFBA should extract predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, and `R_EX_ac_e` from `oof_pred_constraints` and apply them as secretion caps (`lower_bound=0`, `upper_bound=prediction`) on `EX_co2_e`, `EX_etoh_e`, and `EX_ac_e`.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
@@ -131,4 +145,5 @@ This document captures the main points an agent should follow when working on th
 - Print prediction/target magnitude summaries for the 5 constraints.
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
+- Confirm FluxTransformer->pFBA `pred_vin_df` contains only the 3 predicted extra constraints, not predicted glucose/oxygen.
 - For the TabPFN benchmark, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
