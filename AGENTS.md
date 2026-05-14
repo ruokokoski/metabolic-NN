@@ -65,6 +65,7 @@ This document captures the main points an agent should follow when working on th
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
   - current default trials: `minn_cv_max_trials=50`
+  - current aux-weight grid: `[0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 0.8, 1.0]`
   - best hyperparameters must be printed immediately after HPO trials complete
   - objective is stability-aware:
     - `mean(inner_fold_val_loss)`
@@ -105,13 +106,15 @@ This document captures the main points an agent should follow when working on th
 - Keep experiment order aligned exactly with OOF rows when merging constraints.
 - Ensure token indices and iML1515 reaction order are unchanged.
 - Use `models/iML1515.xml` for FluxTransformer->pFBA evaluation in the MINN notebook.
-- Set the iML1515 pFBA objective to `BIOMASS_Ec_iML1515_WT_75p37M`, matching `generate_ecoli_iML1515_MINN_data.py`.
+- The iML1515 SBML default pFBA objective is `BIOMASS_Ec_iML1515_core_75p37M`; use this for the Table 4-style experimental pFBA comparison unless intentionally testing the simulated-data `wt` objective from `generate_ecoli_iML1515_MINN_data.py`.
+- Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
 - FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower bounds.
-- FluxTransformer->pFBA should extract predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, and `R_EX_ac_e` from `oof_pred_constraints` and apply them as secretion caps (`lower_bound=0`, `upper_bound=prediction`) on `EX_co2_e`, `EX_etoh_e`, and `EX_ac_e`.
+- FluxTransformer->pFBA should extract predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, and `R_EX_ac_e` from `oof_pred_constraints` and apply them as tight nonnegative secretion flux constraints on `EX_co2_e`, `EX_etoh_e`, and `EX_ac_e` (`lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)`, `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`).
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
+  - pFBA-based aux selection must initialize/use `base_cobra_model` and `cobra_pfba` inside the training/selection cell; do not rely on the later baseline pFBA cell having already run.
   - fallback mode `"oof"` selects by pooled OOF metrics.
 
 ## 8.1) TabPFN ML-to-flux benchmark
