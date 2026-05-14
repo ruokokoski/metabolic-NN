@@ -136,6 +136,19 @@ This document captures the main points an agent should follow when working on th
   - fit one `TabPFNRegressor` per target flux because TabPFN regression is single-output
   - report R2, MAE, RMSE, and NE as mean +/- std across LOO samples, Table 2 style
 
+## 8.2) Goncalves-style pFBA with iML1515
+- The final pFBA cell repeats the Goncalves/omics2flux Ishii pFBA baseline, but swaps the GEM to `models/iML1515.xml`.
+- Keep the Goncalves protocol:
+  - fixed measured glucose and oxygen uptake from `MINN_data/fluxomics.csv`
+  - pFBA over the same 45 non-uptake Table 2 flux targets
+  - R2, MAE, RMSE, and NE as mean +/- std across the 29 Ishii samples
+- Important mapping detail:
+  - local `fluxomics.csv` rows use gene-symbol sample names
+  - `omics2flux/pfba.py` uses an ordered b-number knockout list
+  - therefore the notebook must map sample names to the original Goncalves b-numbers before knockout
+- iML1515 does not contain the original Goncalves `b4395` gene used for the `gpmB` sample. The adapted iML1515 benchmark maps it to the iML1515 PGM isozyme `b3612` so all 29 samples solve.
+- Sanity check: the iML1515 Goncalves-style pFBA cell should report `Successful pFBA samples: 29/29` and an empty failed-sample table.
+
 ## 9) Common failure modes
 - CUDA OOM in diagnostics/training:
   - lower batch size
