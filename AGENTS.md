@@ -13,7 +13,7 @@ This document captures the main points an agent should follow when working on th
   - fixed `base_exchanges`
   - zeros for other channels
 - Run transformer forward with full vocab output.
-- For FluxTransformer->pFBA, keep glucose/oxygen as measured inputs and add only the predicted CO2/ethanol/acetate constraints.
+- For the current FluxTransformer->pFBA comparison variant, keep glucose/oxygen as measured inputs and add only the predicted ethanol/acetate constraints. The reservoir training context still includes CO2.
 
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_MINN_data.py`.
@@ -32,8 +32,7 @@ This document captures the main points an agent should follow when working on th
   - `R_EX_co2_e_fwd`
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
-- pFBA extra predicted constraints:
-  - `R_EX_co2_e_fwd`
+- pFBA extra predicted constraints in the current comparison variant:
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
 
@@ -113,7 +112,7 @@ This document captures the main points an agent should follow when working on th
 - Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
 - FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower bounds.
-- FluxTransformer->pFBA should extract predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, and `R_EX_ac_e` from `oof_pred_constraints` and apply them as tight nonnegative secretion flux constraints on `EX_co2_e`, `EX_etoh_e`, and `EX_ac_e` (`lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)`, `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`).
+- In the current temporary comparison variant, FluxTransformer->pFBA should extract predicted `R_EX_etoh_e` and `R_EX_ac_e` from `oof_pred_constraints` and apply them as tight nonnegative secretion flux constraints on `EX_etoh_e` and `EX_ac_e` (`lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)`, `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`).
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
@@ -164,5 +163,5 @@ This document captures the main points an agent should follow when working on th
 - Print prediction/target magnitude summaries for the 5 constraints.
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
-- Confirm FluxTransformer->pFBA `pred_vin_df` contains only the 3 predicted extra constraints, not predicted glucose/oxygen.
+- Confirm FluxTransformer->pFBA `pred_vin_df` contains only the 2 current predicted extra constraints, not predicted glucose/oxygen or CO2.
 - For the TabPFN benchmark, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
