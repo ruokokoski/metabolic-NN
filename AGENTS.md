@@ -13,7 +13,7 @@ This document captures the main points an agent should follow when working on th
   - fixed `base_exchanges`
   - zeros for other channels
 - Run transformer forward with full vocab output.
-- For the current FluxTransformer->pFBA comparison variant, keep glucose/oxygen as measured inputs and add only the predicted ethanol/acetate constraints. The reservoir training context still includes CO2.
+- For FluxTransformer->pFBA, keep glucose/oxygen as measured inputs. Downstream extra constraints are selected by `MINN_PFBA_EXTRA_CONSTRAINT_MODE`; the reservoir training context still includes CO2 regardless of mode.
 
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_MINN_data.py`.
@@ -32,9 +32,10 @@ This document captures the main points an agent should follow when working on th
   - `R_EX_co2_e_fwd`
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
-- pFBA extra predicted constraints in the current comparison variant:
-  - `R_EX_etoh_e`
-  - `R_EX_ac_e`
+- Downstream pFBA extra-constraint modes:
+  - `etoh_ac`: predicted `R_EX_etoh_e`, `R_EX_ac_e`
+  - `co2_exact_etoh_ac`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as tight constraints
+  - `co2_band_etoh_ac`: predicted `R_EX_co2_e_fwd` as a banded constraint plus tight predicted `R_EX_etoh_e`, `R_EX_ac_e`
 
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
@@ -112,7 +113,11 @@ This document captures the main points an agent should follow when working on th
 - Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
 - FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower bounds.
-- In the current temporary comparison variant, FluxTransformer->pFBA should extract predicted `R_EX_etoh_e` and `R_EX_ac_e` from `oof_pred_constraints` and apply them as tight nonnegative secretion flux constraints on `EX_etoh_e` and `EX_ac_e` (`lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)`, `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`).
+- `MINN_PFBA_EXTRA_CONSTRAINT_MODE` controls downstream extra constraints:
+  - `etoh_ac`: tight nonnegative secretion constraints on `EX_etoh_e`, `EX_ac_e`
+  - `co2_exact_etoh_ac`: tight nonnegative secretion constraints on `EX_co2_e`, `EX_etoh_e`, `EX_ac_e`
+  - `co2_band_etoh_ac`: `EX_etoh_e` and `EX_ac_e` stay tight, while `EX_co2_e` uses `prediction +/- PFBA_CO2_BAND_HALF_WIDTH`
+- Tight nonnegative secretion constraints use `lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)` and `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
@@ -163,5 +168,5 @@ This document captures the main points an agent should follow when working on th
 - Print prediction/target magnitude summaries for the 5 constraints.
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
-- Confirm FluxTransformer->pFBA `pred_vin_df` contains only the 2 current predicted extra constraints, not predicted glucose/oxygen or CO2.
+- Confirm FluxTransformer->pFBA `pred_vin_df` contains only the predicted extra constraints for the selected mode, never predicted glucose/oxygen.
 - For the TabPFN benchmark, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
