@@ -87,7 +87,7 @@ This document captures the main points an agent should follow when working on th
 - Config keys:
   - `minn_cv_early_stopping_patience`
   - `minn_cv_early_stopping_min_delta`
-- Current default: `minn_cv_early_stopping_patience=20`
+- Current default: `minn_cv_early_stopping_patience=25`
 - Behavior:
   - evaluate validation loss each epoch
   - keep best front-MLP state
