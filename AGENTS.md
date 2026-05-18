@@ -76,6 +76,11 @@ This document captures the main points an agent should follow when working on th
 - Loss:
   - flux loss on transformer target channels
   - plus auxiliary front-MLP constraint loss (weighted)
+  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls how that auxiliary loss is distributed across the 5 reservoir-context channels:
+    - `equal`: current baseline behavior, all 5 channels weighted equally
+    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of glucose/oxygen/CO2
+    - `etoh_ac_only`: only ethanol/acetate contribute to the auxiliary loss
+  - set `MINN_AUX_CHANNEL_WEIGHT_MODE="equal"` to revert to the pre-experiment auxiliary objective exactly
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
