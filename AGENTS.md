@@ -68,7 +68,8 @@ This document captures the main points an agent should follow when working on th
   - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
   - current fixed aux weight: `0.5`
   - current fixed best hyperparameters: `{"drop_rate": 0.25, "learning_rate": 0.0009736777696601047, "weight_decay": 4.738391288843704e-05}`
-  - current aux-weight grid, used only when fixed run mode is disabled: `[0.1, 0.2, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7]`
+  - current aux-weight grid, used only when fixed run mode is disabled: `[0.3, 0.35, 0.4, 0.45, 0.5]`
+  - current one-time HPO anchor aux weight: `MINN_HPO_ANCHOR_AUX_WEIGHT=0.4`
   - best hyperparameters must be printed immediately after HPO trials complete
   - objective is stability-aware:
     - `mean(inner_fold_val_loss)`
