@@ -163,18 +163,16 @@ This document captures the main points an agent should follow when working on th
 - The final notebook section can add a direct `FluxTransformer` row to the Table 2-style comparison.
 - This is not FluxTransformer+pFBA:
   - no COBRA/pFBA optimization is run
-  - the selected front MLP is retrained once per LOO fold
+  - a direct Table 2 front MLP is retrained once per LOO fold
+  - the front MLP predicts a full iML1515 token vector, not the 5-channel reservoir context
   - the frozen FluxTransformer full-vocabulary output is collected for the held-out sample
   - the same 45 non-uptake Goncalves/Tazza Table 2 targets are extracted from the full output
-- Default supervision should be `FLUXTRANSFORMER_TABLE2_SUPERVISION_MODE="table2_targets"`:
-  - optimize the front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
-  - keep a small reservoir-context auxiliary loss so the 5 predicted context channels remain plausible
+- Default supervision:
+  - optimize the full-token front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
   - scale the Table 2 target loss within each fold using training-fold mean/std to avoid large fluxes dominating
-- `FLUXTRANSFORMER_TABLE2_SUPERVISION_MODE="reservoir_context"` is the older fallback/reproducibility mode:
-  - train only on the 5 reservoir-context channels
-  - then score the frozen FluxTransformer full-vocabulary output on the 45 Table 2 targets
+  - an optional small direct-input auxiliary loss can supervise the same 45 target token positions before the frozen FluxTransformer
+- Do not reuse the 5-channel reservoir wrapper for this Table 2 row. MINN Table 2 is not the reservoir model; glucose/oxygen are measured input features, not copied directly into the FluxTransformer token vector.
 - The cell must use:
-  - selected `MINN_CONSTRAINT_AUX_WEIGHT`
   - selected front-MLP hyperparameters from the MINN training cell
   - original signed `MINN_data/fluxomics.csv` as the Table 2 truth table
   - the same R2, MAE, RMSE, and NE mean +/- std metric convention as the TabPFN and iML1515 pFBA rows
