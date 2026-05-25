@@ -164,19 +164,29 @@ This document captures the main points an agent should follow when working on th
 - This is not FluxTransformer+pFBA:
   - no COBRA/pFBA optimization is run
   - a direct Table 2 front MLP is retrained once per LOO fold
-  - the front MLP predicts only the 45 Table 2 target-token inputs, not the 5-channel reservoir context and not the full iML1515 vocabulary
+  - by default, run one global inner KFold Optuna HPO inside this final cell and reuse those best parameters across all outer LOO folds
+  - `FLUXTRANSFORMER_TABLE2_HPO_PER_OUTER_FOLD=True` enables the expensive nested variant where each outer LOO fold runs its own inner KFold Optuna HPO
+  - do not reuse `best_res`, `best_params_per_split`, `MINN_FIXED_BEST_PARAMS`, selected aux weights, or other training results from earlier notebook cells
+  - the front MLP predicts only ethanol/acetate exchange caps for the current option-2 benchmark
+  - measured glucose/oxygen uptake are copied directly into the FluxTransformer input vector as positive exchange magnitudes
+  - CO2 is set to a loose cap (`FLUXTRANSFORMER_TABLE2_CO2_CAP`, currently 30.0) instead of being tightly predicted
+  - base exchanges are fixed to the same default medium value used by `generate_ecoli_iML1515_MINN_data.py`
   - the frozen FluxTransformer full-vocabulary output is collected for the held-out sample
   - the same 45 non-uptake Goncalves/Tazza Table 2 targets are extracted from the full output
 - Default supervision:
-  - insert the 45 MLP outputs into the matching iML1515 token positions of an otherwise zero FluxTransformer input vector
+  - default test settings are 25 Optuna trials and 100 max epochs
+  - assemble the FluxTransformer input in the same exchange-constraint style as the simulated pretraining data
   - optimize the front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
+  - add an auxiliary loss on the predicted ethanol/acetate caps
   - scale the Table 2 target loss within each fold using training-fold mean/std to avoid large fluxes dominating
-  - optional direct-input auxiliary loss should default to 0.0 so training is driven by the frozen FluxTransformer outputs
-- Do not reuse the 5-channel reservoir wrapper for this Table 2 row. MINN Table 2 is not the reservoir model; glucose/oxygen are measured input features, not copied directly into the FluxTransformer token vector.
+  - print best hyperparameters immediately after HPO finishes
+- Do not feed the 45 evaluated target fluxes as FluxTransformer inputs. The pretrained FluxTransformer was trained on exchange constraints, not on internal Table 2 flux targets.
+- Do not reuse the 5-channel reservoir wrapper for this Table 2 row. MINN Table 2 is not the reservoir model; glucose/oxygen are measured input features and are also copied as measured exchange constraints for this FluxTransformer-specific input interface.
 - The cell must use:
   - selected front-MLP hyperparameters from the MINN training cell
   - original signed `MINN_data/fluxomics.csv` as the Table 2 truth table
   - the same R2, MAE, RMSE, and NE mean +/- std metric convention as the TabPFN and iML1515 pFBA rows
+- Keep the expensive FluxTransformer Table 2 training/HPO cell separate from the lightweight results display cell.
 - Keep `TabPFN` as the last row in the combined final comparison table.
 
 ## 9) Common failure modes
