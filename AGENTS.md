@@ -164,13 +164,14 @@ This document captures the main points an agent should follow when working on th
 - This is not FluxTransformer+pFBA:
   - no COBRA/pFBA optimization is run
   - a direct Table 2 front MLP is retrained once per LOO fold
-  - the front MLP predicts a full iML1515 token vector, not the 5-channel reservoir context
+  - the front MLP predicts only the 45 Table 2 target-token inputs, not the 5-channel reservoir context and not the full iML1515 vocabulary
   - the frozen FluxTransformer full-vocabulary output is collected for the held-out sample
   - the same 45 non-uptake Goncalves/Tazza Table 2 targets are extracted from the full output
 - Default supervision:
-  - optimize the full-token front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
+  - insert the 45 MLP outputs into the matching iML1515 token positions of an otherwise zero FluxTransformer input vector
+  - optimize the front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
   - scale the Table 2 target loss within each fold using training-fold mean/std to avoid large fluxes dominating
-  - an optional small direct-input auxiliary loss can supervise the same 45 target token positions before the frozen FluxTransformer
+  - optional direct-input auxiliary loss should default to 0.0 so training is driven by the frozen FluxTransformer outputs
 - Do not reuse the 5-channel reservoir wrapper for this Table 2 row. MINN Table 2 is not the reservoir model; glucose/oxygen are measured input features, not copied directly into the FluxTransformer token vector.
 - The cell must use:
   - selected front-MLP hyperparameters from the MINN training cell
