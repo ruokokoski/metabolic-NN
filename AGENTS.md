@@ -167,9 +167,10 @@ This document captures the main points an agent should follow when working on th
   - by default, run one global inner KFold Optuna HPO inside this final cell and reuse those best parameters across all outer LOO folds
   - `FLUXTRANSFORMER_TABLE2_HPO_PER_OUTER_FOLD=True` enables the expensive nested variant where each outer LOO fold runs its own inner KFold Optuna HPO
   - do not reuse `best_res`, `best_params_per_split`, `MINN_FIXED_BEST_PARAMS`, selected aux weights, or other training results from earlier notebook cells
-  - the front MLP predicts all five exchange-context values for the current Table 2 benchmark: glucose, oxygen, CO2, ethanol, and acetate
+  - the front MLP predicts four exchange-context values for the current Table 2 benchmark: glucose, oxygen, ethanol, and acetate
   - measured glucose/oxygen uptake are input features to the front MLP; they are not copied directly into the FluxTransformer input vector in this mode
-  - the five predicted exchange-context magnitudes are inserted into the corresponding FluxTransformer input-token positions
+  - the four predicted exchange-context magnitudes are inserted into the corresponding FluxTransformer input-token positions
+  - CO2 is not predicted in this trial; its FluxTransformer input token is kept at the free/base upper cap (`DEFAULT_BASE_EXCHANGE_RATE`, usually 50)
   - base exchanges are fixed to the same default medium value used by `generate_ecoli_iML1515_MINN_data.py`
   - the frozen FluxTransformer full-vocabulary output is collected for the held-out sample
   - the same 45 non-uptake Goncalves/Tazza Table 2 targets are extracted from the full output
@@ -177,7 +178,7 @@ This document captures the main points an agent should follow when working on th
   - default test settings are 25 Optuna trials and 100 max epochs
   - assemble the FluxTransformer input in the same exchange-constraint style as the simulated pretraining data
   - optimize the front MLP through the frozen FluxTransformer on the 45 Table 2 target fluxes
-  - add an auxiliary loss on the five predicted exchange-context magnitudes
+  - add an auxiliary loss on the four predicted exchange-context magnitudes
   - scale the Table 2 target loss within each fold using training-fold mean/std to avoid large fluxes dominating
   - print best hyperparameters immediately after HPO finishes
 - Do not feed the 45 evaluated target fluxes as FluxTransformer inputs. The pretrained FluxTransformer was trained on exchange constraints, not on internal Table 2 flux targets.
