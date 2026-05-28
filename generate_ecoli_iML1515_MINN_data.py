@@ -99,7 +99,7 @@ if __name__ == "__main__":
     n_samples = 500000
     default_rate = 50
     batch_size = 500
-    objective_variant = "wt"  # "core" or "wt"
+    objective_variant = "core"  # "core" or "wt"
     flux_solver_mode = "pfba"  # "pfba" or "fba"
     pfba_fraction_of_optimum = 0.999
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         "EX_tungs_e",
         "EX_slnt_e",
 
-        "EX_cbl1_e", # required for wt
+        "EX_cbl1_e", # harmless for core; required if objective_variant="wt"
     ]
 
     print(f"Generating {n_samples} {flux_solver_mode.upper()} training samples...\n")

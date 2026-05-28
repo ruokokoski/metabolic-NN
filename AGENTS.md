@@ -33,9 +33,8 @@ This document captures the main points an agent should follow when working on th
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
 - Downstream pFBA extra-constraint modes:
-  - `etoh_ac`: predicted `R_EX_etoh_e`, `R_EX_ac_e`
-  - `co2_exact_etoh_ac`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as tight constraints
-  - `co2_band_etoh_ac`: predicted `R_EX_co2_e_fwd` as a banded constraint plus tight predicted `R_EX_etoh_e`, `R_EX_ac_e`
+  - `etoh_ac_cap`: predicted `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
+  - `co2_etoh_ac_cap`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
 
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
@@ -118,12 +117,11 @@ This document captures the main points an agent should follow when working on th
 - The iML1515 SBML default pFBA objective is `BIOMASS_Ec_iML1515_core_75p37M`; use this for the Table 4-style experimental pFBA comparison unless intentionally testing the simulated-data `wt` objective from `generate_ecoli_iML1515_MINN_data.py`.
 - Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
-- FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower bounds.
+- FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower-bound uptake caps, not exact fixed fluxes.
 - `MINN_PFBA_EXTRA_CONSTRAINT_MODE` controls downstream extra constraints:
-  - `etoh_ac`: tight nonnegative secretion constraints on `EX_etoh_e`, `EX_ac_e`
-  - `co2_exact_etoh_ac`: tight nonnegative secretion constraints on `EX_co2_e`, `EX_etoh_e`, `EX_ac_e`
-  - `co2_band_etoh_ac`: `EX_etoh_e` and `EX_ac_e` stay tight, while `EX_co2_e` uses `prediction +/- PFBA_CO2_BAND_HALF_WIDTH`
-- Tight nonnegative secretion constraints use `lower_bound=max(0, prediction - PFBA_EXTRA_CONSTRAINT_TOL)` and `upper_bound=prediction + PFBA_EXTRA_CONSTRAINT_TOL`.
+  - `etoh_ac_cap`: predicted ethanol and acetate are nonnegative secretion upper caps
+  - `co2_etoh_ac_cap`: predicted CO2, ethanol, and acetate are nonnegative secretion upper caps
+- Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
