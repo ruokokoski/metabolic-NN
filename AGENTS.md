@@ -18,6 +18,7 @@ This document captures the main points an agent should follow when working on th
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_MINN_data.py`.
 - Use this file as the sign/bound/order ground truth when validating notebook mappings.
+- The current generator samples glucose and oxygen uptake constraints, leaves CO2/ethanol/acetate uncapped in the secretion direction, and fills their context columns from realized pFBA secretion fluxes after solving.
 
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.

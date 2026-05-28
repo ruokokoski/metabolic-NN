@@ -11,6 +11,9 @@ from cobra.flux_analysis import pfba
 warnings.filterwarnings("ignore", message="Solver status is 'infeasible'")
 
 
+SECRETION_CONTEXT_EXCHANGES = ["EX_co2_e", "EX_etoh_e", "EX_ac_e"]
+
+
 def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
     """Draw a random rate between min and max (uniform or log-uniform)."""
     if log_uniform:
@@ -38,22 +41,26 @@ def generate_training_sample(
             rxn.lower_bound = lb
             rxn.upper_bound = ub
 
-        # Variable exchanges.
+        # Variable exchanges. Glucose is sampled as an uptake constraint;
+        # secretion-context products are left uncapped and filled after pFBA.
         for ex in variable_carbon_exchanges:
-            min_v, max_v, log_u = sampled_rate_config[ex]
-            rate = random_rate(min_val=min_v, max_val=max_v, log_uniform=log_u)
             rxn = model.reactions.get_by_id(ex)
             if ex == "EX_glc__D_e":
                 # Uptake: allow import via negative lower bound.
+                min_v, max_v, log_u = sampled_rate_config[ex]
+                rate = random_rate(min_val=min_v, max_val=max_v, log_uniform=log_u)
                 rxn.lower_bound = -rate
-            else:
-                # EX_etoh_e / EX_ac_e: secretion cap via upper bound.
+                data[ex] = rate
+            elif ex in SECRETION_CONTEXT_EXCHANGES:
+                # Secretion product: no random upper cap; disallow uptake.
+                _, default_ub = exchange_default_bounds[rxn.id]
                 rxn.lower_bound = 0.0
-                rxn.upper_bound = rate
-            data[ex] = rate
+                rxn.upper_bound = max(0.0, float(default_ub))
+            else:
+                raise ValueError(f"Unhandled variable exchange: {ex}")
 
         # Base exchanges
-        # EX_o2_e is sampled as uptake, EX_co2_e as secretion cap.
+        # EX_o2_e is sampled as uptake; secretion-context products are uncapped.
         for ex in base_exchanges:
             if ex == "EX_o2_e":
                 min_v, max_v, log_u = sampled_rate_config[ex]
@@ -61,14 +68,14 @@ def generate_training_sample(
                 rxn = model.reactions.get_by_id(ex)
                 rxn.lower_bound = -rate
                 data[ex] = rate
-            elif ex == "EX_co2_e":
-                min_v, max_v, log_u = sampled_rate_config[ex]
-                rate = random_rate(min_val=min_v, max_val=max_v, log_uniform=log_u)
+            elif ex in SECRETION_CONTEXT_EXCHANGES:
                 rxn = model.reactions.get_by_id(ex)
+                _, default_ub = exchange_default_bounds[rxn.id]
                 rxn.lower_bound = 0.0
-                rxn.upper_bound = rate
-                data[ex] = rate
+                rxn.upper_bound = max(0.0, float(default_ub))
             else:
+                # Other base exchanges are fixed medium-availability inputs;
+                # their realized fluxes are still written to *_flux outputs below.
                 model.reactions.get_by_id(ex).lower_bound = -default_rate
                 data[ex] = default_rate
 
@@ -83,6 +90,11 @@ def generate_training_sample(
         if solution_status != "optimal":
             return None
 
+        # Fill secretion-context inputs with realized pFBA secretion fluxes,
+        # aligning FluxTransformer inputs with later front-MLP flux targets.
+        for ex in SECRETION_CONTEXT_EXCHANGES:
+            data[ex] = max(0.0, float(solution.fluxes.get(ex, 0.0)))
+
         for rxn_id in outputs:
             data[f"{rxn_id}_flux"] = solution.fluxes.get(rxn_id, 0.0)
 
@@ -94,9 +106,9 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(42) # 9 test
+    np.random.seed(9)
 
-    n_samples = 500000
+    n_samples = 50000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"
@@ -133,9 +145,6 @@ if __name__ == "__main__":
     sampled_rate_config = {
         "EX_glc__D_e": (1.0, 15.0, False),  # uniform
         "EX_o2_e": (1.0, 30.0, False),      # uniform
-        "EX_co2_e": (0.1, 30.0, False),     # uniform (secretion cap)
-        "EX_etoh_e": (1e-3, 1.0, True),     # log-uniform (secretion cap)
-        "EX_ac_e": (1e-3, 4.0, True),       # log-uniform (secretion cap)
     }
 
     base_exchanges = [
@@ -167,9 +176,12 @@ if __name__ == "__main__":
     ]
 
     print(f"Generating {n_samples} {flux_solver_mode.upper()} training samples...\n")
-    print("Sampling configuration (min, max, log_uniform):")
-    for ex_id in ["EX_glc__D_e", "EX_o2_e", "EX_co2_e", "EX_etoh_e", "EX_ac_e"]:
+    print("Sampled uptake configuration (min, max, log_uniform):")
+    for ex_id in ["EX_glc__D_e", "EX_o2_e"]:
         print(f"  {ex_id}: {sampled_rate_config[ex_id]}")
+    print("Uncapped secretion-context columns filled from realized pFBA flux:")
+    for ex_id in SECRETION_CONTEXT_EXCHANGES:
+        print(f"  {ex_id}")
     outputs = [rxn.id for rxn in model.reactions]
     input_cols = variable_carbon_exchanges + base_exchanges
     output_cols = [f"{rxn}_flux" for rxn in outputs]
