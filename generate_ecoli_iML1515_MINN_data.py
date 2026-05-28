@@ -24,7 +24,7 @@ def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
 
 
 def generate_training_sample(
-    variable_carbon_exchanges,
+    context_exchanges,
     base_exchanges,
     outputs,
     default_rate,
@@ -41,9 +41,9 @@ def generate_training_sample(
             rxn.lower_bound = lb
             rxn.upper_bound = ub
 
-        # Variable exchanges. Glucose is sampled as an uptake constraint;
-        # secretion-context products are left uncapped and filled after pFBA.
-        for ex in variable_carbon_exchanges:
+        # Context exchanges. Glucose is sampled as an uptake constraint;
+        # secretion products are left uncapped and filled after pFBA.
+        for ex in context_exchanges:
             rxn = model.reactions.get_by_id(ex)
             if ex == "EX_glc__D_e":
                 # Uptake: allow import via negative lower bound.
@@ -57,7 +57,7 @@ def generate_training_sample(
                 rxn.lower_bound = 0.0
                 rxn.upper_bound = max(0.0, float(default_ub))
             else:
-                raise ValueError(f"Unhandled variable exchange: {ex}")
+                raise ValueError(f"Unhandled context exchange: {ex}")
 
         # Base exchanges
         # EX_o2_e is sampled as uptake; secretion-context products are uncapped.
@@ -106,9 +106,9 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(9)
+    np.random.seed(42)
 
-    n_samples = 50000
+    n_samples = 500000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"
@@ -140,11 +140,11 @@ if __name__ == "__main__":
         print(f"pFBA fraction_of_optimum: {pfba_fraction_of_optimum}")
     print("Objective reaction:", model.objective)
 
-    # MINN-reservoir variable exchanges.
-    variable_carbon_exchanges = ["EX_glc__D_e", "EX_etoh_e", "EX_ac_e"]
+    # MINN-reservoir context exchanges written as model inputs.
+    context_exchanges = ["EX_glc__D_e", "EX_etoh_e", "EX_ac_e"]
     sampled_rate_config = {
-        "EX_glc__D_e": (1.0, 15.0, False),  # uniform
-        "EX_o2_e": (1.0, 30.0, False),      # uniform
+        "EX_glc__D_e": (1.0, 15.0, True),   # log-uniform
+        "EX_o2_e": (1.0, 30.0, True),       # log-uniform
     }
 
     base_exchanges = [
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     for ex_id in SECRETION_CONTEXT_EXCHANGES:
         print(f"  {ex_id}")
     outputs = [rxn.id for rxn in model.reactions]
-    input_cols = variable_carbon_exchanges + base_exchanges
+    input_cols = context_exchanges + base_exchanges
     output_cols = [f"{rxn}_flux" for rxn in outputs]
     ordered_columns = input_cols + output_cols
 
@@ -203,7 +203,7 @@ if __name__ == "__main__":
         while sample_count < n_samples:
             attempt_count += 1
             sample = generate_training_sample(
-                variable_carbon_exchanges=variable_carbon_exchanges,
+                context_exchanges=context_exchanges,
                 base_exchanges=base_exchanges,
                 outputs=outputs,
                 default_rate=default_rate,
