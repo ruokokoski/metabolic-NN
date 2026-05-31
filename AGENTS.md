@@ -7,9 +7,10 @@ This document captures the main points an agent should follow when working on th
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.
-- Front MLP predicts the same 5-channel reservoir context used by MINN.
+- Front MLP predicts only the learned reservoir context channels: CO2, ethanol, and acetate.
 - Reconstruct full transformer input as:
-  - predicted 5 channels
+  - measured glucose/oxygen copied directly into their context tokens
+  - predicted CO2/ethanol/acetate channels
   - fixed `base_exchanges`
   - zeros for other channels
 - Run transformer forward with full vocab output.
@@ -27,12 +28,13 @@ This document captures the main points an agent should follow when working on th
   - transcriptomics
   - proteomics
   - measured flux inputs (`R_EX_glc__D_e_rev`, `R_EX_o2_e_rev`)
-- Front-MLP 5 reservoir context source channels:
+- Full 5-channel reservoir context source order:
   - `R_EX_glc__D_e_rev`
   - `R_EX_o2_e_rev`
   - `R_EX_co2_e_fwd`
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
+- The first two channels are measured/copied; only CO2, ethanol, and acetate are predicted by the front MLP.
 - Downstream pFBA extra-constraint modes:
   - `etoh_ac_cap`: predicted `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
   - `co2_etoh_ac_cap`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
@@ -40,7 +42,7 @@ This document captures the main points an agent should follow when working on th
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
 - `*_rev` source columns are positive magnitudes in the split data but represent uptake direction.
-- During training, auxiliary constraint targets for the 5 reservoir context channels are recovered from signed flux targets using `target_signs` and clamped to nonnegative magnitudes.
+- During training, full context magnitudes are recovered from signed flux targets using `target_signs` and clamped to nonnegative magnitudes; measured glucose/oxygen are copied into the FluxTransformer input context, and auxiliary front-MLP loss applies to learned CO2/ethanol/acetate only.
 - During FluxTransformer->pFBA evaluation, do not use front-MLP predictions for glucose/oxygen; use the measured `R_EX_glc__D_e_rev` and `R_EX_o2_e_rev` columns.
 - For pFBA constraints in COBRA, apply correct bound direction/sign (especially for uptake-style exchanges).
 
@@ -77,11 +79,11 @@ This document captures the main points an agent should follow when working on th
 - Loss:
   - flux loss on transformer target channels
   - plus auxiliary front-MLP constraint loss (weighted)
-  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls how that auxiliary loss is distributed across the 5 reservoir-context channels:
-    - `equal`: current baseline behavior, all 5 channels weighted equally
-    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of glucose/oxygen/CO2
+  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls how that auxiliary loss is distributed across the learned reservoir-context channels:
+    - `equal`: learned CO2/ethanol/acetate weighted equally
+    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of CO2
     - `etoh_ac_only`: only ethanol/acetate contribute to the auxiliary loss
-  - set `MINN_AUX_CHANNEL_WEIGHT_MODE="equal"` to revert to the pre-experiment auxiliary objective exactly
+  - set `MINN_AUX_CHANNEL_WEIGHT_MODE="equal"` to use the default learned-channel auxiliary objective
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
@@ -102,7 +104,7 @@ This document captures the main points an agent should follow when working on th
 
 ## 7) Outputs to preserve
 - OOF transformer-target predictions (`oof_pred`) and truths (`oof_true`).
-- OOF front-MLP 5-channel reservoir context (`oof_pred_constraints`) for diagnostics and FluxTransformer+pFBA cells.
+- OOF full 5-channel reservoir context (`oof_pred_constraints`) for diagnostics and FluxTransformer+pFBA cells; glucose/O2 columns are measured copies, CO2/ethanol/acetate columns are front-MLP predictions.
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
@@ -115,7 +117,7 @@ This document captures the main points an agent should follow when working on th
 - Keep experiment order aligned exactly with OOF rows when merging constraints.
 - Ensure token indices and iML1515 reaction order are unchanged.
 - Use `models/iML1515.xml` for FluxTransformer->pFBA evaluation in the MINN notebook.
-- The iML1515 SBML default pFBA objective is `BIOMASS_Ec_iML1515_core_75p37M`; use this for the Table 4-style experimental pFBA comparison unless intentionally testing the simulated-data `wt` objective from `generate_ecoli_iML1515_MINN_data.py`.
+- The iML1515 SBML default pFBA objective is `BIOMASS_Ec_iML1515_core_75p37M`; use this for the Table 4-style experimental pFBA comparison and the simulated-data generator unless intentionally running a separate WT-objective experiment.
 - Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
 - FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower-bound uptake caps, not exact fixed fluxes.

@@ -108,7 +108,7 @@ def generate_training_sample(
 if __name__ == "__main__":
     np.random.seed(42)
 
-    n_samples = 500000
+    n_samples = 250000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     # MINN-reservoir context exchanges written as model inputs.
     context_exchanges = ["EX_glc__D_e", "EX_etoh_e", "EX_ac_e"]
     sampled_rate_config = {
-        "EX_glc__D_e": (1.0, 15.0, True),   # log-uniform
-        "EX_o2_e": (1.0, 30.0, True),       # log-uniform
+        "EX_glc__D_e": (1.0, 15.0, False),   # uniform
+        "EX_o2_e": (1.0, 30.0, False),       # uniform
     }
 
     base_exchanges = [
