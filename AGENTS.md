@@ -7,10 +7,11 @@ This document captures the main points an agent should follow when working on th
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.
-- Front MLP predicts only the learned reservoir context channels: CO2, ethanol, and acetate.
+- By default, front MLP predicts latent reservoir context/control channels for CO2, ethanol, and acetate.
+- `MINN_GLC_O2_CONTEXT_MODE="measured"` is the default: measured glucose/oxygen are copied into the FluxTransformer context. Set it to `"predicted"` only for the older ablation where the front MLP predicts all 5 context channels.
 - Reconstruct full transformer input as:
   - measured glucose/oxygen copied directly into their context tokens
-  - predicted CO2/ethanol/acetate channels
+  - latent predicted CO2/ethanol/acetate context/cap channels
   - fixed `base_exchanges`
   - zeros for other channels
 - Run transformer forward with full vocab output.
@@ -34,7 +35,8 @@ This document captures the main points an agent should follow when working on th
   - `R_EX_co2_e_fwd`
   - `R_EX_etoh_e`
   - `R_EX_ac_e`
-- The first two channels are measured/copied; only CO2, ethanol, and acetate are predicted by the front MLP.
+- The first two channels are measured/copied by default; only CO2, ethanol, and acetate are predicted by the front MLP unless `MINN_GLC_O2_CONTEXT_MODE="predicted"`.
+- Transformer-output training targets exclude these 5 context columns by default (`MINN_FLUX_TARGET_EXCLUDE_CONTEXT=True`) so context/cap outputs are latent controls, not exact exchange-flux regressions.
 - Downstream pFBA extra-constraint modes:
   - `etoh_ac_cap`: predicted `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
   - `co2_etoh_ac_cap`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
@@ -42,7 +44,8 @@ This document captures the main points an agent should follow when working on th
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
 - `*_rev` source columns are positive magnitudes in the split data but represent uptake direction.
-- During training, full context magnitudes are recovered from signed flux targets using `target_signs` and clamped to nonnegative magnitudes; measured glucose/oxygen are copied into the FluxTransformer input context, and auxiliary front-MLP loss applies to learned CO2/ethanol/acetate only.
+- During training, full context magnitudes are recovered from signed context targets using `context_signs` and clamped to nonnegative magnitudes; measured glucose/oxygen are copied into the FluxTransformer input context by default.
+- `MINN_CAP_SUPERVISION_MODE="latent"` is the default: there is no exact auxiliary loss on cap values. Set it to `"exact"` only as an ablation to add direct Huber supervision toward observed context magnitudes.
 - During FluxTransformer->pFBA evaluation, do not use front-MLP predictions for glucose/oxygen; use the measured `R_EX_glc__D_e_rev` and `R_EX_o2_e_rev` columns.
 - For pFBA constraints in COBRA, apply correct bound direction/sign (especially for uptake-style exchanges).
 
@@ -68,22 +71,21 @@ This document captures the main points an agent should follow when working on th
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
   - current default trials: `minn_cv_max_trials=50`
   - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
-  - current fixed aux weight: `0.5`
+  - current fixed aux weight: `0.0` in latent mode, `0.5` in exact auxiliary mode
   - current fixed best hyperparameters: `{"drop_rate": 0.25, "learning_rate": 0.0009736777696601047, "weight_decay": 4.738391288843704e-05}`
-  - current aux-weight grid, used only when fixed run mode is disabled: `[0.3, 0.35, 0.4, 0.45, 0.5]`
-  - current one-time HPO anchor aux weight: `MINN_HPO_ANCHOR_AUX_WEIGHT=0.4`
+  - current aux-weight grid is `[0.0]` in latent mode; exact auxiliary mode uses `[0.3, 0.35, 0.4, 0.45, 0.5]`
+  - current one-time HPO anchor aux weight is `0.0` in latent mode and `0.4` in exact auxiliary mode
   - best hyperparameters must be printed immediately after HPO trials complete
   - objective is stability-aware:
     - `mean(inner_fold_val_loss)`
     - `+ MINN_INNER_CV_STD_PENALTY * std(inner_fold_val_loss)`
 - Loss:
-  - flux loss on transformer target channels
-  - plus auxiliary front-MLP constraint loss (weighted)
-  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls how that auxiliary loss is distributed across the learned reservoir-context channels:
-    - `equal`: learned CO2/ethanol/acetate weighted equally
-    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of CO2
+  - flux loss on transformer target channels (`y_minn_np`) that exclude the 5 context columns by default
+  - optional auxiliary front-MLP context loss only when `MINN_CAP_SUPERVISION_MODE="exact"`
+  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls exact auxiliary loss distribution across whichever context channels are predicted by the MLP:
+    - `equal`: all 5 possible context channels weighted equally
+    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of glucose/O2/CO2
     - `etoh_ac_only`: only ethanol/acetate contribute to the auxiliary loss
-  - set `MINN_AUX_CHANNEL_WEIGHT_MODE="equal"` to use the default learned-channel auxiliary objective
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
@@ -104,7 +106,8 @@ This document captures the main points an agent should follow when working on th
 
 ## 7) Outputs to preserve
 - OOF transformer-target predictions (`oof_pred`) and truths (`oof_true`).
-- OOF full 5-channel reservoir context (`oof_pred_constraints`) for diagnostics and FluxTransformer+pFBA cells; glucose/O2 columns are measured copies, CO2/ethanol/acetate columns are front-MLP predictions.
+- OOF full 5-channel reservoir context (`oof_pred_constraints`) for diagnostics and FluxTransformer+pFBA cells; glucose/O2 columns are measured copies by default, CO2/ethanol/acetate columns are latent front-MLP predictions.
+- OOF observed context magnitudes (`oof_true_constraints`) for diagnostics only.
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
@@ -172,7 +175,7 @@ This document captures the main points an agent should follow when working on th
 ## 10) Recommended sanity checks
 - Assert all required token names exist in `outputs`.
 - Print source->token mapping with signs.
-- Print prediction/target magnitude summaries for the 5 constraints.
+- Print c0/cap value versus observed-context magnitude summaries for the 5 context channels.
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
 - Confirm FluxTransformer->pFBA `pred_vin_df` contains only the predicted extra constraints for the selected mode, never predicted glucose/oxygen.
