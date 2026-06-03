@@ -108,7 +108,7 @@ def generate_training_sample(
 if __name__ == "__main__":
     np.random.seed(42)
 
-    n_samples = 250000
+    n_samples = 500000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"
