@@ -62,6 +62,10 @@ This document captures the main points an agent should follow when working on th
 - Front MLP:
   - 1 hidden layer
   - hidden size 512
+- Front-MLP context output transform:
+  - default is `MINN_CONTEXT_OUTPUT_TRANSFORM_MODE="softplus"` to preserve existing results
+  - optional trial mode `bounded_log_sigmoid` maps each predicted context channel through a sigmoid in `log1p` space into per-channel nonnegative bounds from current context magnitudes
+  - bounded mode is opt-in and should be run in its own cells; do not silently replace softplus comparisons
 - Transformer remains frozen (no optimizer params from transformer).
 
 ## 5) Training protocol
@@ -132,6 +136,7 @@ This document captures the main points an agent should follow when working on th
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"` for pFBA-based aux selection, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
 - The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
+- The bounded log-sigmoid trial cells after the final comparison repeat the same option set under `MINN_CONTEXT_OUTPUT_TRANSFORM_MODE="bounded_log_sigmoid"` and then compare softplus vs bounded-log-sigmoid results. Existing softplus result keys should remain intact.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.

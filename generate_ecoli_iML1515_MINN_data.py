@@ -144,7 +144,7 @@ if __name__ == "__main__":
     context_exchanges = ["EX_glc__D_e", "EX_etoh_e", "EX_ac_e"]
     sampled_rate_config = {
         "EX_glc__D_e": (1.0, 15.0, False),   # uniform
-        "EX_o2_e": (1.0, 30.0, False),       # uniform
+        "EX_o2_e": (1.0, 30.0, True),       # loguniform
     }
 
     base_exchanges = [
