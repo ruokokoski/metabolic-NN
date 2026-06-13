@@ -62,10 +62,7 @@ This document captures the main points an agent should follow when working on th
 - Front MLP:
   - 1 hidden layer
   - hidden size 512
-- Front-MLP context output transform:
-  - default is `MINN_CONTEXT_OUTPUT_TRANSFORM_MODE="softplus"` to preserve existing results
-  - optional trial mode `bounded_log_sigmoid` maps each predicted context channel through a sigmoid in `log1p` space into per-channel nonnegative bounds from current context magnitudes
-  - bounded mode is opt-in and should be run in its own cells; do not silently replace softplus comparisons
+- Front-MLP context outputs use `softplus` to produce nonnegative latent context/cap values.
 - Transformer remains frozen (no optimizer params from transformer).
 
 ## 5) Training protocol
@@ -76,6 +73,8 @@ This document captures the main points an agent should follow when working on th
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
   - current default trials: `minn_cv_max_trials=50`
+  - current drop-rate search space: `[0.0, 0.05, 0.1, 0.25, 0.35]`
+  - current learning-rate search range: `5e-4` to `7e-3` log-sampled
   - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
   - current fixed aux weight: `0.0` in latent mode, `0.5` in exact auxiliary mode
   - current fixed best hyperparameters: `{"drop_rate": 0.25, "learning_rate": 0.0009736777696601047, "weight_decay": 4.738391288843704e-05}`
@@ -103,7 +102,7 @@ This document captures the main points an agent should follow when working on th
 - Config keys:
   - `minn_cv_early_stopping_patience`
   - `minn_cv_early_stopping_min_delta`
-- Current default: `minn_cv_early_stopping_patience=25`
+- Current default: `minn_cv_early_stopping_patience=30`
 - Behavior:
   - evaluate validation loss each epoch
   - keep best front-MLP state
@@ -117,6 +116,11 @@ This document captures the main points an agent should follow when working on th
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
+- FluxTransformer->pFBA cap-binding diagnostics:
+  - `pfba_cap_binding_diagnostics_df`
+  - `pfba_cap_binding_sample_summary_df`
+  - `pfba_cap_binding_result_summary_df`
+  - final comparison aggregates `MINN_CAP_BINDING_DIAGNOSTICS_DF`, `MINN_CAP_BINDING_SAMPLE_SUMMARY_DF`, and `MINN_CAP_BINDING_RESULT_SUMMARY_DF`
 - Epoch diagnostics:
   - per-LOO `epochs_trained`
   - summary of mean/min/max trained epochs
@@ -136,15 +140,17 @@ This document captures the main points an agent should follow when working on th
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"` for pFBA-based aux selection, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
 - The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
-- The bounded log-sigmoid trial cells after the final comparison repeat the same option set under `MINN_CONTEXT_OUTPUT_TRANSFORM_MODE="bounded_log_sigmoid"` and then compare softplus vs bounded-log-sigmoid results. Existing softplus result keys should remain intact.
+- Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
   - pFBA-based aux selection must initialize/use `base_cobra_model` and `cobra_pfba` inside the training/selection cell; do not rely on the later baseline pFBA cell having already run.
   - fallback mode `"oof"` selects by pooled OOF metrics.
 
-## 8.1) TabPFN ML-to-flux benchmark
-- The TabPFN section at the end of `ecoli_iML1515_MINN_model_testing.ipynb` should mirror the Goncalves/ML2Flux benchmark used in Tazza et al. Table 2.
+## 8.1) Table 2 benchmark notebook
+- Table 2-style benchmarks are now in the separate notebook: `ecoli_iML1515_MINN_Table2.ipynb`.
+- `ecoli_iML1515_MINN_model_testing.ipynb` should not be described as evaluating Table 2 metrics; its active experimental comparison is the Table 4-style iML1515 pFBA workflow with FluxTransformer-to-pFBA variants and cap-binding diagnostics.
+- The Table 2 notebook mirrors the Goncalves/ML2Flux benchmark format used in Tazza et al. Table 2.
 - Use `MINN_data/fluxomics.csv` for the original signed Ishii/Goncalves flux targets, not the split/FBA-fit MINN fluxomics file.
 - Inputs:
   - transcriptomics
@@ -153,14 +159,19 @@ This document captures the main points an agent should follow when working on th
 - Targets:
   - all fluxomics columns except the two fixed uptake fluxes
   - expected shape: 45 target fluxes over 29 samples
+- Table 2 notebook rows include:
+  - TabPFN ML-to-flux benchmark
+  - Goncalves-style pFBA baseline recomputed with `models/iML1515.xml`
+  - MLP + frozen FluxTransformer ML-to-flux benchmark
+  - final Table 2-style comparison against published Tazza rows
 - Protocol:
-  - Leave-One-Out CV using `KFold(n_splits=len(X), shuffle=True, random_state=12345)`
-  - fit `StandardScaler` for `X` and `y` inside each fold only
+  - Leave-One-Out CV using `KFold(n_splits=len(X), shuffle=True, random_state=12345)` where applicable
+  - fit scalers inside each fold only
   - fit one `TabPFNRegressor` per target flux because TabPFN regression is single-output
   - report R2, MAE, RMSE, and NE as mean +/- std across LOO samples, Table 2 style
 
-## 8.2) Goncalves-style pFBA with iML1515
-- The final pFBA cell repeats the Goncalves/omics2flux Ishii pFBA baseline, but swaps the GEM to `models/iML1515.xml`.
+## 8.2) Goncalves-style pFBA in the Table 2 notebook
+- `ecoli_iML1515_MINN_Table2.ipynb` includes the Goncalves/omics2flux Ishii pFBA baseline adapted to `models/iML1515.xml`.
 - Keep the Goncalves protocol:
   - fixed measured glucose and oxygen uptake from `MINN_data/fluxomics.csv`
   - pFBA over the same 45 non-uptake Table 2 flux targets
@@ -168,7 +179,7 @@ This document captures the main points an agent should follow when working on th
 - Important mapping detail:
   - local `fluxomics.csv` rows use gene-symbol sample names
   - `omics2flux/pfba.py` uses an ordered b-number knockout list
-  - therefore the notebook must map sample names to the original Goncalves b-numbers before knockout
+  - therefore the Table 2 notebook must map sample names to the original Goncalves b-numbers before knockout
 - iML1515 does not contain the original Goncalves `b4395` gene used for the `gpmB` sample. The adapted iML1515 benchmark maps it to the iML1515 PGM isozyme `b3612` so all 29 samples solve.
 - Sanity check: the iML1515 Goncalves-style pFBA cell should report `Successful pFBA samples: 29/29` and an empty failed-sample table.
 
@@ -179,7 +190,7 @@ This document captures the main points an agent should follow when working on th
 - Mapping mismatch between source columns and output tokens.
 - Wrong sign when converting predicted magnitudes to pFBA bounds.
 - Misaligned experiment ordering when attaching OOF predictions.
-- Missing TabPFN benchmark dependencies in the active Python environment (`pandas`, `scikit-learn`/`sklearn`, `tabpfn`).
+- Missing TabPFN benchmark dependencies in the active Python environment (`pandas`, `scikit-learn`/`sklearn`, `tabpfn`) when running `ecoli_iML1515_MINN_Table2.ipynb`.
 
 ## 10) Recommended sanity checks
 - Assert all required token names exist in `outputs`.
@@ -188,4 +199,4 @@ This document captures the main points an agent should follow when working on th
 - Check OOF sample count equals dataset count in LOO context.
 - Confirm pFBA evaluated sample count and metric table shape.
 - Confirm FluxTransformer->pFBA `pred_vin_df` contains only the predicted extra constraints for the selected mode, never predicted glucose/oxygen.
-- For the TabPFN benchmark, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
+- For the Table 2 notebook, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
