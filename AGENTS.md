@@ -23,6 +23,7 @@ This document captures the main points an agent should follow when working on th
 - Use this file as the sign/bound/order ground truth when validating notebook mappings.
 - The current generator samples glucose and oxygen uptake constraints, leaves CO2/ethanol/acetate uncapped in the secretion direction, and fills their input/context columns from realized pFBA secretion fluxes after solving.
 - In `generate_ecoli_iML1515_MINN_data.py`, non-variable base exchanges are fixed as medium-availability inputs with `lower_bound=-default_rate`. Glucose and oxygen are variable uptake lower bounds. CO2/ethanol/acetate are special secretion-context exchanges: `lower_bound=0`, `upper_bound` left at the nonnegative model default, then their input values are overwritten from the solved pFBA flux.
+- `generate_ecoli_iML1515_MINN_data_minn_mimic.py` is the separate MINN-mimic ablation generator. It randomly caps CO2/ethanol/acetate secretion during simulation and writes those sampled caps to the input/context columns instead of overwriting them with realized pFBA secretion fluxes. This is less biologically natural than leaving secretion products unconstrained, but closer to the paper's described random reservoir `Vin` setup.
 
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
@@ -102,7 +103,7 @@ This document captures the main points an agent should follow when working on th
 - Config keys:
   - `minn_cv_early_stopping_patience`
   - `minn_cv_early_stopping_min_delta`
-- Current default: `minn_cv_early_stopping_patience=30`
+- Current default: `minn_cv_early_stopping_patience=25`
 - Behavior:
   - evaluate validation loss each epoch
   - keep best front-MLP state
@@ -139,7 +140,8 @@ This document captures the main points an agent should follow when working on th
   - `co2_etoh_ac_cap`: predicted CO2, ethanol, and acetate are nonnegative secretion upper caps
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"` for pFBA-based aux selection, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
-- The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
+- The per-channel cap calibration trial should stay after the current training/pFBA cells and before the final comparison. By default it should calibrate the selected better measured/predicted `co2_etoh_ac_cap` result, so CO2, ethanol, and acetate caps are all calibrated. It should fit leave-one-out multiplicative scales per predicted secretion-cap channel, rerun only downstream pFBA, and store the result in `MINN_FLUXTRANSFORMER_PFBA_RESULTS`.
+- The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, FluxTransformer to pFBA better-context `etoh_ac_cap`, and the per-channel calibrated-cap result.
 - Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
