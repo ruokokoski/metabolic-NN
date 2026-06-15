@@ -73,8 +73,8 @@ This document captures the main points an agent should follow when working on th
   - `drop_rate`, `learning_rate`, `weight_decay`
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
-  - current default trials: `minn_cv_max_trials=50`
-  - current drop-rate search space: `[0.0, 0.05, 0.1, 0.25, 0.35]`
+  - current default trials: `minn_cv_max_trials=60`
+  - current drop-rate search space: `[0.0, 0.05, 0.1, 0.25, 0.3]`
   - current learning-rate search range: `5e-4` to `7e-3` log-sampled
   - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
   - current fixed aux weight: `0.0` in latent mode, `0.5` in exact auxiliary mode
@@ -117,6 +117,7 @@ This document captures the main points an agent should follow when working on th
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
+- Per-LOO R2/MAE/RMSE panel plot: save to `./pics/minn_loo_metric_panels.png` by default and still show it in the notebook; set `MINN_LOO_METRIC_PLOT_SAVE_PATH=None` for display-only behavior.
 - FluxTransformer->pFBA cap-binding diagnostics:
   - `pfba_cap_binding_diagnostics_df`
   - `pfba_cap_binding_sample_summary_df`
@@ -140,10 +141,10 @@ This document captures the main points an agent should follow when working on th
   - `co2_etoh_ac_cap`: predicted CO2, ethanol, and acetate are nonnegative secretion upper caps
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"` for pFBA-based aux selection, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
-- The pFBA-tuned cap safety calibration trial should stay after the current training/pFBA cells and before the final comparison. By default it should tune per-channel safety multipliers for the selected better measured/predicted `co2_etoh_ac_cap` result, so CO2, ethanol, and acetate caps are all considered. It should select multipliers by downstream pFBA metrics while rejecting candidates that increase `binding_low_cap_rows`, then store the result in `MINN_FLUXTRANSFORMER_PFBA_RESULTS`.
-- Do not include the older direct cap-MAE calibration trial in the final comparison; it can over-shrink upper caps and pollute the comparison tables.
-- The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, FluxTransformer to pFBA better-context `etoh_ac_cap`, and the pFBA-tuned cap safety calibration result.
+- Do not include cap-calibration trials in the final comparison by default; direct cap-MAE calibration can over-shrink upper caps, and the pFBA-tuned safety calibration selected identity scales in testing.
+- The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
 - Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
+- Keep the bad-sample cap sensitivity cell after cap-binding diagnostics. It should rerun only downstream pFBA for the worst selected samples while varying cap subsets (`all_co2_etoh_ac`, `no_co2`, `no_etoh`, `no_ac`, `only_co2`, `only_etoh_ac`, `no_extra_caps`) and report per-sample RMSE/NE deltas.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
