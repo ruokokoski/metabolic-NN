@@ -29,8 +29,8 @@ This document captures the main points an agent should follow when working on th
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
 - MINN-style data directory: `./MINN_data`.
 - `MINN_FLUXOMICS_FILE` is a simple fluxomics-file switch:
-  - default fitted/Table 4-comparable file: `fluxomics_iAF1260_reduced_split_fit.csv`
-  - non-fitted robustness file: `fluxomics_iAF1260_reduced_split.csv`
+  - fitted/Table 4-comparable file: `fluxomics_iAF1260_reduced_split_fit.csv`
+  - current active non-fitted robustness file: `fluxomics_iAF1260_reduced_split.csv`
 - Inputs include:
   - transcriptomics
   - proteomics
