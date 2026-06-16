@@ -28,6 +28,9 @@ This document captures the main points an agent should follow when working on th
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
 - MINN-style data directory: `./MINN_data`.
+- `MINN_FLUXOMICS_FILE` is a simple fluxomics-file switch:
+  - default fitted/Table 4-comparable file: `fluxomics_iAF1260_reduced_split_fit.csv`
+  - non-fitted robustness file: `fluxomics_iAF1260_reduced_split.csv`
 - Inputs include:
   - transcriptomics
   - proteomics
@@ -73,7 +76,7 @@ This document captures the main points an agent should follow when working on th
   - `drop_rate`, `learning_rate`, `weight_decay`
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
   - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
-  - current default trials: `minn_cv_max_trials=60`
+  - current default trials: `minn_cv_max_trials=40`
   - current drop-rate search space: `[0.0, 0.05, 0.1, 0.25, 0.3]`
   - current learning-rate search range: `5e-4` to `7e-3` log-sampled
   - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
@@ -144,7 +147,6 @@ This document captures the main points an agent should follow when working on th
 - Do not include cap-calibration trials in the final comparison by default; direct cap-MAE calibration can over-shrink upper caps, and the pFBA-tuned safety calibration selected identity scales in testing.
 - The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
 - Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
-- Keep the bad-sample cap sensitivity cell after cap-binding diagnostics. It should rerun only downstream pFBA for the worst selected samples while varying cap subsets (`all_co2_etoh_ac`, `no_co2`, `no_etoh`, `no_ac`, `only_co2`, `only_etoh_ac`, `no_extra_caps`) and report per-sample RMSE/NE deltas.
 - Verify feasibility counts and print failed samples for debugging.
 - Aux-weight selection mode:
   - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.

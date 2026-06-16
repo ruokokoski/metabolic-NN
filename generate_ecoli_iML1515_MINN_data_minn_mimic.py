@@ -171,9 +171,9 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(42)
+    np.random.seed(9)
 
-    n_samples = 500000
+    n_samples = 50000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     context_exchanges = ["EX_glc__D_e", "EX_etoh_e", "EX_ac_e"]
     sampled_rate_config = {
         "EX_glc__D_e": (1.0, 15.0, False),  # uniform
-        "EX_o2_e": (1.0, 30.0, True),       # loguniform
+        "EX_o2_e": (1.0, 30.0, False),      # uniform
     }
     sampled_rate_config.update(
         get_secretion_cap_config(
