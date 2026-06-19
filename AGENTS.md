@@ -53,7 +53,7 @@ This document captures the main points an agent should follow when working on th
 - Keep explicit source->token mapping and signs consistent with generation scripts.
 - `*_rev` source columns are positive magnitudes in the split data but represent uptake direction.
 - During training, full context magnitudes are recovered from signed context targets using `context_signs` and clamped to nonnegative magnitudes; measured glucose/oxygen are copied into the FluxTransformer input context by default.
-- `MINN_CAP_SUPERVISION_MODE="latent"` is the default: there is no exact auxiliary loss on cap values. Set it to `"exact"` only as an ablation to add direct Huber supervision toward observed context magnitudes.
+- Context/cap outputs are latent controls only; the active notebook does not use an exact cap-loss term or weight sweep.
 - During FluxTransformer->pFBA evaluation, do not use front-MLP predictions for glucose/oxygen; use the measured `R_EX_glc__D_e_rev` and `R_EX_o2_e_rev` columns.
 - For pFBA constraints in COBRA, apply correct bound direction/sign (especially for uptake-style exchanges).
 
@@ -77,26 +77,18 @@ This document captures the main points an agent should follow when working on th
 - HPO:
   - `drop_rate`, `learning_rate`, `weight_decay`
   - one-time global HPO mode is available (`MINN_HPO_ONCE=True`) to reduce runtime.
-  - optional per-aux retune toggle: `MINN_REDO_HPO_PER_AUX_WEIGHT`
   - current default trials: `minn_cv_max_trials=50`
   - current drop-rate search space: `[0.0, 0.05, 0.1, 0.25, 0.3]`
-  - current learning-rate search range: `5e-4` to `7e-3` log-sampled
-  - fixed run mode is available with `MINN_USE_FIXED_AUX_AND_HYPERPARAMS=True`; this skips both the aux-weight grid search and Optuna trials, using `MINN_FIXED_CONSTRAINT_AUX_WEIGHT` and `MINN_FIXED_BEST_PARAMS` directly.
-  - current fixed aux weight: `0.0` in latent mode, `0.5` in exact auxiliary mode
+  - current learning-rate search range: `5e-4` to `1e-2` log-sampled
+  - fixed run mode is available with `MINN_USE_FIXED_HYPERPARAMS=True`; this skips Optuna trials and uses `MINN_FIXED_BEST_PARAMS` directly.
   - current fixed best hyperparameters: `{"drop_rate": 0.25, "learning_rate": 0.0009736777696601047, "weight_decay": 4.738391288843704e-05}`
-  - current aux-weight grid is `[0.0]` in latent mode; exact auxiliary mode uses `[0.3, 0.35, 0.4, 0.45, 0.5]`
-  - current one-time HPO anchor aux weight is `0.0` in latent mode and `0.4` in exact auxiliary mode
   - best hyperparameters must be printed immediately after HPO trials complete
   - objective is stability-aware:
     - `mean(inner_fold_val_loss)`
     - `+ MINN_INNER_CV_STD_PENALTY * std(inner_fold_val_loss)`
 - Loss:
   - flux loss on transformer target channels (`y_minn_np`) that exclude the 5 context columns by default
-  - optional auxiliary front-MLP context loss only when `MINN_CAP_SUPERVISION_MODE="exact"`
-  - `MINN_AUX_CHANNEL_WEIGHT_MODE` controls exact auxiliary loss distribution across whichever context channels are predicted by the MLP:
-    - `equal`: all 5 possible context channels weighted equally
-    - `etoh_ac_emphasized`: ethanol/acetate receive 2x the per-channel weight of glucose/O2/CO2
-    - `etoh_ac_only`: only ethanol/acetate contribute to the auxiliary loss
+  - no separate exact cap/context loss; front-MLP context outputs are learned only through the frozen FluxTransformer target-flux loss
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
@@ -145,16 +137,11 @@ This document captures the main points an agent should follow when working on th
   - `etoh_ac_cap`: predicted ethanol and acetate are nonnegative secretion upper caps; predicted CO2 is still supplied to FluxTransformer but not applied as a pFBA cap
   - `co2_etoh_ac_cap`: predicted CO2, ethanol, and acetate are nonnegative secretion upper caps
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
-- The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"` for pFBA-based aux selection, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
+- The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"`, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
 - Do not include cap-calibration trials in the final comparison by default; direct cap-MAE calibration can over-shrink upper caps, and the pFBA-tuned safety calibration selected identity scales in testing.
 - The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
 - Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
 - Verify feasibility counts and print failed samples for debugging.
-- Aux-weight selection mode:
-  - `MINN_AUX_WEIGHT_SELECTION_MODE="pfba"` selects by final FluxTransformer->pFBA metrics.
-  - pFBA-based aux selection must initialize/use `base_cobra_model` and `cobra_pfba` inside the training/selection cell; do not rely on the later baseline pFBA cell having already run.
-  - fallback mode `"oof"` selects by pooled OOF metrics.
-
 ## 8.1) Table 2 benchmark notebook
 - Table 2-style benchmarks are now in the separate notebook: `ecoli_iML1515_MINN_Table2.ipynb`.
 - `ecoli_iML1515_MINN_model_testing.ipynb` should not be described as evaluating Table 2 metrics; its active experimental comparison is the Table 4-style iML1515 pFBA workflow with FluxTransformer-to-pFBA variants and cap-binding diagnostics.
