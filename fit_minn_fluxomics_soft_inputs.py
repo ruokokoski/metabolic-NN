@@ -390,6 +390,180 @@ def print_reference_transformation_audit(
     )
 
 
+def pearson_correlation(left: Sequence[float], right: Sequence[float]) -> float:
+    pairs = [(x, y) for x, y in zip(left, right) if math.isfinite(x) and math.isfinite(y)]
+    if len(pairs) < 2:
+        return math.nan
+    xs, ys = zip(*pairs)
+    x_mean = sum(xs) / len(xs)
+    y_mean = sum(ys) / len(ys)
+    numerator = sum((x - x_mean) * (y - y_mean) for x, y in pairs)
+    x_denom = math.sqrt(sum((x - x_mean) ** 2 for x in xs))
+    y_denom = math.sqrt(sum((y - y_mean) ** 2 for y in ys))
+    if x_denom == 0.0 or y_denom == 0.0:
+        return math.nan
+    return numerator / (x_denom * y_denom)
+
+
+def print_pairwise_fit_comparison(
+    left_rows: Sequence[Dict[str, object]],
+    right_rows: Sequence[Dict[str, object]],
+    fieldnames: Sequence[str],
+    left_label: str,
+    right_label: str,
+) -> None:
+    left_by_exp = aligned_by_experiment(left_rows)
+    right_by_exp = aligned_by_experiment(right_rows)
+    numeric_columns = [c for c in fieldnames if c != "experiment"]
+    common_experiments = [row["experiment"] for row in left_rows if row["experiment"] in right_by_exp]
+
+    print(f"=== Fit comparison: {right_label} minus {left_label} ===")
+    print(f"Common samples: {len(common_experiments)}/{len(left_rows)}")
+
+    column_stats = []
+    changed_entries = 0
+    total_entries = len(common_experiments) * len(numeric_columns)
+    for column in numeric_columns:
+        diffs = []
+        changed = 0
+        for experiment in common_experiments:
+            diff = as_float(right_by_exp[experiment][column]) - as_float(left_by_exp[experiment][column])
+            diffs.append(diff)
+            if abs(diff) > 1e-9:
+                changed += 1
+                changed_entries += 1
+        column_stats.append(
+            {
+                "column": column,
+                "changed": changed,
+                "max_abs": max(abs(v) for v in diffs) if diffs else math.nan,
+                "mean_abs": mae(diffs),
+            }
+        )
+
+    print(f"Changed numeric entries: {changed_entries}/{total_entries}")
+    print("Tracked exchange-column changes:")
+    for column in ("R_EX_glc__D_e_rev", "R_EX_o2_e_rev", "R_EX_co2_e_fwd", "R_EX_etoh_e", "R_EX_ac_e"):
+        stat = next((item for item in column_stats if item["column"] == column), None)
+        if stat is None:
+            continue
+        print(
+            f"  {column}: changed={stat['changed']}/{len(common_experiments)}, "
+            f"max_abs={stat['max_abs']:.6g}, mean_abs={stat['mean_abs']:.6g}"
+        )
+
+    print("Top columns by maximum absolute change:")
+    for stat in sorted(column_stats, key=lambda item: item["max_abs"], reverse=True)[:10]:
+        print(
+            f"  {stat['column']}: changed={stat['changed']}/{len(common_experiments)}, "
+            f"max_abs={stat['max_abs']:.6g}, mean_abs={stat['mean_abs']:.6g}"
+        )
+
+    row_stats = []
+    for experiment in common_experiments:
+        total_abs = 0.0
+        changed = 0
+        max_abs = -1.0
+        max_column = ""
+        for column in numeric_columns:
+            diff = as_float(right_by_exp[experiment][column]) - as_float(left_by_exp[experiment][column])
+            abs_diff = abs(diff)
+            total_abs += abs_diff
+            if abs_diff > 1e-9:
+                changed += 1
+            if abs_diff > max_abs:
+                max_abs = abs_diff
+                max_column = column
+        row_stats.append((total_abs, changed, max_abs, max_column, experiment))
+
+    print("Top samples by total absolute change:")
+    for total_abs, changed, max_abs, max_column, experiment in sorted(row_stats, reverse=True)[:8]:
+        print(
+            f"  {experiment}: total_abs={total_abs:.6g}, changed_cols={changed}, "
+            f"largest={max_abs:.6g} at {max_column}"
+        )
+
+
+def print_new_fit_comparisons(
+    source_rows: Sequence[Dict[str, str]],
+    reference_rows: Sequence[Dict[str, str]],
+    fitted_rows: Sequence[Dict[str, object]],
+    fieldnames: Sequence[str],
+    args: argparse.Namespace,
+) -> None:
+    if not fitted_rows:
+        print("No fitted rows available for post-fit comparison.")
+        return
+
+    print_pairwise_fit_comparison(
+        left_rows=source_rows,
+        right_rows=fitted_rows,
+        fieldnames=fieldnames,
+        left_label=f"non-fitted source ({args.source_csv})",
+        right_label=f"new fitted output ({args.output_csv})",
+    )
+
+    if not getattr(args, "compare_output_to_reference", False):
+        print(
+            "Original MINN fitted reference is not used as the target for the new fitted output. "
+            "Pass --compare-output-to-reference to print that descriptive comparison."
+        )
+        return
+
+    print_pairwise_fit_comparison(
+        left_rows=reference_rows,
+        right_rows=fitted_rows,
+        fieldnames=fieldnames,
+        left_label=f"original MINN fitted reference ({args.reference_fitted_csv})",
+        right_label=f"new fitted output ({args.output_csv})",
+    )
+
+    source_by_exp = aligned_by_experiment(source_rows)
+    reference_by_exp = aligned_by_experiment(reference_rows)
+    fitted_by_exp = aligned_by_experiment(fitted_rows)
+    numeric_columns = [c for c in fieldnames if c != "experiment"]
+    common_experiments = [
+        row["experiment"]
+        for row in source_rows
+        if row["experiment"] in reference_by_exp and row["experiment"] in fitted_by_exp
+    ]
+
+    reference_deltas: List[float] = []
+    fitted_deltas: List[float] = []
+    column_alignment = []
+    for column in numeric_columns:
+        column_ref_deltas = []
+        column_fit_deltas = []
+        for experiment in common_experiments:
+            source_value = as_float(source_by_exp[experiment][column])
+            column_ref_deltas.append(as_float(reference_by_exp[experiment][column]) - source_value)
+            column_fit_deltas.append(as_float(fitted_by_exp[experiment][column]) - source_value)
+        reference_deltas.extend(column_ref_deltas)
+        fitted_deltas.extend(column_fit_deltas)
+        delta_differences = [fit - ref for fit, ref in zip(column_fit_deltas, column_ref_deltas)]
+        column_alignment.append(
+            {
+                "column": column,
+                "mean_abs_delta_difference": mae(delta_differences),
+                "reference_mean_abs_delta": mae(column_ref_deltas),
+                "new_fit_mean_abs_delta": mae(column_fit_deltas),
+            }
+        )
+
+    delta_differences = [fit - ref for fit, ref in zip(fitted_deltas, reference_deltas)]
+    print("=== Delta alignment: new fitted output vs original MINN fitted repair ===")
+    print(f"Compared numeric entries: {len(reference_deltas)}")
+    print(f"Pearson correlation of source-relative deltas: {pearson_correlation(reference_deltas, fitted_deltas):.6g}")
+    print(f"Mean absolute difference between repair deltas: {mae(delta_differences):.6g}")
+    print("Top columns where new iML1515 repair differs most from original MINN repair:")
+    for stat in sorted(column_alignment, key=lambda item: item["mean_abs_delta_difference"], reverse=True)[:10]:
+        print(
+            f"  {stat['column']}: mean_abs_delta_diff={stat['mean_abs_delta_difference']:.6g}, "
+            f"MINN_ref_mean_abs_delta={stat['reference_mean_abs_delta']:.6g}, "
+            f"new_fit_mean_abs_delta={stat['new_fit_mean_abs_delta']:.6g}"
+        )
+
+
 def print_summary(
     fitted_rows: Sequence[Dict[str, object]],
     diagnostics: Sequence[Dict[str, object]],
@@ -441,7 +615,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--compare-reference-only",
         action="store_true",
-        help="Only compare the MINN fitted and non-fitted split files; do not run GEM fitting.",
+        help=(
+            "Do not run GEM fitting. Audit the MINN fitted-vs-nonfitted split files, "
+            "and compare --output-csv against the non-fitted source if that output already exists."
+        ),
+    )
+    parser.add_argument(
+        "--compare-output-to-reference",
+        action="store_true",
+        help=(
+            "Also compare the new fitted output against the original MINN fitted reference. "
+            "This is descriptive only and is off by default."
+        ),
     )
     parser.add_argument(
         "--no-enforce-split-directions",
@@ -465,6 +650,14 @@ def run_with_args(args: argparse.Namespace) -> int:
 
     print_reference_transformation_audit(source_rows, reference_rows, fieldnames, args)
     if args.compare_reference_only:
+        if args.output_csv.exists():
+            output_fieldnames, output_rows = read_csv_dicts(args.output_csv)
+            if output_fieldnames != fieldnames:
+                raise SystemExit("Existing output CSV header differs from source; refusing to compare.")
+            print(f"Existing output file found; comparing without refitting: {args.output_csv}")
+            print_new_fit_comparisons(source_rows, reference_rows, output_rows, fieldnames, args)
+        else:
+            print(f"No existing output file found for comparison: {args.output_csv}")
         return 0
 
     try:
@@ -509,6 +702,7 @@ def run_with_args(args: argparse.Namespace) -> int:
         unmapped_columns=unmapped_columns,
         args=args,
     )
+    print_new_fit_comparisons(source_rows, reference_rows, fitted_rows, fieldnames, args)
     return 0
 
 

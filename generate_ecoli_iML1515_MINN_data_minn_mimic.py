@@ -19,9 +19,14 @@ MINN_FITTED_SECRETION_COLUMNS = {
     "EX_ac_e": "R_EX_ac_e",
 }
 FALLBACK_SECRETION_CAP_CONFIG = {
-    "EX_co2_e": (1.0, 30.0, False),
-    "EX_etoh_e": (0.0, 10.0, False),
-    "EX_ac_e": (0.0, 10.0, False),
+    "EX_co2_e": (1.0, 20.0, False),
+    "EX_etoh_e": (0.0, 0.3, False),
+    "EX_ac_e": (0.0, 3.0, False),
+}
+SECRETION_CAP_CONFIG_OVERRIDES = {
+    "EX_co2_e": (1.0, 20.0, False),
+    "EX_etoh_e": (0.0, 0.3, False),
+    "EX_ac_e": (0.0, 3.0, False),
 }
 
 
@@ -81,6 +86,14 @@ def get_secretion_cap_config(csv_path, source_columns, fallback_config):
         else:
             cap_config[ex_id] = fallback_config[ex_id]
             print(f"Warning: using fallback secretion cap range for {ex_id}: {cap_config[ex_id]}")
+        if ex_id in SECRETION_CAP_CONFIG_OVERRIDES:
+            observed_or_fallback = cap_config[ex_id]
+            cap_config[ex_id] = SECRETION_CAP_CONFIG_OVERRIDES[ex_id]
+            if cap_config[ex_id] != observed_or_fallback:
+                print(
+                    f"Using rounded MINN-mimic secretion cap range for {ex_id}: "
+                    f"{cap_config[ex_id]} (raw range was {observed_or_fallback})"
+                )
     return cap_config
 
 
@@ -171,9 +184,9 @@ def generate_training_sample(
 
 
 if __name__ == "__main__":
-    np.random.seed(9)
+    np.random.seed(42)
 
-    n_samples = 50000
+    n_samples = 500000
     default_rate = 50
     batch_size = 500
     objective_variant = "core"  # "core" or "wt"

@@ -16,6 +16,12 @@ objective, but they are not constrained to remain inside a tolerance band.
 This is closer to the observed original MINN fitted file, where exchange
 values were allowed to move, while still fitting into iML1515 rather than the
 paper's reduced split GEM.
+
+All fitting, reporting, and comparison logic is implemented in
+`fit_minn_fluxomics_soft_inputs.py`. This wrapper only changes defaults. The
+default post-fit comparison is anchored to the non-fitted source file; the
+original MINN fitted file is treated only as an optional descriptive reference
+via `--compare-output-to-reference`.
 """
 
 from __future__ import annotations
