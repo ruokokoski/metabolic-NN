@@ -8,12 +8,14 @@ non-fitted split MINN fluxomics file and solves one linear fit per sample:
     subject to GEM steady-state constraints and bounds
                biomass fixed by default
                glucose/O2 kept inside a configurable soft band by default
+               failed strict-band samples retried with wider glucose/O2 bands
 
 It also compares the repository's original MINN fitted file against the
 non-fitted split file. The comparison is descriptive only: it checks whether the
 reference fitted file resembles a simple conversion, a scalar rescaling, or the
 configured soft-input policy. The exact original fitting procedure is not
-present in this repository.
+present in this repository. The script refuses to write incomplete fitted
+outputs if a sample cannot be solved after the configured relaxation attempts.
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ DEFAULT_MODEL_SBML = Path("models/iML1515.xml")
 DEFAULT_BIOMASS_COLUMN = "R_BIOMASS_Ec_iAF1260_core_59p81M"
 DEFAULT_OBJECTIVE_REACTION = "BIOMASS_Ec_iML1515_core_75p37M"
 SOFT_INPUT_COLUMNS = ("R_EX_glc__D_e_rev", "R_EX_o2_e_rev")
+DEFAULT_SOFT_INPUT_RELAXATION_TOLERANCES = "0.25,0.50,1.00"
 
 
 @dataclass(frozen=True)
@@ -193,6 +196,7 @@ def solve_sample(
         "status": "",
         "objective": "",
         "message": "",
+        "soft_input_relative_tolerance": args.soft_input_relative_tolerance,
     }
 
     try:
@@ -269,6 +273,72 @@ def solve_sample(
         diagnostics["status"] = "error"
         diagnostics["message"] = str(exc)
         return None, diagnostics
+
+
+def parse_relaxation_tolerances(value: Optional[str]) -> List[Optional[float]]:
+    if value is None or str(value).strip() == "":
+        return []
+    tolerances: List[Optional[float]] = []
+    for raw_part in str(value).split(","):
+        part = raw_part.strip().lower()
+        if not part:
+            continue
+        if part in {"none", "off", "disabled"}:
+            tolerances.append(None)
+        else:
+            tolerance = float(part)
+            if tolerance < 0:
+                raise ValueError("Soft-input relaxation tolerances must be nonnegative.")
+            tolerances.append(tolerance)
+    return tolerances
+
+
+def args_with_soft_input_tolerance(args: argparse.Namespace, tolerance: Optional[float]) -> argparse.Namespace:
+    retry_args = argparse.Namespace(**vars(args))
+    retry_args.soft_input_relative_tolerance = tolerance
+    return retry_args
+
+
+def solve_sample_with_soft_input_relaxation(
+    base_model,
+    row: Dict[str, str],
+    mappings: Dict[str, ColumnMapping],
+    fieldnames: Sequence[str],
+    args: argparse.Namespace,
+) -> Tuple[Optional[Dict[str, object]], Dict[str, object]]:
+    fitted, diagnostic = solve_sample(base_model, row, mappings, fieldnames, args)
+    if fitted is not None or args.soft_input_relative_tolerance is None:
+        return fitted, diagnostic
+
+    tried = [args.soft_input_relative_tolerance]
+    for tolerance in getattr(args, "soft_input_relaxation_tolerances", []):
+        if tolerance == args.soft_input_relative_tolerance:
+            continue
+        retry_args = args_with_soft_input_tolerance(args, tolerance)
+        retry_fitted, retry_diagnostic = solve_sample(
+            base_model,
+            row,
+            mappings,
+            fieldnames,
+            retry_args,
+        )
+        tried.append(tolerance)
+        if retry_fitted is not None:
+            retry_diagnostic["message"] = (
+                f"ok after relaxing glucose/O2 band from {args.soft_input_relative_tolerance} "
+                f"to {tolerance}"
+            )
+            retry_diagnostic["initial_status"] = diagnostic.get("status", "")
+            retry_diagnostic["initial_message"] = diagnostic.get("message", "")
+            retry_diagnostic["soft_input_relaxation_tried"] = ",".join("none" if t is None else f"{t:g}" for t in tried)
+            return retry_fitted, retry_diagnostic
+
+    diagnostic["message"] = (
+        f"{diagnostic.get('message', '')}; failed after soft-input relaxation attempts "
+        f"{','.join('none' if t is None else f'{t:g}' for t in tried)}"
+    )
+    diagnostic["soft_input_relaxation_tried"] = ",".join("none" if t is None else f"{t:g}" for t in tried)
+    return None, diagnostic
 
 
 def aligned_by_experiment(rows: Iterable[Dict[str, object]]) -> Dict[str, Dict[str, object]]:
@@ -587,6 +657,16 @@ def print_summary(
             f"(abs tol {args.soft_input_absolute_tolerance:g})",
         )
     print(f"Solved samples: {ok_count}/{len(diagnostics)}")
+    relaxed = [d for d in diagnostics if d.get("initial_status")]
+    if relaxed:
+        print(f"Soft glucose/O2 band relaxed for {len(relaxed)} solved samples:")
+        for diagnostic in relaxed:
+            print(
+                f"  {diagnostic.get('experiment')}: "
+                f"relative_tolerance={diagnostic.get('soft_input_relative_tolerance')}"
+            )
+    elif args.soft_input_relative_tolerance is not None and args.soft_input_relaxation_tolerances:
+        print("Soft glucose/O2 band relaxation was available but not needed.")
     print(f"Mapped flux columns: {len(mapped_columns)}")
     if unmapped_columns:
         print(f"Unmapped columns kept from source ({len(unmapped_columns)}): {', '.join(unmapped_columns)}")
@@ -603,6 +683,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--biomass-mode", choices=("fixed", "soft"), default="fixed")
     parser.add_argument("--soft-input-relative-tolerance", type=float, default=0.10)
     parser.add_argument("--soft-input-absolute-tolerance", type=float, default=1e-6)
+    parser.add_argument(
+        "--soft-input-relaxation-tolerances",
+        default=DEFAULT_SOFT_INPUT_RELAXATION_TOLERANCES,
+        help=(
+            "Comma-separated glucose/O2 relative tolerances retried for samples that fail "
+            "the initial soft-input band. Use an empty string to disable retries."
+        ),
+    )
+    parser.add_argument(
+        "--disable-soft-input-relaxation",
+        action="store_true",
+        help="Disable adaptive soft-input band relaxation and fail instead of retrying strict-band samples.",
+    )
     parser.add_argument(
         "--no-soft-input-band",
         action="store_true",
@@ -642,6 +735,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def run_with_args(args: argparse.Namespace) -> int:
     if getattr(args, "no_soft_input_band", False):
         args.soft_input_relative_tolerance = None
+    if args.soft_input_relative_tolerance is None or getattr(args, "disable_soft_input_relaxation", False):
+        args.soft_input_relaxation_tolerances = []
+    else:
+        args.soft_input_relaxation_tolerances = parse_relaxation_tolerances(args.soft_input_relaxation_tolerances)
 
     fieldnames, source_rows = read_csv_dicts(args.source_csv)
     ref_fieldnames, reference_rows = read_csv_dicts(args.reference_fitted_csv)
@@ -682,7 +779,7 @@ def run_with_args(args: argparse.Namespace) -> int:
     fitted_rows: List[Dict[str, object]] = []
     diagnostics: List[Dict[str, object]] = []
     for row in source_rows:
-        fitted, diagnostic = solve_sample(model, row, mappings, fieldnames, args)
+        fitted, diagnostic = solve_sample_with_soft_input_relaxation(model, row, mappings, fieldnames, args)
         diagnostics.append(diagnostic)
         if fitted is not None:
             fitted_rows.append(fitted)
@@ -692,6 +789,9 @@ def run_with_args(args: argparse.Namespace) -> int:
         print("Failed samples:")
         for row in failed:
             print(f"  {row.get('experiment')}: {row.get('status')} {row.get('message')}")
+        raise SystemExit(
+            f"Only solved {len(fitted_rows)}/{len(source_rows)} samples; refusing to write incomplete output."
+        )
 
     write_csv_dicts(args.output_csv, fieldnames, fitted_rows)
 

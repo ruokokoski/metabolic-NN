@@ -24,15 +24,17 @@ This document captures the main points an agent should follow when working on th
 - The current generator samples glucose and oxygen uptake constraints, leaves CO2/ethanol/acetate uncapped in the secretion direction, and fills their input/context columns from realized pFBA secretion fluxes after solving.
 - In `generate_ecoli_iML1515_MINN_data.py`, non-variable base exchanges are fixed as medium-availability inputs with `lower_bound=-default_rate`. Glucose and oxygen are variable uptake lower bounds. CO2/ethanol/acetate are special secretion-context exchanges: `lower_bound=0`, `upper_bound` left at the nonnegative model default, then their input values are overwritten from the solved pFBA flux.
 - `generate_ecoli_iML1515_MINN_data_minn_mimic.py` is the separate MINN-mimic ablation generator. It randomly caps CO2/ethanol/acetate secretion during simulation and writes those sampled caps to the input/context columns instead of overwriting them with realized pFBA secretion fluxes. This is less biologically natural than leaving secretion products unconstrained, but closer to the paper's described random reservoir `Vin` setup.
-- `fit_minn_fluxomics_soft_inputs.py` is a separate experimental fitter for the 29-sample MINN split fluxomics file. It starts from `MINN_data/fluxomics_iAF1260_reduced_split.csv`, uses soft measured glucose/O2 constraints by default, and compares the fitted output against the non-fitted source by default. The original fitted file `MINN_data/fluxomics_iAF1260_reduced_split_fit.csv` is only a descriptive audit reference, not a target to reproduce; use `--compare-output-to-reference` only when that extra comparison is explicitly wanted.
+- `fit_minn_fluxomics_soft_inputs.py` is a separate experimental fitter for the 29-sample MINN split fluxomics file. It starts from `MINN_data/fluxomics_iAF1260_reduced_split.csv`, uses soft measured glucose/O2 constraints by default, starts with a 10% glucose/O2 band, retries failed samples with wider bands, refuses incomplete output, and compares the fitted output against the non-fitted source by default. The original fitted file `MINN_data/fluxomics_iAF1260_reduced_split_fit.csv` is only a descriptive audit reference, not a target to reproduce; use `--compare-output-to-reference` only when that extra comparison is explicitly wanted.
 - `fit_minn_fluxomics_minn_like.py` is the MINN-like refitting-policy trial in iML1515. It uses `models/iML1515.xml`, fixes biomass by default, disables the hard glucose/O2 soft-input band by default, and writes `MINN_data/fluxomics_iML1515_minn_like_fit.csv`.
 
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
 - MINN-style data directory: `./MINN_data`.
-- `MINN_FLUXOMICS_FILE` is a simple fluxomics-file switch:
-  - current active fitted/Table 4-comparable file: `fluxomics_iAF1260_reduced_split_fit.csv`
-  - non-fitted robustness file: `fluxomics_iAF1260_reduced_split.csv`
+- `MINN_FLUXOMICS_FILE_MODE` is the notebook fluxomics-file switch. It sets `MINN_FLUXOMICS_FILE` from `MINN_FLUXOMICS_FILE_OPTIONS`. The current active default is `iml1515_minn_like`.
+  - `minn_fitted`: `fluxomics_iAF1260_reduced_split_fit.csv`; original MINN fitted/Table 4-comparable file
+  - `non_fitted`: `fluxomics_iAF1260_reduced_split.csv`; non-fitted split source robustness file
+  - `iml1515_soft_glc_o2`: `fluxomics_iML1515_soft_glc_o2_fit.csv`; iML1515 fit with soft glucose/O2 band and adaptive relaxation
+  - `iml1515_minn_like`: `fluxomics_iML1515_minn_like_fit.csv`; iML1515 fit with MINN-like soft exchange movement
 - Inputs include:
   - transcriptomics
   - proteomics
