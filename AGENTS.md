@@ -30,7 +30,7 @@ This document captures the main points an agent should follow when working on th
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
 - MINN-style data directory: `./MINN_data`.
-- `MINN_FLUXOMICS_FILE_MODE` is the notebook fluxomics-file switch. It sets `MINN_FLUXOMICS_FILE` from `MINN_FLUXOMICS_FILE_OPTIONS`. The current active default is `iml1515_minn_like`.
+- `MINN_FLUXOMICS_FILE_MODE` is the notebook fluxomics-file switch. It sets `MINN_FLUXOMICS_FILE` from `MINN_FLUXOMICS_FILE_OPTIONS`. The current active default is `iml1515_soft_glc_o2`.
   - `minn_fitted`: `fluxomics_iAF1260_reduced_split_fit.csv`; original MINN fitted/Table 4-comparable file
   - `non_fitted`: `fluxomics_iAF1260_reduced_split.csv`; non-fitted split source robustness file
   - `iml1515_soft_glc_o2`: `fluxomics_iML1515_soft_glc_o2_fit.csv`; iML1515 fit with soft glucose/O2 band and adaptive relaxation
