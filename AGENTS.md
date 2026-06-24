@@ -30,7 +30,7 @@ This document captures the main points an agent should follow when working on th
 ## 2) Data and feature setup
 - Training/eval notebook: `ecoli_iML1515_MINN_model_testing.ipynb`.
 - MINN-style data directory: `./MINN_data`.
-- `MINN_FLUXOMICS_FILE_MODE` is the notebook fluxomics-file switch. It sets `MINN_FLUXOMICS_FILE` from `MINN_FLUXOMICS_FILE_OPTIONS`. The current active default is `iml1515_minn_like`.
+- `MINN_FLUXOMICS_FILE_MODE` is the notebook fluxomics-file switch. It sets `MINN_FLUXOMICS_FILE` from `MINN_FLUXOMICS_FILE_OPTIONS`. The current active default is `minn_fitted`.
   - `minn_fitted`: `fluxomics_iAF1260_reduced_split_fit.csv`; original MINN fitted/Table 4-comparable file
   - `non_fitted`: `fluxomics_iAF1260_reduced_split.csv`; non-fitted split source robustness file
   - `iml1515_soft_glc_o2`: `fluxomics_iML1515_soft_glc_o2_fit.csv`; iML1515 fit with soft glucose/O2 band and adaptive relaxation
@@ -116,7 +116,7 @@ This document captures the main points an agent should follow when working on th
 - Per-LOO metrics (R2/MAE/RMSE/NE).
 - Compact Optuna trials table (`last_optuna_trials_df`).
 - Per-LOO validation-loss table (`loo_val_loss_df`).
-- Per-LOO R2/MAE/RMSE panel plot: save to `./pics/minn_loo_metric_panels.png` by default and still show it in the notebook; set `MINN_LOO_METRIC_PLOT_SAVE_PATH=None` for display-only behavior.
+- Per-LOO R2/RMSE panel plot: save to `./pics/minn_loo_metric_panels.png` by default and still show it in the notebook; set `MINN_LOO_METRIC_PLOT_SAVE_PATH=None` for display-only behavior.
 - FluxTransformer->pFBA cap-binding diagnostics:
   - `pfba_cap_binding_diagnostics_df`
   - `pfba_cap_binding_sample_summary_df`
