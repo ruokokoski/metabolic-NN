@@ -66,7 +66,7 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_ra
             data[ex] = default_rate
 
         # Make phosphate (EX_pi_e) variable, as its availability can limit growth and vary naturally
-        pi_rate = random_rate(0.1, default_rate)
+        pi_rate = random_rate(1, default_rate) 
         model.reactions.get_by_id('EX_pi_e').lower_bound = -pi_rate
         data['EX_pi_e'] = pi_rate
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     # Prepare output file
     os.makedirs("./data", exist_ok=True)
     today = datetime.today().strftime('%Y-%m-%d')
-    temp_filename = f"./data/{today}_full_training_data_temp.csv"
+    temp_filename = f"./data/{today}_training_data_temp.csv"
     start_time = time.time()
 
     print(f"Generating {n_samples} FBA training samples...\n")

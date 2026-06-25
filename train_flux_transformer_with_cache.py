@@ -16,9 +16,9 @@ from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
 
-#DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
-DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
-MODEL_NAME = "ecoli_core"
+#DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
+DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
+MODEL_NAME = "ecoli_core_1M"
 #MODEL_NAME = "iML1515_500k"
 
 def set_seed(seed=42):
@@ -594,7 +594,7 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 640
     batch_size = 128
-    num_epochs = 15
+    num_epochs = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
