@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 #DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
 DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
 MODEL_NAME = "ecoli_core_1M"
-#MODEL_NAME = "iML1515_500k"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -379,6 +378,45 @@ def _empty_cache(device):
     elif device.type == "mps":
         torch.mps.empty_cache()
 
+
+def _torch_load_checkpoint(path, device):
+    try:
+        return torch.load(path, map_location=device, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=device)
+
+
+def _remove_file_if_exists(path):
+    if path and os.path.exists(path):
+        os.remove(path)
+
+
+def _format_elapsed(seconds):
+    seconds = int(seconds)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def _save_best_checkpoint(path, model, optimizer, train_losses, test_losses, best_epoch, best_test_loss):
+    checkpoint_dir = os.path.dirname(path)
+    if checkpoint_dir:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+    torch.save(
+        {
+            "epoch": int(best_epoch),
+            "model_epoch": int(best_epoch),
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "train_losses": list(train_losses),
+            "test_losses": list(test_losses),
+            "best_test_loss": float(best_test_loss),
+            "best_epoch": int(best_epoch),
+        },
+        path,
+    )
+
+
 def train_model(
     train_loader,
     test_loader,
@@ -394,7 +432,9 @@ def train_model(
     learning_rate,
     dropout,
     output_sample_ratio=1.0,
-    checkpoint_path=None
+    checkpoint_path=None,
+    best_checkpoint_path=None,
+    patience=10
 ):
     model = FluxTransformer(
         vocab_size=vocab_size,
@@ -420,14 +460,32 @@ def train_model(
     start_epoch = 0
     best_test_loss = float("inf")
     best_epoch = -1
+    early_stopped = False
+    epochs_no_improve = 0
     train_losses, test_losses = [], []
+
+    if patience is not None:
+        patience = int(patience)
+        if patience < 0:
+            raise ValueError("patience must be nonnegative or None")
+
+    if checkpoint_path and best_checkpoint_path is None:
+        checkpoint_root, checkpoint_ext = os.path.splitext(checkpoint_path)
+        best_checkpoint_path = f"{checkpoint_root}_best_tmp{checkpoint_ext}"
+
+    if (
+        checkpoint_path
+        and best_checkpoint_path
+        and os.path.abspath(best_checkpoint_path) == os.path.abspath(checkpoint_path)
+    ):
+        raise ValueError("best_checkpoint_path must be different from checkpoint_path")
+
+    if best_checkpoint_path:
+        _remove_file_if_exists(best_checkpoint_path)
 
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"Found checkpoint at {checkpoint_path}. Trying to resume training.")
-        try:
-            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        except TypeError:
-            checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _torch_load_checkpoint(checkpoint_path, device)
 
         try:
             model.load_state_dict(checkpoint["model_state_dict"])
@@ -440,13 +498,38 @@ def train_model(
                 except Exception as err:
                     print(f"Could not load optimizer state. Continuing with fresh optimizer. Error: {err}")
 
-            start_epoch = int(checkpoint.get("epoch", 0))
+            checkpoint_has_best_state = "model_epoch" in checkpoint or "best_epoch" in checkpoint
+            start_epoch = int(checkpoint.get("model_epoch", checkpoint.get("epoch", 0)))
             train_losses = list(checkpoint.get("train_losses", []))
             test_losses = list(checkpoint.get("test_losses", []))
+            train_losses = train_losses[:start_epoch]
+            test_losses = test_losses[:start_epoch]
 
             if test_losses:
-                best_test_loss = float(min(test_losses))
-                best_epoch = int(np.argmin(test_losses) + 1)
+                history_best_epoch = int(np.argmin(test_losses) + 1)
+                history_best_loss = float(min(test_losses))
+                if checkpoint_has_best_state:
+                    best_test_loss = float(checkpoint.get("best_test_loss", history_best_loss))
+                    best_epoch = int(checkpoint.get("best_epoch", history_best_epoch))
+                else:
+                    best_test_loss = float(test_losses[-1])
+                    best_epoch = int(start_epoch)
+                    if history_best_epoch != start_epoch:
+                        print(
+                            "Existing checkpoint predates best-epoch metadata; "
+                            f"using loaded epoch {start_epoch} as the resumable best state."
+                        )
+
+                if best_checkpoint_path and best_epoch == start_epoch:
+                    _save_best_checkpoint(
+                        best_checkpoint_path,
+                        model,
+                        optimizer,
+                        train_losses,
+                        test_losses,
+                        best_epoch,
+                        best_test_loss,
+                    )
 
             print(f"Resumed from epoch {start_epoch}. Target epoch: {num_epochs}.")
 
@@ -463,11 +546,17 @@ def train_model(
             "output_sample_ratio": float(output_sample_ratio),
             "start_epoch": int(start_epoch),
             "end_epoch": int(start_epoch),
+            "model_epoch": int(best_epoch if best_epoch > 0 else start_epoch),
+            "training_end_epoch": int(start_epoch),
             "resumed": bool(start_epoch > 0),
+            "early_stopped": False,
+            "patience": patience,
         }
+        _remove_file_if_exists(best_checkpoint_path)
         return train_losses, test_losses, model, optimizer, train_meta
 
     total_outputs = len(out_indices)
+    print(f"Early stopping patience: {patience}")
 
     for epoch in range(start_epoch, num_epochs):
         model.train()
@@ -536,14 +625,56 @@ def train_model(
         epoch_test_loss /= len(test_loader.dataset)
         test_losses.append(epoch_test_loss)
 
-        print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {epoch_train_loss:.6f} | Test Loss: {epoch_test_loss:.6f}")
+        epoch_elapsed = _format_elapsed(time.time() - start_time)
+        current_time = time.strftime("%H:%M")
+        print(
+            f"Epoch {epoch+1}/{num_epochs} | "
+            f"Train Loss: {epoch_train_loss:.6f} | "
+            f"Test Loss: {epoch_test_loss:.6f} | "
+            f"Elapsed: {epoch_elapsed} | Time: {current_time}"
+        )
 
         if epoch_test_loss < best_test_loss:
             best_test_loss = epoch_test_loss
             best_epoch = epoch + 1
+            epochs_no_improve = 0
+            if best_checkpoint_path:
+                _save_best_checkpoint(
+                    best_checkpoint_path,
+                    model,
+                    optimizer,
+                    train_losses,
+                    test_losses,
+                    best_epoch,
+                    best_test_loss,
+                )
+        else:
+            epochs_no_improve += 1
+            if (
+                patience is not None
+                and epochs_no_improve >= patience
+            ):
+                early_stopped = True
+                print(
+                    f"Early stopping at epoch {epoch+1}; "
+                    f"best test loss {best_test_loss:.6f} was at epoch {best_epoch}."
+                )
+                break
 
         _empty_cache(device)
         gc.collect()
+
+    training_end_epoch = len(test_losses)
+
+    if best_checkpoint_path and os.path.exists(best_checkpoint_path):
+        best_checkpoint = _torch_load_checkpoint(best_checkpoint_path, device)
+        model.load_state_dict(best_checkpoint["model_state_dict"])
+        if "optimizer_state_dict" in best_checkpoint:
+            optimizer.load_state_dict(best_checkpoint["optimizer_state_dict"])
+        train_losses = list(best_checkpoint.get("train_losses", train_losses))
+        test_losses = list(best_checkpoint.get("test_losses", test_losses))
+        _remove_file_if_exists(best_checkpoint_path)
+        print(f"Restored best model state from epoch {best_epoch}.")
 
     elapsed = time.time() - start_time
     mins, secs = divmod(elapsed, 60)
@@ -558,8 +689,12 @@ def train_model(
         "num_epochs": int(num_epochs),
         "output_sample_ratio": float(output_sample_ratio),
         "start_epoch": int(start_epoch),
-        "end_epoch": int(num_epochs),
+        "end_epoch": int(training_end_epoch),
+        "model_epoch": int(best_epoch),
+        "training_end_epoch": int(training_end_epoch),
         "resumed": bool(start_epoch > 0),
+        "early_stopped": bool(early_stopped),
+        "patience": patience,
     }
     return train_losses, test_losses, model, optimizer, train_meta
 
@@ -594,7 +729,8 @@ if __name__ == "__main__":
     n_layers = 3
     d_ff = 640
     batch_size = 128
-    num_epochs = 10
+    num_epochs = 100
+    patience = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
@@ -642,18 +778,26 @@ if __name__ == "__main__":
             learning_rate=learning_rate,
             dropout=dropout,
             output_sample_ratio=output_sample_ratio,
-            checkpoint_path=checkpoint_path
+            checkpoint_path=checkpoint_path,
+            patience=patience
         )
 
         model_save_path = f"{model_save_dir}/{model_name}.pth"
         os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
         torch.save(model.state_dict(), model_save_path)
-        print(f"\nModel weights saved to {model_save_path}")
+        model_epoch = int(train_meta.get("model_epoch", train_meta.get("best_epoch", num_epochs)))
+        training_end_epoch = int(train_meta.get("training_end_epoch", train_meta.get("end_epoch", model_epoch)))
+        print(f"\nBest-epoch model weights saved to {model_save_path} (epoch {model_epoch})")
 
-        completed_epochs = int(train_meta.get("end_epoch", num_epochs))
 
         checkpoint = {
-            "epoch": completed_epochs,
+            "epoch": model_epoch,
+            "model_epoch": model_epoch,
+            "training_end_epoch": training_end_epoch,
+            "best_epoch": int(train_meta.get("best_epoch", model_epoch)),
+            "best_test_loss": train_meta.get("best_test_loss"),
+            "early_stopped": bool(train_meta.get("early_stopped", False)),
+            "patience": train_meta.get("patience", patience),
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "train_losses": train_loss,
@@ -666,8 +810,10 @@ if __name__ == "__main__":
                 "dropout": dropout,
                 "batch_size": batch_size,
                 "learning_rate": learning_rate,
-                "num_epochs": completed_epochs,
+                "num_epochs": model_epoch,
                 "requested_num_epochs": num_epochs,
+                "training_end_epoch": training_end_epoch,
+                "patience": patience,
                 "vocab_size": len(outputs),
                 "input_token_indices": [int(i) for i in input_token_indices],
                 "output_sample_ratio": output_sample_ratio,
@@ -712,4 +858,3 @@ if __name__ == "__main__":
             print("Removed memmap cache files:")
             for path in removed_files:
                 print(f"  - {path}")
-
