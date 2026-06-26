@@ -562,7 +562,7 @@ def train_model(
         model.train()
         epoch_train_loss = 0.0
 
-        for batch_X, batch_y in train_loader:
+        for batch_idx, (batch_X, batch_y) in enumerate(train_loader):
             batch_X = batch_X.to(device, non_blocking=True)
             batch_y = batch_y.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
@@ -587,6 +587,8 @@ def train_model(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
+            if epoch == start_epoch and batch_idx == 0:
+                print_gpu_memory()
 
             epoch_train_loss += loss.item() * batch_X.size(0)
 
