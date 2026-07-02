@@ -1,0 +1,106 @@
+============================================================
+Training run started: 2026-06-29 19:48:01
+Training file: train_flux_transformer_norm_loss.py
+MODEL_NAME: ecoli_core_10M_normloss
+model_name: ecoli_core_10M_normloss_d128_h8_l3_ff640
+
+Data path: ./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv
+Device: cuda
+
+Architecture:
+d_model=128
+n_heads=8
+n_layers=3
+d_ff=640
+dropout=0.02
+
+Training settings:
+batch_size=128
+num_epochs=100
+patience=10
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=per_flux_normalized_huber
+loss_scale_method=q95_q05
+loss_scale_min=0.25
+loss_scale_max_samples=200000
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 9805381 samples from ./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv
+Extracted input columns count:  20
+Extracted output columns count: 95
+Medium constraints are injected into these token indices (in outputs order):
+[27, 25, 32, 37, 19, 21, 38, 26, 33, 23, 20, 24, 28, 29, 22, 30, 31, 34, 35, 36]
+Training samples: 7844304
+Test samples: 1961077
+Per-flux normalized loss scales: method=q95_q05, samples=200,000, min=0.25, median=6.925, max=86.45
+Using per-flux normalized loss: q95_q05
+Early stopping patience: 10
+Allocated memory: 27.38 MB
+Reserved memory: 786.00 MB
+Epoch 1/100 | Train Loss: 0.022572 | Test Loss: 0.008231 | Elapsed: 01:05:15 | Time: 20:55
+Epoch 2/100 | Train Loss: 0.008404 | Test Loss: 0.007659 | Elapsed: 02:11:31 | Time: 22:02
+Epoch 3/100 | Train Loss: 0.007902 | Test Loss: 0.007426 | Elapsed: 03:18:20 | Time: 23:09
+Epoch 4/100 | Train Loss: 0.007684 | Test Loss: 0.007278 | Elapsed: 04:25:34 | Time: 00:16
+Epoch 5/100 | Train Loss: 0.007554 | Test Loss: 0.007308 | Elapsed: 05:33:14 | Time: 01:23
+Epoch 6/100 | Train Loss: 0.007472 | Test Loss: 0.007221 | Elapsed: 06:40:59 | Time: 02:31
+Epoch 7/100 | Train Loss: 0.007410 | Test Loss: 0.007210 | Elapsed: 07:48:38 | Time: 03:39
+Epoch 8/100 | Train Loss: 0.007361 | Test Loss: 0.007141 | Elapsed: 08:56:16 | Time: 04:46
+Epoch 9/100 | Train Loss: 0.007325 | Test Loss: 0.007166 | Elapsed: 10:03:55 | Time: 05:54
+Epoch 10/100 | Train Loss: 0.007293 | Test Loss: 0.007182 | Elapsed: 11:11:44 | Time: 07:02
+Epoch 11/100 | Train Loss: 0.007270 | Test Loss: 0.007046 | Elapsed: 12:19:45 | Time: 08:10
+Epoch 12/100 | Train Loss: 0.007247 | Test Loss: 0.007093 | Elapsed: 13:27:53 | Time: 09:18
+Epoch 13/100 | Train Loss: 0.007226 | Test Loss: 0.007074 | Elapsed: 14:37:06 | Time: 10:27
+Epoch 14/100 | Train Loss: 0.007209 | Test Loss: 0.007105 | Elapsed: 15:47:43 | Time: 11:38
+Epoch 15/100 | Train Loss: 0.007193 | Test Loss: 0.007098 | Elapsed: 16:58:38 | Time: 12:49
+Epoch 16/100 | Train Loss: 0.007179 | Test Loss: 0.007064 | Elapsed: 18:10:01 | Time: 14:00
+Epoch 17/100 | Train Loss: 0.007168 | Test Loss: 0.007028 | Elapsed: 19:22:50 | Time: 15:13
+Epoch 18/100 | Train Loss: 0.007156 | Test Loss: 0.007017 | Elapsed: 21:13:46 | Time: 17:04
+Epoch 19/100 | Train Loss: 0.007145 | Test Loss: 0.007043 | Elapsed: 22:22:43 | Time: 18:13
+Epoch 20/100 | Train Loss: 0.007137 | Test Loss: 0.007008 | Elapsed: 23:29:46 | Time: 19:20
+Epoch 21/100 | Train Loss: 0.007128 | Test Loss: 0.007014 | Elapsed: 24:38:17 | Time: 20:28
+Epoch 22/100 | Train Loss: 0.007118 | Test Loss: 0.007002 | Elapsed: 25:49:55 | Time: 21:40
+Epoch 23/100 | Train Loss: 0.007112 | Test Loss: 0.006974 | Elapsed: 26:59:30 | Time: 22:50
+Epoch 24/100 | Train Loss: 0.007103 | Test Loss: 0.007035 | Elapsed: 28:08:36 | Time: 23:59
+Epoch 25/100 | Train Loss: 0.007099 | Test Loss: 0.006999 | Elapsed: 29:15:35 | Time: 01:06
+Epoch 26/100 | Train Loss: 0.007092 | Test Loss: 0.007020 | Elapsed: 30:22:17 | Time: 02:12
+Epoch 27/100 | Train Loss: 0.007086 | Test Loss: 0.006982 | Elapsed: 31:28:24 | Time: 03:19
+Epoch 28/100 | Train Loss: 0.007081 | Test Loss: 0.006955 | Elapsed: 32:34:49 | Time: 04:25
+Epoch 29/100 | Train Loss: 0.007076 | Test Loss: 0.006940 | Elapsed: 33:40:46 | Time: 05:31
+Epoch 30/100 | Train Loss: 0.007071 | Test Loss: 0.006964 | Elapsed: 34:47:11 | Time: 06:37
+Epoch 31/100 | Train Loss: 0.007066 | Test Loss: 0.006963 | Elapsed: 35:53:19 | Time: 07:44
+Epoch 32/100 | Train Loss: 0.007063 | Test Loss: 0.006963 | Elapsed: 36:59:31 | Time: 08:50
+Epoch 33/100 | Train Loss: 0.007057 | Test Loss: 0.006950 | Elapsed: 38:06:26 | Time: 09:57
+Epoch 34/100 | Train Loss: 0.007054 | Test Loss: 0.006950 | Elapsed: 39:14:00 | Time: 11:04
+Epoch 35/100 | Train Loss: 0.007050 | Test Loss: 0.006952 | Elapsed: 40:30:45 | Time: 12:21
+Epoch 36/100 | Train Loss: 0.007046 | Test Loss: 0.006937 | Elapsed: 41:37:24 | Time: 13:28
+Epoch 37/100 | Train Loss: 0.007043 | Test Loss: 0.006999 | Elapsed: 42:44:18 | Time: 14:35
+Epoch 38/100 | Train Loss: 0.007038 | Test Loss: 0.006945 | Elapsed: 43:51:38 | Time: 15:42
+Epoch 39/100 | Train Loss: 0.007034 | Test Loss: 0.006958 | Elapsed: 44:57:59 | Time: 16:48
+Epoch 40/100 | Train Loss: 0.007033 | Test Loss: 0.006918 | Elapsed: 46:04:25 | Time: 17:55
+Epoch 41/100 | Train Loss: 0.007030 | Test Loss: 0.006971 | Elapsed: 47:11:05 | Time: 19:01
+Epoch 42/100 | Train Loss: 0.007028 | Test Loss: 0.006933 | Elapsed: 48:17:54 | Time: 20:08
+Epoch 43/100 | Train Loss: 0.007026 | Test Loss: 0.006944 | Elapsed: 49:25:57 | Time: 21:16
+Epoch 44/100 | Train Loss: 0.007022 | Test Loss: 0.006936 | Elapsed: 50:34:14 | Time: 22:24
+Epoch 45/100 | Train Loss: 0.007020 | Test Loss: 0.006958 | Elapsed: 51:42:01 | Time: 23:32
+Epoch 46/100 | Train Loss: 0.007016 | Test Loss: 0.006992 | Elapsed: 52:50:12 | Time: 00:40
+Epoch 47/100 | Train Loss: 0.007015 | Test Loss: 0.006980 | Elapsed: 53:58:25 | Time: 01:49
+Epoch 48/100 | Train Loss: 0.007012 | Test Loss: 0.006929 | Elapsed: 55:06:42 | Time: 02:57
+Epoch 49/100 | Train Loss: 0.007010 | Test Loss: 0.006947 | Elapsed: 56:14:38 | Time: 04:05
+Epoch 50/100 | Train Loss: 0.007007 | Test Loss: 0.006953 | Elapsed: 57:22:30 | Time: 05:13
+Early stopping at epoch 50; best test loss 0.006918 was at epoch 40.
+Restored best model state from epoch 40.
+Training Completed.
+Training took 3442 min 31.1 sec.
+Best test loss: 0.006918 at epoch 40
+
+Best-epoch model weights saved to ./models/ecoli_core_10M_normloss_d128_h8_l3_ff640/ecoli_core_10M_normloss_d128_h8_l3_ff640.pth (epoch 40)
+Full checkpoint saved to ./models/ecoli_core_10M_normloss_d128_h8_l3_ff640/ecoli_core_10M_normloss_d128_h8_l3_ff640_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap\2026-03-30_ecoli_core_training_data_9805381_samples_X_tok.float32.mmap
+  - ./tmp_memmap\2026-03-30_ecoli_core_training_data_9805381_samples_y_tok.float32.mmap

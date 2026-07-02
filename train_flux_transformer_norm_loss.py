@@ -1,6 +1,7 @@
 import os
 import gc
 import random
+import sys
 import time
 from datetime import date
 
@@ -16,9 +17,9 @@ from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
 
-#DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
-DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
-MODEL_NAME = "ecoli_core_1M_acttail"
+DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
+#DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
+MODEL_NAME = "ecoli_core_10M_normloss"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -43,6 +44,53 @@ def print_gpu_memory():
         print(f'Reserved memory: {reserved:.2f} MB')
     else:
         print("CUDA is not available.")
+
+
+class _TeeStream:
+    def __init__(self, stream, log_file):
+        self.stream = stream
+        self.log_file = log_file
+
+    def write(self, data):
+        self.stream.write(data)
+        self.log_file.write(data)
+        self.flush()
+
+    def flush(self):
+        self.stream.flush()
+        self.log_file.flush()
+
+    def isatty(self):
+        return self.stream.isatty()
+
+
+def start_training_log(log_path):
+    log_dir = os.path.dirname(log_path)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+    log_file = open(log_path, "a", encoding="utf-8")
+    sys.stdout = _TeeStream(sys.stdout, log_file)
+    sys.stderr = _TeeStream(sys.stderr, log_file)
+    return log_file
+
+
+def print_training_log_header(model_name, data_path, device, settings):
+    print("=" * 60)
+    print(f"Training run started: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Training file: {os.path.basename(__file__)}")
+    print(f"MODEL_NAME: {MODEL_NAME}")
+    print(f"model_name: {model_name}")
+    print("")
+    print(f"Data path: {data_path}")
+    print(f"Device: {device}")
+    print("")
+    for section_title, section_settings in settings:
+        print(f"{section_title}:")
+        for key, value in section_settings:
+            print(f"{key}={value}")
+        print("")
+    print("=" * 60)
+    print("")
 
 class AttentionBlock(nn.Module):
     """Custom multi-head attention block for metabolic modeling"""
@@ -163,14 +211,7 @@ class FluxTransformer(nn.Module):
             for _ in range(n_layers)
         ])
 
-        self.activity_head = nn.Sequential(
-            nn.LayerNorm(d_model),
-            nn.Linear(d_model, 1),
-        )
-        torch.nn.init.normal_(self.activity_head[1].weight, mean=0.0, std=0.02)
-        torch.nn.init.zeros_(self.activity_head[1].bias)
-
-    def forward(self, c, output_subset=None, return_embedding=False, return_activity=False):
+    def forward(self, c, output_subset=None, return_embedding=False):
         """
         c: (batch, vocab_size, 1)
         output_subset: 1D tensor of token indices to train on (typically excludes injected tokens)
@@ -195,15 +236,8 @@ class FluxTransformer(nn.Module):
             x, c_subset = layer(x, c_subset)
             c_subset_all_layers[:, :, e] = c_subset.squeeze(-1)
 
-        activity_logits = self.activity_head(x) if return_activity else None
-
         if return_embedding:
-            if return_activity:
-                return x, selected_indices, activity_logits
             return x, selected_indices
-
-        if return_activity:
-            return c_subset_all_layers, selected_indices, activity_logits
 
         return c_subset_all_layers, selected_indices
 
@@ -323,9 +357,6 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
                 X_tok[row_start:row_end, tok_idx] = X_in[:, j]
 
         row_start = row_end
-        if chunk_idx % 10 == 0:
-            print(f"Loaded {row_end:,}/{n_samples:,} rows...")
-
     X_tok.flush()
     y_tok.flush()
 
@@ -490,73 +521,6 @@ def compute_flux_loss_scales(
     return scales
 
 
-def compute_activity_tail_stats(
-    y,
-    train_indices,
-    *,
-    activity_threshold=1e-4,
-    tail_quantile=0.90,
-    min_tail_threshold=1.0,
-    max_pos_weight=20.0,
-    max_samples=200_000,
-    random_state=42,
-):
-    """
-    Estimate activity imbalance and high-flux tail thresholds from training data.
-
-    Activity means abs(flux) > activity_threshold. Tail thresholds are computed
-    from active absolute fluxes so zero-inflated reactions still get meaningful
-    high-flux cutoffs.
-    """
-    train_indices = np.asarray(train_indices, dtype=np.int64)
-    if train_indices.size == 0:
-        raise ValueError("train_indices is empty; cannot compute activity statistics.")
-
-    if max_samples is not None and max_samples > 0 and train_indices.size > max_samples:
-        rng = np.random.default_rng(random_state)
-        stat_indices = rng.choice(train_indices, size=int(max_samples), replace=False)
-    else:
-        stat_indices = train_indices
-
-    stat_indices = np.sort(np.asarray(stat_indices, dtype=np.int64))
-    y_sample = np.asarray(y[stat_indices], dtype=np.float32)
-    abs_y = np.abs(y_sample)
-    active = abs_y > float(activity_threshold)
-
-    active_counts = active.sum(axis=0).astype(np.float64)
-    total = float(y_sample.shape[0])
-    active_fraction = active_counts / max(1.0, total)
-
-    neg_counts = total - active_counts
-    pos_weight = neg_counts / np.maximum(active_counts, 1.0)
-    pos_weight = np.clip(pos_weight, 1.0, float(max_pos_weight)).astype(np.float32)
-
-    tail_thresholds = np.empty(y_sample.shape[1], dtype=np.float32)
-    for j in range(y_sample.shape[1]):
-        active_abs = abs_y[active[:, j], j]
-        if active_abs.size > 0:
-            threshold = np.nanquantile(active_abs, tail_quantile)
-        else:
-            threshold = 0.0
-        if not np.isfinite(threshold) or threshold < min_tail_threshold:
-            threshold = min_tail_threshold
-        tail_thresholds[j] = float(threshold)
-
-    print(
-        "Activity/tail stats: "
-        f"samples={len(stat_indices):,}, "
-        f"activity_threshold={activity_threshold:g}, "
-        f"tail_q={tail_quantile:g}, "
-        f"median_active_frac={float(np.median(active_fraction)):.4g}, "
-        f"median_tail_threshold={float(np.median(tail_thresholds)):.4g}"
-    )
-    return {
-        "activity_fraction": active_fraction.astype(np.float32),
-        "activity_pos_weight": pos_weight,
-        "tail_thresholds": tail_thresholds,
-    }
-
-
 def train_model(
     train_loader,
     test_loader,
@@ -577,14 +541,6 @@ def train_model(
     patience=10,
     loss_scales=None,
     loss_scale_name="none",
-    activity_pos_weights=None,
-    activity_fractions=None,
-    tail_thresholds=None,
-    activity_threshold=1e-4,
-    activity_loss_weight=0.02,
-    tail_extra_weight=1.0,
-    sparse_inactive_extra_weight=0.5,
-    sparse_activity_frac_threshold=0.25,
 ):
     model = FluxTransformer(
         vocab_size=vocab_size,
@@ -623,66 +579,12 @@ def train_model(
         ).view(1, vocab_size, 1)
         print(f"Using per-flux normalized loss: {loss_scale_name}")
 
-    def _as_loss_tensor(values, default_value, name):
-        if values is None:
-            return torch.full((1, vocab_size, 1), float(default_value), dtype=torch.float32, device=device)
-        values = np.asarray(values, dtype=np.float32)
-        if values.shape != (vocab_size,):
-            raise ValueError(f"{name} must have shape ({vocab_size},), got {values.shape}")
-        if not np.all(np.isfinite(values)):
-            raise ValueError(f"{name} must contain finite values.")
-        return torch.as_tensor(values, dtype=torch.float32, device=device).view(1, vocab_size, 1)
-
-    activity_pos_weight_tensor = _as_loss_tensor(activity_pos_weights, 1.0, "activity_pos_weights")
-    activity_fraction_tensor = _as_loss_tensor(activity_fractions, 1.0, "activity_fractions")
-    tail_threshold_tensor = _as_loss_tensor(tail_thresholds, 1.0, "tail_thresholds")
-    sparse_flux_tensor = (activity_fraction_tensor < float(sparse_activity_frac_threshold)).float()
-
-    print(
-        "Auxiliary activity/tail loss: "
-        f"activity_weight={activity_loss_weight:g}, "
-        f"tail_extra_weight={tail_extra_weight:g}, "
-        f"sparse_inactive_extra_weight={sparse_inactive_extra_weight:g}, "
-        f"sparse_frac_threshold={sparse_activity_frac_threshold:g}"
-    )
-
-    def _combined_loss(pred_last, target, activity_logits, selected_indices):
+    def _normalized_loss(pred_last, target, selected_indices):
         selected_scales = loss_scale_tensor[:, selected_indices, :]
-        selected_tail_thresholds = tail_threshold_tensor[:, selected_indices, :]
-        selected_sparse = sparse_flux_tensor[:, selected_indices, :]
-        selected_pos_weights = activity_pos_weight_tensor[:, selected_indices, :]
-
-        abs_target = target.abs()
-        active_target = (abs_target > float(activity_threshold)).float()
-        tail_mask = (abs_target >= selected_tail_thresholds).float()
-        inactive_sparse_mask = (1.0 - active_target) * selected_sparse
-
-        regression_loss = regression_criterion(
+        return regression_criterion(
             pred_last / selected_scales,
             target / selected_scales,
-        )
-        regression_weights = (
-            1.0
-            + float(tail_extra_weight) * tail_mask
-            + float(sparse_inactive_extra_weight) * inactive_sparse_mask
-        )
-        regression_loss = (regression_loss * regression_weights).mean()
-
-        if activity_loss_weight and activity_loss_weight > 0:
-            activity_loss = F.binary_cross_entropy_with_logits(
-                activity_logits,
-                active_target,
-                reduction="none",
-            )
-            activity_weights = torch.where(
-                active_target > 0.5,
-                selected_pos_weights,
-                torch.ones_like(active_target),
-            )
-            activity_loss = (activity_loss * activity_weights).mean()
-            return regression_loss + float(activity_loss_weight) * activity_loss
-
-        return regression_loss
+        ).mean()
 
     start_epoch = 0
     best_test_loss = float("inf")
@@ -779,11 +681,6 @@ def train_model(
             "early_stopped": False,
             "patience": patience,
             "loss_scale_name": loss_scale_name,
-            "activity_threshold": float(activity_threshold),
-            "activity_loss_weight": float(activity_loss_weight),
-            "tail_extra_weight": float(tail_extra_weight),
-            "sparse_inactive_extra_weight": float(sparse_inactive_extra_weight),
-            "sparse_activity_frac_threshold": float(sparse_activity_frac_threshold),
         }
         _remove_file_if_exists(best_checkpoint_path)
         return train_losses, test_losses, model, optimizer, train_meta
@@ -810,17 +707,16 @@ def train_model(
                     dtype=torch.long
                 )
 
-            preds_all_layers, selected_indices, activity_logits = model(
+            preds_all_layers, selected_indices = model(
                 batch_X,
                 output_subset=sampled_indices,
-                return_activity=True,
             )
 
             # last-layer scalar prediction: (B, S, 1)
             pred_last = preds_all_layers[:, :, -1].unsqueeze(2)
             target = batch_y[:, selected_indices, :]  # (B, S, 1)
 
-            loss = _combined_loss(pred_last, target, activity_logits, selected_indices)
+            loss = _normalized_loss(pred_last, target, selected_indices)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -829,7 +725,7 @@ def train_model(
 
             epoch_train_loss += loss.item() * batch_X.size(0)
 
-            del preds_all_layers, activity_logits, pred_last, target, loss
+            del preds_all_layers, pred_last, target, loss
             _empty_cache(device)
 
         epoch_train_loss /= len(train_loader.dataset)
@@ -851,18 +747,17 @@ def train_model(
                         dtype=torch.long
                     )
 
-                preds_all_layers, selected_indices, activity_logits = model(
+                preds_all_layers, selected_indices = model(
                     batch_X,
                     output_subset=sampled_indices,
-                    return_activity=True,
                 )
                 pred_last = preds_all_layers[:, :, -1].unsqueeze(2)
                 target = batch_y[:, selected_indices, :]
 
-                loss = _combined_loss(pred_last, target, activity_logits, selected_indices)
+                loss = _normalized_loss(pred_last, target, selected_indices)
                 epoch_test_loss += loss.item() * batch_X.size(0)
 
-                del preds_all_layers, activity_logits, pred_last, target, loss
+                del preds_all_layers, pred_last, target, loss
                 _empty_cache(device)
 
         epoch_test_loss /= len(test_loader.dataset)
@@ -939,11 +834,6 @@ def train_model(
         "early_stopped": bool(early_stopped),
         "patience": patience,
         "loss_scale_name": loss_scale_name,
-        "activity_threshold": float(activity_threshold),
-        "activity_loss_weight": float(activity_loss_weight),
-        "tail_extra_weight": float(tail_extra_weight),
-        "sparse_inactive_extra_weight": float(sparse_inactive_extra_weight),
-        "sparse_activity_frac_threshold": float(sparse_activity_frac_threshold),
     }
     return train_losses, test_losses, model, optimizer, train_meta
 
@@ -986,17 +876,55 @@ if __name__ == "__main__":
     loss_scale_method = "q95_q05"
     loss_scale_min = 0.25
     loss_scale_max_samples = 200_000
-    activity_threshold = 1e-4
-    activity_loss_weight = 0.02
-    activity_max_pos_weight = 20.0
-    tail_quantile = 0.90
-    tail_min_threshold = 1.0
-    tail_extra_weight = 1.0
-    sparse_activity_frac_threshold = 0.25
-    sparse_inactive_extra_weight = 0.5
     cache_dir = "./tmp_memmap"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    today = date.today().isoformat()
+    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    pic_dir = f"./pics/{today}/{model_name}"
+    os.makedirs(pic_dir, exist_ok=True)
+
+    model_save_dir = f"./models/{model_name}"
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+    log_path = f"{model_save_dir}/{model_name}_training.log"
+
+    start_training_log(log_path)
+    print_training_log_header(
+        model_name=model_name,
+        data_path=DATA_PATH,
+        device=device,
+        settings=[
+            (
+                "Architecture",
+                [
+                    ("d_model", d_model),
+                    ("n_heads", n_heads),
+                    ("n_layers", n_layers),
+                    ("d_ff", d_ff),
+                    ("dropout", dropout),
+                ],
+            ),
+            (
+                "Training settings",
+                [
+                    ("batch_size", batch_size),
+                    ("num_epochs", num_epochs),
+                    ("patience", patience),
+                    ("learning_rate", learning_rate),
+                    ("output_sample_ratio", output_sample_ratio),
+                ],
+            ),
+            (
+                "Loss settings",
+                [
+                    ("loss_type", "per_flux_normalized_huber"),
+                    ("loss_scale_method", loss_scale_method),
+                    ("loss_scale_min", loss_scale_min),
+                    ("loss_scale_max_samples", loss_scale_max_samples),
+                ],
+            ),
+        ],
+    )
     print(f"Using device: {device}")
 
     X = y = None
@@ -1013,16 +941,6 @@ if __name__ == "__main__":
             max_samples=loss_scale_max_samples,
             random_state=42,
         )
-        activity_tail_stats = compute_activity_tail_stats(
-            y,
-            train_indices,
-            activity_threshold=activity_threshold,
-            tail_quantile=tail_quantile,
-            min_tail_threshold=tail_min_threshold,
-            max_pos_weight=activity_max_pos_weight,
-            max_samples=loss_scale_max_samples,
-            random_state=42,
-        )
         train_loader, test_loader = create_dataloaders(
             X,
             y,
@@ -1032,14 +950,6 @@ if __name__ == "__main__":
             device=device,
             num_workers=0,
         )
-
-        today = date.today().isoformat()
-        model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
-        pic_dir = f"./pics/{today}/{model_name}"
-        os.makedirs(pic_dir, exist_ok=True)
-
-        model_save_dir = f"./models/{model_name}"
-        checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
         train_loss, test_loss, model, optimizer, train_meta = train_model(
             train_loader=train_loader,
@@ -1060,14 +970,6 @@ if __name__ == "__main__":
             patience=patience,
             loss_scales=loss_scales,
             loss_scale_name=loss_scale_method,
-            activity_pos_weights=activity_tail_stats["activity_pos_weight"],
-            activity_fractions=activity_tail_stats["activity_fraction"],
-            tail_thresholds=activity_tail_stats["tail_thresholds"],
-            activity_threshold=activity_threshold,
-            activity_loss_weight=activity_loss_weight,
-            tail_extra_weight=tail_extra_weight,
-            sparse_inactive_extra_weight=sparse_inactive_extra_weight,
-            sparse_activity_frac_threshold=sparse_activity_frac_threshold,
         )
 
         model_save_path = f"{model_save_dir}/{model_name}.pth"
@@ -1105,18 +1007,10 @@ if __name__ == "__main__":
                 "vocab_size": len(outputs),
                 "input_token_indices": [int(i) for i in input_token_indices],
                 "output_sample_ratio": output_sample_ratio,
+                "loss_type": "per_flux_normalized_huber",
                 "loss_scale_method": loss_scale_method,
                 "loss_scale_min": loss_scale_min,
                 "loss_scale_max_samples": loss_scale_max_samples,
-                "use_activity_head": True,
-                "activity_threshold": activity_threshold,
-                "activity_loss_weight": activity_loss_weight,
-                "activity_max_pos_weight": activity_max_pos_weight,
-                "tail_quantile": tail_quantile,
-                "tail_min_threshold": tail_min_threshold,
-                "tail_extra_weight": tail_extra_weight,
-                "sparse_activity_frac_threshold": sparse_activity_frac_threshold,
-                "sparse_inactive_extra_weight": sparse_inactive_extra_weight,
             },
             "rng_state": {
                 "torch": torch.get_rng_state(),
@@ -1133,9 +1027,6 @@ if __name__ == "__main__":
                 "input_token_indices": [int(i) for i in input_token_indices],
                 "out_indices": [int(i) for i in out_indices],
                 "loss_scales": [float(x) for x in loss_scales],
-                "activity_fraction": [float(x) for x in activity_tail_stats["activity_fraction"]],
-                "activity_pos_weight": [float(x) for x in activity_tail_stats["activity_pos_weight"]],
-                "tail_thresholds": [float(x) for x in activity_tail_stats["tail_thresholds"]],
             },
         }
 

@@ -1,6 +1,7 @@
 import os
 import gc
 import random
+import sys
 import time
 from datetime import date
 
@@ -43,6 +44,53 @@ def print_gpu_memory():
         print(f'Reserved memory: {reserved:.2f} MB')
     else:
         print("CUDA is not available.")
+
+
+class _TeeStream:
+    def __init__(self, stream, log_file):
+        self.stream = stream
+        self.log_file = log_file
+
+    def write(self, data):
+        self.stream.write(data)
+        self.log_file.write(data)
+        self.flush()
+
+    def flush(self):
+        self.stream.flush()
+        self.log_file.flush()
+
+    def isatty(self):
+        return self.stream.isatty()
+
+
+def start_training_log(log_path):
+    log_dir = os.path.dirname(log_path)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+    log_file = open(log_path, "a", encoding="utf-8")
+    sys.stdout = _TeeStream(sys.stdout, log_file)
+    sys.stderr = _TeeStream(sys.stderr, log_file)
+    return log_file
+
+
+def print_training_log_header(model_name, data_path, device, settings):
+    print("=" * 60)
+    print(f"Training run started: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Training file: {os.path.basename(__file__)}")
+    print(f"MODEL_NAME: {MODEL_NAME}")
+    print(f"model_name: {model_name}")
+    print("")
+    print(f"Data path: {data_path}")
+    print(f"Device: {device}")
+    print("")
+    for section_title, section_settings in settings:
+        print(f"{section_title}:")
+        for key, value in section_settings:
+            print(f"{key}={value}")
+        print("")
+    print("=" * 60)
+    print("")
 
 class AttentionBlock(nn.Module):
     """Custom multi-head attention block for metabolic modeling"""
@@ -309,8 +357,6 @@ def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
                 X_tok[row_start:row_end, tok_idx] = X_in[:, j]
 
         row_start = row_end
-        if chunk_idx % 10 == 0:
-            print(f"Loaded {row_end:,}/{n_samples:,} rows...")
 
     X_tok.flush()
     y_tok.flush()
@@ -739,6 +785,44 @@ if __name__ == "__main__":
     cache_dir = "./tmp_memmap"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    today = date.today().isoformat()
+    model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
+    pic_dir = f"./pics/{today}/{model_name}"
+    os.makedirs(pic_dir, exist_ok=True)
+
+    model_save_dir = f"./models/{model_name}"
+    checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
+    log_path = f"{model_save_dir}/{model_name}_training.log"
+
+    start_training_log(log_path)
+    print_training_log_header(
+        model_name=model_name,
+        data_path=DATA_PATH,
+        device=device,
+        settings=[
+            (
+                "Architecture",
+                [
+                    ("d_model", d_model),
+                    ("n_heads", n_heads),
+                    ("n_layers", n_layers),
+                    ("d_ff", d_ff),
+                    ("dropout", dropout),
+                ],
+            ),
+            (
+                "Training settings",
+                [
+                    ("batch_size", batch_size),
+                    ("num_epochs", num_epochs),
+                    ("patience", patience),
+                    ("learning_rate", learning_rate),
+                    ("output_sample_ratio", output_sample_ratio),
+                ],
+            ),
+            ("Loss settings", [("loss_type", "huber")]),
+        ],
+    )
     print(f"Using device: {device}")
 
     X = y = None
@@ -756,14 +840,6 @@ if __name__ == "__main__":
             device=device,
             num_workers=0,
         )
-
-        today = date.today().isoformat()
-        model_name = f"{MODEL_NAME}_d{d_model}_h{n_heads}_l{n_layers}_ff{d_ff}"
-        pic_dir = f"./pics/{today}/{model_name}"
-        os.makedirs(pic_dir, exist_ok=True)
-
-        model_save_dir = f"./models/{model_name}"
-        checkpoint_path = f"{model_save_dir}/{model_name}_checkpoint.pth"
 
         train_loss, test_loss, model, optimizer, train_meta = train_model(
             train_loader=train_loader,
