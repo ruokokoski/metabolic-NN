@@ -60,6 +60,10 @@ notes live in `docs/`.
   `generate_ecoli_iML1515_AMN_data_stable.py` for new runs. The older
   `generate_ecoli_iML1515_AMN_data.py` is legacy and kept for traceability of
   existing checkpoints/data.
+- Shared AMN/MINN iML1515 reservoir data should use
+  `generate_ecoli_iML1515_AMN_MINN_data.py`. This is not the strict Faure-style
+  generator: it adds glucose and ethanol context inputs and mixes Faure-like
+  no-glucose media with MINN Table 4-style glucose/oxygen media.
 - Yeast experiments use the `yeast9_*` files.
 - Use the generator as the source of truth for reaction order, sign conventions,
   exchange bounds, and sampled constraints.
@@ -159,6 +163,12 @@ notes live in `docs/`.
   generator. This intentionally avoids the very high background carbon
   availability caused by setting these carbon-containing fixed supplements to
   `10`; document any change to this policy in the AMN notes and thesis notes.
+- `generate_ecoli_iML1515_AMN_MINN_data.py` is the shared-reservoir generator
+  for a checkpoint intended to work in both AMN-style growth prediction and MINN
+  Table 4-style reservoir experiments. It includes `EX_glc__D_e` and
+  `EX_etoh_e` beyond the Faure 38-input set, keeps oxygen flexible, and samples
+  separate `minn`, `faure`, and `mixed` regimes. Do not present this shared
+  generator as an exact Faure setup.
 - When changing AMN experiment generation, update `docs/AMN_experiment_notes.md`,
   `tmp/iml1515_amn_thesis_notes.md`, and this `AGENTS.md` together.
 

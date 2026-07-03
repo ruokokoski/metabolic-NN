@@ -22,6 +22,9 @@ The biological target is experimental growth rate.
 - `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
 - `generate_ecoli_iML1515_AMN_data_stable.py`: recommended simulated iML1515
   data generator for future Faure-style AMN FluxTransformer training data.
+- `generate_ecoli_iML1515_AMN_MINN_data.py`: shared AMN/MINN simulated-data
+  generator for training a FluxTransformer reservoir that sees both Faure-like
+  no-glucose media and MINN Table 4-style glucose/oxygen context.
 - `generate_ecoli_iML1515_AMN_data.py`: legacy AMN generator used before the
   stable generator was added.
 - `flux_transformer.py`: canonical FluxTransformer model definition.
@@ -99,6 +102,40 @@ Key points:
 
 Use this generator as the source of truth for input column order, exchange
 names, and rate conventions when checking the notebook.
+
+## Shared AMN/MINN Reservoir Data
+
+`generate_ecoli_iML1515_AMN_MINN_data.py` is a separate generator for training a
+single iML1515 FluxTransformer reservoir that should be usable in both the
+AMN-style experimental growth notebook and the MINN Table 4-style reservoir
+workflow. It should not replace the strict Faure-style generator when the goal is
+to make Faure-faithful claims.
+
+Key points:
+
+- The input set contains the 38 Faure-style exchange identities plus two extra
+  MINN-context exchanges: `EX_glc__D_e` and `EX_etoh_e`.
+- The first five inputs are the MINN reservoir context exchanges:
+  `EX_glc__D_e`, `EX_o2_e`, `EX_co2_e`, `EX_etoh_e`, and `EX_ac_e`.
+- The default solver mode is pFBA with `fraction_of_optimum=0.999`, matching the
+  MINN simulated-data convention more closely than plain FBA.
+- The generator samples explicit regimes:
+  - `minn`: glucose/oxygen uptake are sampled, base nutrients use the MINN-like
+    default rate, glycerol/amino supplements are absent, and CO2/ethanol/acetate
+    inputs are filled from realized secretion fluxes after solving.
+  - `faure`: glucose is absent, oxygen is flexible, glycerol/amino acids use
+    `2.2`, and 1-4 Faure carbon sources are sampled.
+  - `mixed`: glucose/oxygen are sampled with optional non-acetate Faure carbon
+    sources to bridge the two distributions.
+- Default regime weights are `minn=0.50`, `faure=0.40`, and `mixed=0.10`.
+- Acetate is necessarily context-dependent in this shared file: in no-glucose
+  Faure rows it can still represent a Faure carbon-source uptake cap, while in
+  glucose/MINN rows it is used as a realized secretion-context value. Avoid using
+  this generator for claims that require a single unambiguous Faure acetate-input
+  interpretation.
+- The AMN notebook now zero-fills optional absent `EX_glc__D_e` and `EX_etoh_e`
+  experimental columns when a shared AMN/MINN checkpoint is loaded. Unknown
+  missing inputs still raise an error.
 
 Important legacy note: the old generator looped over a fixed number of attempts
 rather than accepted samples and reset only exchange lower bounds. If AMN data
