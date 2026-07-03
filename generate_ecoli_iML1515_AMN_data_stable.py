@@ -75,10 +75,10 @@ def parse_args():
         )
     )
     parser.add_argument("--n-samples", type=int, default=500000)
-    parser.add_argument("--seed", type=int, default=50)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model-dir", default="./models")
     parser.add_argument("--data-dir", default="./data")
-    parser.add_argument("--output-prefix", default="iML1515_exp_training_data")
+    parser.add_argument("--output-prefix", default="iML1515_AMN_training_data")
     parser.add_argument("--overwrite-existing", action="store_true")
 
     parser.add_argument("--objective-reaction", default="BIOMASS_Ec_iML1515_core_75p37M")
