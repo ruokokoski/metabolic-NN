@@ -20,8 +20,10 @@ The biological target is experimental growth rate.
 ## Main Files
 
 - `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
-- `generate_ecoli_iML1515_AMN_data.py`: simulated iML1515 data generator used to
-  create Faure-style FluxTransformer training data.
+- `generate_ecoli_iML1515_AMN_data_stable.py`: recommended simulated iML1515
+  data generator for future Faure-style AMN FluxTransformer training data.
+- `generate_ecoli_iML1515_AMN_data.py`: legacy AMN generator used before the
+  stable generator was added.
 - `flux_transformer.py`: canonical FluxTransformer model definition.
 - `docs/Faure etal 2023.pdf`: main paper for AMN context.
 - `docs/Faure_supplementary.pdf`: supplementary AMN architecture and benchmark
@@ -48,30 +50,61 @@ the Faure AMN figures unless the generator and checkpoint were built that way.
 
 ## Simulated AMN Data
 
-`generate_ecoli_iML1515_AMN_data.py` generates iML1515 FBA samples with media
-settings chosen to resemble the Faure experimental setup.
+`generate_ecoli_iML1515_AMN_data_stable.py` is the recommended generator for
+new iML1515 FBA samples with media settings chosen to resemble the Faure
+experimental setup. The older `generate_ecoli_iML1515_AMN_data.py` file is kept
+for traceability because existing checkpoints and notes may have been produced
+from its output.
 
 Key points:
 
 - The model is `models/iML1515.xml`.
+- The stable generator writes input columns in the same 38-exchange order as
+  `experimental_data/iML1515_EXP.csv`, after removing Faure's `"_i"` suffix.
+- The stable generator explicitly sets the objective to
+  `BIOMASS_Ec_iML1515_core_75p37M`.
 - Variable carbon sources are selected from the Faure-style carbon set:
   ribose, maltose, melibiose, trehalose, fructose, galactose, acetate,
   D-lactate, succinate, and pyruvate.
+- D-glucose is intentionally not an AMN input and is closed during generation.
 - Glycerol is fixed as an additional carbon source.
 - Base medium exchanges include phosphate, CO2, protons, water, ammonia,
   oxygen, ions, sulfate, sodium, chloride, and trace elements.
 - Alanine, proline, threonine, and glycine are treated as fixed amino-acid
   exchanges.
-- The current generator uses uptake rates around the Faure experimental scale:
-  variable carbon and amino-acid rates use `2.2`, while many base nutrients use
-  `10.0`.
-- Oxygen is variable in the current generator implementation, even though the
-  Faure-style medium comments refer to a fixed oxygen setting. Keep this in mind
-  when comparing against the paper.
+- The generator uses uptake rates around the Faure experimental scale for
+  carbon-containing supplements: selected variable carbon sources, glycerol, and
+  amino-acid exchanges default to `2.2`, while non-carbon base nutrients default
+  to `10.0`.
+- Oxygen is deliberately flexible in the generator and is sampled between `1.0`
+  and `10.0` by default. Use `--fixed-oxygen` only for an explicit ablation.
+- The Faure Methods state that obligate uptake reactions were set to `10` for
+  FBA-simulated training data, but using `10` for fixed glycerol and amino acids
+  gives the local iML1515 model a large background carbon supply. The stable
+  generator therefore keeps those fixed carbon-containing supplements at `2.2`
+  by default; this is a deliberate local adaptation, not an exact reproduction
+  of the paper's FBA-simulation settings.
+- Each sample starts from a closed uptake medium while preserving the model's
+  default exchange upper bounds for secretion. This avoids carrying stale solver
+  bounds between samples while keeping unselected nutrients closed.
+- The stable generator follows the robust MINN-style process: it loops until the
+  accepted sample target is reached, writes through a timestamped temporary CSV,
+  reports attempts and feasible rate, has a max-attempt guard, and periodically
+  reloads the model/solver.
+- The default output prefix remains `iML1515_exp_training_data`, so a default
+  500,000-sample run saves `./data/iML1515_exp_training_data_500000_samples.csv`
+  unless that file already exists. Use `--overwrite-existing` or a different
+  `--output-prefix` deliberately.
 - Outputs are all iML1515 reaction fluxes with `"_flux"` suffixes.
 
 Use this generator as the source of truth for input column order, exchange
 names, and rate conventions when checking the notebook.
+
+Important legacy note: the old generator looped over a fixed number of attempts
+rather than accepted samples and reset only exchange lower bounds. If AMN data
+generation appears stuck at a sample count or fails to reach the requested
+sample total, use `generate_ecoli_iML1515_AMN_data_stable.py` instead of
+editing the legacy file.
 
 ## Current Notebook Workflow
 
@@ -81,6 +114,10 @@ The notebook currently has three main parts.
 
    The active checkpoint is currently:
    `./models/iML1515_500k_d256_h8_l3_ff1024/iML1515_500k_d256_h8_l3_ff1024_checkpoint.pth`.
+
+   This checkpoint predates `generate_ecoli_iML1515_AMN_data_stable.py`. Do not
+   treat metrics from this checkpoint as regenerated stable-generator results
+   unless the model is retrained and the notebook is rerun with the new data.
 
    The simulated test data loaded for FluxTransformer diagnostics is currently:
    `./data/iML1515_test_data_50000_samples.csv`.
@@ -194,7 +231,7 @@ notebook.
 - Confirm that binary carbon-source features remain 0/1 before TabPFN or
   stratified CV.
 - Check that fixed medium rates in the notebook match
-  `generate_ecoli_iML1515_AMN_data.py`.
+  `generate_ecoli_iML1515_AMN_data_stable.py`.
 - Print and review the variable input columns learned by the prior ANN.
 - Keep simulated-data FluxTransformer diagnostics separate from experimental
   growth-rate evaluation.
@@ -205,8 +242,10 @@ notebook.
 
 - Whether the prior dense network should predict only variable carbon rates or
   also selected fixed/media context channels.
-- Whether oxygen should remain trainable or be fixed to the Faure-style medium
-  setting.
+- Whether oxygen should remain trainable/flexible in all final runs or be tested
+  against a fixed-oxygen ablation.
+- Whether fixed glycerol and amino-acid caps should stay at the current `2.2`
+  local adaptation or be explored as a sensitivity axis.
 - Whether the FluxTransformer checkpoint should be retrained only on AMN-style
   simulated media or mixed with broader iML1515 media.
 - Whether final reporting should compare against Faure AMN-QP/LP/Wt numbers,
