@@ -13,6 +13,31 @@ notes live in `docs/`.
 - Compare direct neural flux prediction, FluxTransformer reservoir use, and
   pFBA-based downstream workflows.
 
+## Repository Structure
+
+- Root `*.py` files contain the main model definitions, training scripts, data
+  generators, and reaction-list helpers.
+- Root `*.ipynb` files are active experiment, evaluation, and exploration
+  notebooks. Most thesis-facing analysis currently happens in notebooks rather
+  than standalone scripts.
+- `docs/` contains maintained experiment notes, paper notes, thesis PDFs, and
+  long-form guidance that should stay in sync with major experiment changes.
+- `data/` contains generated simulated FBA/pFBA CSV datasets used for training
+  and testing FluxTransformer models.
+- `AMN_data/` contains measured external datasets, including Faure-like
+  iML1515 growth data and associated uncertainty files.
+- `MINN_data/` contains the MINN benchmark tables and measured exchange-flux
+  inputs used by the MINN-style iML1515 workflows.
+- `models/` contains saved model weights, checkpoints, and training logs, usually
+  grouped by model name.
+- `scripts/` contains supporting utilities for plotting, data combination, and
+  one-off or batch-style experiment helpers.
+- `insights/` and `pics/` contain generated plots and analysis artifacts.
+  Thesis-relevant figures usually live under `insights/thesis/`.
+- `old/` contains historical notebooks and scripts kept for comparison only.
+- `venv/`, `__pycache__/`, and other environment/cache folders are not part of
+  the experiment source of truth.
+
 ## Core Files
 
 - `flux_transformer.py`: canonical `FluxTransformer` implementation. Check this
@@ -25,6 +50,9 @@ notes live in `docs/`.
   trial. This file should contain normalized loss only; do not reintroduce the
   activity-head/tail-loss trial code here.
 - `ecoli_core_model_testing.ipynb`: main E. coli core evaluation notebook.
+- `ecoli_core_transformer.ipynb`: E. coli core architecture-size sweep notebook;
+  trains multiple current-architecture FluxTransformer sizes on one data file
+  and compares best-validation-loss metrics plus combined biomass panels.
 - `ecoli_iML1515_exp_model_testing.ipynb`: iML1515 experimental-data workflow.
 - `ecoli_iML1515_MINN_model_testing.ipynb`: MINN-style FluxTransformer reservoir
   workflow.
@@ -32,6 +60,18 @@ notes live in `docs/`.
   notebook.
 - `ecoli_iML1515_AMN_model_testing.ipynb`: AMN-style iML1515 experimental
   growth-rate workflow inspired by Faure et al.
+
+## Exploration Notebooks
+
+- `ecoli_core_exploration.ipynb`: inspect the E. coli core COBRA model,
+  exchange reactions, FBA/pFBA/FVA behavior, anaerobic growth, and nutrient
+  source tests before changing core generators or evaluation logic.
+- `ecoli_iML1515_exploration.ipynb`: inspect the iML1515 GEM, exchange/demand
+  reactions, FBA/pFBA/FVA behavior, medium-source tests, and curated pathway
+  reaction-ID lists for subset diagnostics.
+- Yeast9 exploration uses `yeast_gem_exploration.ipynb` for GEM/model,
+  exchange, and medium inspection, and `yeast9_explore_samples.ipynb` for
+  generated-sample distributions, single-reaction checks, and sampling weights.
 
 ## Detailed Notes
 
@@ -41,12 +81,6 @@ notes live in `docs/`.
   notes and current interpretation.
 - `docs/AMN_experiment_notes.md`: initial notes for the Faure-inspired iML1515
   AMN-style experiments.
-- `tmp/iml1515_amn_thesis_notes.md`: detailed thesis-writing notes for the
-  iML1515 AMN-style experiments. Update this together with
-  `docs/AMN_experiment_notes.md` when AMN experiment behavior changes.
-- `tmp/ecoli_core_plot_notes.md`: thesis/result-writing working notes. Treat
-  files under `tmp/` as local working material unless the user explicitly asks
-  to preserve or push them.
 
 ## Data Generation
 
@@ -107,6 +141,8 @@ notes live in `docs/`.
 ## E. coli Core Experiments
 
 - Main notebook: `ecoli_core_model_testing.ipynb`.
+- Architecture sweep notebook: `ecoli_core_transformer.ipynb`; use it for
+  capacity comparisons, not as the main thesis-facing evaluation notebook.
 - Current result interpretation emphasizes both prediction quality and embedding
   structure:
   - pooled model metrics,
@@ -150,8 +186,11 @@ notes live in `docs/`.
   but adapts it to this repo by using a frozen FluxTransformer as the metabolic
   reservoir.
 - The active notebook target is experimental growth rate (`GR_AVG`) from
-  `experimental_data/iML1515_EXP.csv`; uncertainty plots use `GR_STD` from
-  `experimental_data/EXP110.csv`.
+  `AMN_data/iML1515_EXP.csv`; uncertainty plots use `GR_STD` from
+  `AMN_data/EXP110.csv`.
+- iML1515 AMN notebook t-SNE/pathway-subset plots are exploratory diagnostics
+  only. Current thesis t-SNE/embedding figures should come from the E. coli core
+  experiments, not iML1515.
 - The stable AMN generator keeps the Faure-style 38-exchange nutrient identity
   and order, but follows the more robust MINN-style generation process: closed
   uptake reset, preserved exchange upper bounds, accepted-sample target loop,
@@ -169,8 +208,8 @@ notes live in `docs/`.
   `EX_etoh_e` beyond the Faure 38-input set, keeps oxygen flexible, and samples
   separate `minn`, `faure`, and `mixed` regimes. Do not present this shared
   generator as an exact Faure setup.
-- When changing AMN experiment generation, update `docs/AMN_experiment_notes.md`,
-  `tmp/iml1515_amn_thesis_notes.md`, and this `AGENTS.md` together.
+- When changing AMN experiment generation, update `docs/AMN_experiment_notes.md`
+  and this `AGENTS.md` together.
 
 ## Evaluation and Plotting Hygiene
 
@@ -208,5 +247,3 @@ notes live in `docs/`.
 - Ignore unrelated dirty files.
 - Keep large generated artifacts out of commits unless the user explicitly wants
   them tracked.
-- `tmp/` is for local working notes and draft analysis unless the user asks
-  otherwise.

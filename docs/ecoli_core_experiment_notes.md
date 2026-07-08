@@ -10,6 +10,7 @@ unless the user explicitly asks otherwise.
 - Main model family: `FluxTransformer` trained on simulated E. coli core pFBA/FBA
   data.
 - Main evaluation notebook: `ecoli_core_model_testing.ipynb`.
+- Architecture-size sweep notebook: `ecoli_core_transformer.ipynb`.
 - Core-model exploration notebook: `ecoli_core_exploration.ipynb`.
 - Current data generator: `generate_ecoli_core_data.py`.
 - Older historical generator: `generate_ecoli_core_data_complex.py`. Check old
@@ -26,6 +27,11 @@ unless the user explicitly asks otherwise.
   tail-loss code was removed after testing.
 - `ecoli_core_model_testing.ipynb`: main analysis notebook. Use this for
   current metrics, flux diagnostics, and embedding plots.
+- `ecoli_core_transformer.ipynb`: architecture-size sweep notebook for training
+  multiple current-architecture FluxTransformer sizes on the same E. coli core
+  data file. Use it to compare model capacity with best-validation-loss metrics
+  and combined biomass prediction panels; it should not save per-model test
+  artifacts.
 - `ecoli_core_exploration.ipynb`: sandbox notebook for understanding and
   experimenting with the E. coli core COBRA model itself before changing
   training or evaluation code.

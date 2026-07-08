@@ -10,4 +10,4 @@
 module load python-data
 source /scratch/project_2013496/vflux/bin/activate
 
-srun python /projappl/project_2013496/flux_transformer/generate_ecoli_iML1515_data.py
+srun python /projappl/project_2013496/flux_transformer/generate_ecoli_iML1515_AMN_data.py

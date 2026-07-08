@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,20 +9,31 @@ output_subset_ratios = np.array([0.1, 0.2, 0.3, 0.5, 1.0])
 training_times_hours = training_times / 60
 
 plt.rcParams.update({
-    "font.size": 16,
-    "axes.titlesize": 20,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 16,
-    "ytick.labelsize": 16,
-    "legend.fontsize": 16,
+    "font.size": 11,
+    "axes.labelsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
 })
 
-plt.figure(figsize=(8, 6))
-plt.plot(output_subset_ratios, training_times_hours, marker='o', linewidth=2, color='blue', label='Training time (hours)')
+fig, ax = plt.subplots(figsize=(6.2, 3.8))
+ax.plot(
+    output_subset_ratios,
+    training_times_hours,
+    marker='o',
+    linewidth=2,
+    markersize=5,
+    color='#2B6CB0',
+)
+ax.set_xlabel("Output subset ratio")
+ax.set_ylabel("Training time (h)")
+ax.grid(True, linestyle="--", alpha=0.35)
+ax.set_xlim(0.0, 1.05)
+ax.set_ylim(0, 108)
+ax.set_xticks(np.arange(0.0, 1.01, 0.2))
+fig.tight_layout()
 
-plt.title("Training time vs Output subset ratio")
-plt.xlabel("Output subset ratio")
-plt.ylabel("Training time (hours)")
-plt.grid(True, linestyle="--", alpha=0.6)
-#plt.legend()
-plt.show()
+out_dir = "insights/thesis"
+os.makedirs(out_dir, exist_ok=True)
+fig.savefig(os.path.join(out_dir, "yeast9_subset_time.png"), dpi=300)
+
+plt.close(fig)

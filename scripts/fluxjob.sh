@@ -5,7 +5,7 @@
 #SBATCH --partition=gpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=48G
+#SBATCH --mem=64G
 #SBATCH --gres=gpu:v100:1
 
 module load python-data

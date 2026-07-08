@@ -63,7 +63,7 @@ Key points:
 
 - The model is `models/iML1515.xml`.
 - The stable generator writes input columns in the same 38-exchange order as
-  `experimental_data/iML1515_EXP.csv`, after removing Faure's `"_i"` suffix.
+  `AMN_data/iML1515_EXP.csv`, after removing Faure's `"_i"` suffix.
 - The stable generator explicitly sets the objective to
   `BIOMASS_Ec_iML1515_core_75p37M`.
 - Variable carbon sources are selected from the Faure-style carbon set:
@@ -145,7 +145,7 @@ editing the legacy file.
 
 ## Current Notebook Workflow
 
-The notebook currently has three main parts.
+The notebook currently has four main parts.
 
 1. Load and inspect a pretrained FluxTransformer.
 
@@ -168,7 +168,7 @@ The notebook currently has three main parts.
 3. Train a prior dense network on experimental media and growth data.
 
    Experimental data is loaded from:
-   `./experimental_data/iML1515_EXP.csv`.
+   `./AMN_data/iML1515_EXP.csv`.
 
    The target column is:
    `GR_AVG`.
@@ -177,6 +177,14 @@ The notebook currently has three main parts.
    uptake values for the same variable input positions. These predicted medium
    values are inserted into the full FluxTransformer input tensor. Fixed medium
    components are kept at generator-aligned rates.
+
+4. Inspect selected iML1515 pathway-token embeddings.
+
+   The notebook includes exploratory t-SNE cells for selected reaction subsets
+   such as glycolysis, pentose phosphate pathway, TCA, and fermentation. These
+   cells support debugging and qualitative model inspection only. They are not
+   currently thesis-facing figures; thesis t-SNE/embedding interpretation should
+   come from the E. coli core experiments.
 
 ## Experimental Data Setup
 
@@ -200,7 +208,7 @@ source indicators:
 Cross-validation is stratified by the number of active carbon sources. Current
 strata are 1, 2, 3, and 4 active carbon sources.
 
-`experimental_data/EXP110.csv` provides `GR_STD`, which is used for plotting
+`AMN_data/EXP110.csv` provides `GR_STD`, which is used for plotting
 experimental uncertainty around measured growth rates.
 
 ## Current Prior-Network Protocol
@@ -257,8 +265,9 @@ including:
 - `iML1515_oof_true_vs_predicted_with_exp_and_seed_std_bars.png`
 - `iML1515_tabpfn_oof_true_vs_predicted.png`
 
-Flux diagnostics are saved under the date/model-specific `pic_dir` used in the
-notebook.
+Flux diagnostics and exploratory iML1515 pathway t-SNE plots are saved under the
+date/model-specific `pic_dir` used in the notebook. Treat those t-SNE plots as
+notebook diagnostics, not as planned thesis figures.
 
 ## Sanity Checks
 
