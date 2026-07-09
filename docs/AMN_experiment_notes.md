@@ -159,11 +159,21 @@ The notebook currently has four main parts.
    The simulated test data loaded for FluxTransformer diagnostics is currently:
    `./data/iML1515_test_data_50000_samples.csv`.
 
+   Use a separately generated test file for reported simulated-flux diagnostics.
+   Do not use `data_info["dataset"]` for those metrics, since that points to the
+   file used to train the checkpoint and can leak training rows into evaluation.
+
 2. Evaluate simulated-data flux predictions.
 
    The notebook plots FluxTransformer diagnostics for selected fluxes, including
    the iML1515 biomass reaction:
    `BIOMASS_Ec_iML1515_core_75p37M_flux`.
+
+   For these diagnostics, keep `plot_flux()` on the full forward pass:
+   `model(c, output_subset=None)`. Do not use `output_subset` to request only
+   the plotted flux. That changes the token set seen by attention and gives a
+   different prediction, so the diagnostic plots become wrong. If CUDA memory is
+   tight, reduce the plotting batch size instead.
 
 3. Train a prior dense network on experimental media and growth data.
 

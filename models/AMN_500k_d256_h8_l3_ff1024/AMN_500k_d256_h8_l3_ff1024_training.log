@@ -1,0 +1,176 @@
+============================================================
+Training run started: 2026-07-04 20:45:48
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_500k
+model_name: AMN_500k_d256_h8_l3_ff1024
+
+Data path: iML1515_AMN_training_data_500000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=3
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=6
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+Traceback (most recent call last):
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 833, in <module>
+    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 295, in load_data
+    columns = list(pd.read_csv(filepath, nrows=0).columns)
+  File "/PUHTI_TYKKY_FRQGCcR/miniconda/envs/env1/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "/PUHTI_TYKKY_FRQGCcR/miniconda/envs/env1/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "/PUHTI_TYKKY_FRQGCcR/miniconda/envs/env1/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+  File "/PUHTI_TYKKY_FRQGCcR/miniconda/envs/env1/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+  File "/PUHTI_TYKKY_FRQGCcR/miniconda/envs/env1/lib/python3.10/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+FileNotFoundError: [Errno 2] No such file or directory: 'iML1515_AMN_training_data_500000_samples.csv'
+============================================================
+Training run started: 2026-07-04 20:54:14
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_500k
+model_name: AMN_500k_d256_h8_l3_ff1024
+
+Data path: ./data/iML1515_AMN_training_data_500000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=3
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=6
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 500000 samples from ./data/iML1515_AMN_training_data_500000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 400000
+Test samples: 100000
+Early stopping patience: 3
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_training_data_500000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_training_data_500000_samples_y_tok.float32.mmap
+Traceback (most recent call last):
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 845, in <module>
+    train_loss, test_loss, model, optimizer, train_meta = train_model(
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 627, in train_model
+    preds_all_layers, selected_indices = model(batch_X, output_subset=sampled_indices)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 237, in forward
+    x, c_subset = layer(x, c_subset)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 174, in forward
+    attn_x, attn_c = self.attention_block(x, c)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 119, in forward
+    attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True, average_attn_weights=False)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/modules/activation.py", line 1380, in forward
+    attn_output, attn_output_weights = F.multi_head_attention_forward(
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/functional.py", line 6448, in multi_head_attention_forward
+    attn_output_weights = softmax(attn_output_weights, dim=-1)
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/nn/functional.py", line 2137, in softmax
+    ret = input.softmax(dim)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 7.02 GiB. GPU 0 has a total capacity of 31.74 GiB of which 2.53 GiB is free. Including non-PyTorch memory, this process has 29.21 GiB memory in use. Of the allocated memory 24.90 GiB is allocated by PyTorch, and 3.95 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+============================================================
+Training run started: 2026-07-05 15:04:00
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_500k
+model_name: AMN_500k_d256_h8_l3_ff1024
+
+Data path: ./data/iML1515_AMN_training_data_500000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=3
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=12
+num_epochs=6
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 500000 samples from ./data/iML1515_AMN_training_data_500000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 400000
+Test samples: 100000
+Early stopping patience: 3
+Allocated memory: 64.07 MB
+Reserved memory: 27268.00 MB
+Epoch 1/6 | Train Loss: 0.013258 | Test Loss: 0.007532 | Elapsed: 08:37:36 | Time: 04:41
+Epoch 2/6 | Train Loss: 0.007439 | Test Loss: 0.007016 | Elapsed: 17:00:15 | Time: 13:03
+Epoch 3/6 | Train Loss: 0.007179 | Test Loss: 0.006968 | Elapsed: 25:09:55 | Time: 21:13
+Epoch 4/6 | Train Loss: 0.007075 | Test Loss: 0.006941 | Elapsed: 33:04:15 | Time: 05:07
+Epoch 5/6 | Train Loss: 0.007016 | Test Loss: 0.006905 | Elapsed: 41:28:00 | Time: 13:31
+Epoch 6/6 | Train Loss: 0.006980 | Test Loss: 0.006914 | Elapsed: 49:34:23 | Time: 21:37
+Restored best model state from epoch 5.
+Training Completed.
+Training took 2974 min 28.9 sec.
+Best test loss: 0.006905 at epoch 5
+
+Best-epoch model weights saved to ./models/AMN_500k_d256_h8_l3_ff1024/AMN_500k_d256_h8_l3_ff1024.pth (epoch 5)
+Full checkpoint saved to ./models/AMN_500k_d256_h8_l3_ff1024/AMN_500k_d256_h8_l3_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_training_data_500000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_training_data_500000_samples_y_tok.float32.mmap
