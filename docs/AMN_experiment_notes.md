@@ -232,14 +232,42 @@ Current settings in the AMN notebook:
 - Loss: Huber loss with `delta=0.03`, applied to predicted biomass flux versus
   experimental `GR_AVG`.
 - Epochs: `90`.
-- Early stopping patience: `13`.
+- Maximum epochs: `100`.
+- Early stopping patience: `15`.
 - Base batch size: `1`.
 - Cross-validation: 10-fold stratified CV repeated with split seeds
-  `[42, 43, 44]`.
-- Final full-data fit: ensemble seeds `[42, 43, 44]`.
+  `[10, 11, 12]`.
+- Final full-data fit: ensemble seeds `[10, 11, 12]`.
 
 The dense prior predicts nonnegative bounded rates. Carbon-source outputs are
 bounded by `2.2`; oxygen is bounded by `10.0`.
+
+## Faure Identity-Line Audit
+
+Faure et al. report that the uncertainty boxes intersect the identity line for
+79% of AMN-QP predictions, 76% of AMN-LP predictions, and 74% of AMN-Wt
+predictions. Their text defines each box using the standard deviations of both
+measurement and prediction. In practice, that corresponds to testing whether the
+measured interval, `GR_AVG +/- GR_STD`, overlaps the predicted interval,
+`prediction_mean +/- prediction_std`.
+
+This is not a clean accuracy metric. Increasing the prediction standard
+deviation makes the vertical interval wider and can increase the intersection
+rate even when the mean prediction is not better. Treat it as a loose
+uncertainty/coverage diagnostic, not as a primary model-comparison statistic.
+
+This does not reproduce cleanly from the available Fig. 3 source data. Using
+`Data_Fig3.xlsx` from the article source-data ZIP together with measured
+`GR_STD` from `AMN_data/EXP110.csv`, the same interval-overlap criterion gives:
+
+- AMN-QP: `68/110 = 61.8%`
+- AMN-LP: `69/110 = 62.7%`
+- AMN-Wt: `80/110 = 72.7%`
+
+Plausible alternatives using replicate min-max ranges also did not recover the
+published `79/76/74%` pattern. The raster version of Fig. 3a is not reliable
+for an exact count because the bars overlap, but it also does not visually
+support `87/110` QP boxes crossing the identity line.
 
 ## Current Result Snapshot
 
