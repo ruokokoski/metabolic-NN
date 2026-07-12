@@ -2,7 +2,10 @@
 
 This repository contains FluxTransformer experiments for metabolic flux
 prediction and analysis. Use this file as the repo-wide map. Detailed experiment
-notes live in `docs/`.
+notes live in `docs/experiment_notes/`.
+
+Update this `AGENTS.md` after major repository changes so future agents start
+from the current project state.
 
 ## Repository Purpose
 
@@ -20,8 +23,9 @@ notes live in `docs/`.
 - Root `*.ipynb` files are active experiment, evaluation, and exploration
   notebooks. Most thesis-facing analysis currently happens in notebooks rather
   than standalone scripts.
-- `docs/` contains maintained experiment notes, paper notes, thesis PDFs, and
-  long-form guidance that should stay in sync with major experiment changes.
+- `docs/` contains paper notes, thesis PDFs, and long-form guidance.
+- `docs/experiment_notes/` contains maintained experiment notes that should stay
+  in sync with major experiment changes.
 - `data/` contains generated simulated FBA/pFBA CSV datasets used for training
   and testing FluxTransformer models.
 - `AMN_data/` contains measured external datasets, including Faure-like
@@ -60,6 +64,9 @@ notes live in `docs/`.
   notebook.
 - `ecoli_iML1515_AMN_model_testing.ipynb`: AMN-style iML1515 experimental
   growth-rate workflow inspired by Faure et al.
+- `yeast9_model_testing.ipynb`: main Yeast9 evaluation notebook. It intentionally
+  defines the older non-injected FluxTransformer class locally for the saved
+  Yeast9 checkpoint.
 
 ## Exploration Notebooks
 
@@ -75,12 +82,15 @@ notes live in `docs/`.
 
 ## Detailed Notes
 
-- `docs/MINN_training_notes.md`: detailed MINN training/evaluation guide moved
-  out of the root instructions.
-- `docs/ecoli_core_experiment_notes.md`: E. coli core FluxTransformer experiment
-  notes and current interpretation.
-- `docs/AMN_experiment_notes.md`: initial notes for the Faure-inspired iML1515
-  AMN-style experiments.
+- `docs/experiment_notes/README.md`: index for maintained experiment notes.
+- `docs/experiment_notes/MINN_training_notes.md`: detailed MINN
+  training/evaluation guide moved out of the root instructions.
+- `docs/experiment_notes/ecoli_core_experiment_notes.md`: E. coli core
+  FluxTransformer experiment notes and current interpretation.
+- `docs/experiment_notes/AMN_experiment_notes.md`: initial notes for the
+  Faure-inspired iML1515 AMN-style experiments.
+- `docs/experiment_notes/yeast9_experiment_notes.md`: Yeast9 FluxTransformer
+  evaluation and training-efficiency notes.
 
 ## Data Generation
 
@@ -101,6 +111,24 @@ notes live in `docs/`.
 - Yeast experiments use the `yeast9_*` files.
 - Use the generator as the source of truth for reaction order, sign conventions,
   exchange bounds, and sampled constraints.
+
+## Yeast9 Experiments
+
+- The active Yeast9 evaluation notebook is `yeast9_model_testing.ipynb`.
+- The active checkpoint is
+  `models/yeast9_d256_h8_l3_ff1024/yeast9_d256_h8_l3_ff1024_checkpoint.pth`.
+- This checkpoint was trained with the older non-injected FluxTransformer API.
+  The notebook defines that older model class locally. Do not replace it with
+  the current `flux_transformer.py` injected-token implementation unless the
+  Yeast9 checkpoint is retrained.
+- Yeast9 diagnostics should include biomass (`r_2111`), selected high-flux
+  examples (`r_1110`, `r_2100`, `r_1672`), pooled full-output metrics, and
+  difficult-flux tables/plots.
+- For Yeast9, use pooled metrics to compare with smaller models, but keep the
+  reaction-level caveat: many outputs are sparse or low-variance, and accuracy is
+  uneven across the full reaction set.
+- Yeast9 output-subset training experiments belong in the `yeast9_rs_*` files.
+  Treat subset training as a speed-accuracy tradeoff.
 
 ## Token and Mapping Invariants
 
@@ -169,7 +197,8 @@ notes live in `docs/`.
 
 ## MINN Experiments
 
-- The detailed MINN guide is in `docs/MINN_training_notes.md`.
+- The detailed MINN guide is in
+  `docs/experiment_notes/MINN_training_notes.md`.
 - For MINN-style experiments, use a pretrained FluxTransformer as a frozen
   reservoir and train only the front MLP unless the user explicitly asks for a
   different ablation.
@@ -181,7 +210,8 @@ notes live in `docs/`.
 
 ## AMN Experiments
 
-- The initial AMN guide is in `docs/AMN_experiment_notes.md`.
+- The initial AMN guide is in
+  `docs/experiment_notes/AMN_experiment_notes.md`.
 - Current AMN-style work uses the Faure et al. Artificial Metabolic Network idea
   but adapts it to this repo by using a frozen FluxTransformer as the metabolic
   reservoir.
@@ -208,8 +238,9 @@ notes live in `docs/`.
   `EX_etoh_e` beyond the Faure 38-input set, keeps oxygen flexible, and samples
   separate `minn`, `faure`, and `mixed` regimes. Do not present this shared
   generator as an exact Faure setup.
-- When changing AMN experiment generation, update `docs/AMN_experiment_notes.md`
-  and this `AGENTS.md` together.
+- When changing AMN experiment generation, update
+  `docs/experiment_notes/AMN_experiment_notes.md` and this `AGENTS.md`
+  together.
 
 ## Evaluation and Plotting Hygiene
 
