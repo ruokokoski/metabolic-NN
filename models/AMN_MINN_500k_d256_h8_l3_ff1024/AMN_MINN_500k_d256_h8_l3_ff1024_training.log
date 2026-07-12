@@ -1,0 +1,98 @@
+============================================================
+Training run started: 2026-07-08 09:52:57
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_500k
+model_name: AMN_MINN_500k_d256_h8_l3_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_500000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=3
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=16
+num_epochs=6
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 500000 samples from ./data/iML1515_AMN_MINN_training_data_500000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 400000
+Test samples: 100000
+Early stopping patience: 3
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_500000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_500000_samples_y_tok.float32.mmap
+Traceback (most recent call last):
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 846, in <module>
+    train_loss, test_loss, model, optimizer, train_meta = train_model(
+  File "/projappl/project_2013496/flux_transformer/train_flux_transformer_with_cache.py", line 635, in train_model
+    loss.backward()
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/_tensor.py", line 647, in backward
+    torch.autograd.backward(
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/autograd/__init__.py", line 354, in backward
+    _engine_run_backward(
+  File "/scratch/project_2013496/vflux/lib/python3.10/site-packages/torch/autograd/graph.py", line 829, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 3.51 GiB. GPU 0 has a total capacity of 31.74 GiB of which 2.89 GiB is free. Including non-PyTorch memory, this process has 28.84 GiB memory in use. Of the allocated memory 25.54 GiB is allocated by PyTorch, and 2.92 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+============================================================
+Training run started: 2026-07-09 12:01:31
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_500k
+model_name: AMN_MINN_500k_d256_h8_l3_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_500000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=3
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=12
+num_epochs=6
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 500000 samples from ./data/iML1515_AMN_MINN_training_data_500000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 400000
+Test samples: 100000
+Early stopping patience: 3
+Allocated memory: 64.07 MB
+Reserved memory: 27268.00 MB
+Epoch 1/6 | Train Loss: 0.016632 | Test Loss: 0.002103 | Elapsed: 09:00:01 | Time: 00:44
+Epoch 2/6 | Train Loss: 0.001574 | Test Loss: 0.000749 | Elapsed: 19:26:34 | Time: 11:11
+Epoch 3/6 | Train Loss: 0.000876 | Test Loss: 0.000527 | Elapsed: 43:52:12 | Time: 11:37
+Epoch 4/6 | Train Loss: 0.000640 | Test Loss: 0.000395 | Elapsed: 53:15:42 | Time: 21:00
+Epoch 5/6 | Train Loss: 0.000525 | Test Loss: 0.000401 | Elapsed: 61:24:59 | Time: 05:09
