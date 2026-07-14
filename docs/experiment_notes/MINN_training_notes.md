@@ -66,11 +66,15 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 
 ## 4) Model architecture
 - Wrapper: frozen transformer + trainable front MLP.
-- Front MLP:
-  - 1 hidden layer
-  - hidden size 512
+- The active baseline notebook keeps the historical one-hidden-layer, width-512 front MLP.
+- `ecoli_iML1515_MINN_model_testing_AMN_trial.ipynb` now uses a smaller two-stage
+  front MLP and searches a bounded set of widths: `(64, 32)`, `(128, 32)`, and
+  `(128, 64)`. Each hidden layer uses GELU and dropout.
 - Front-MLP context outputs use `softplus` to produce nonnegative latent context/cap values.
 - Transformer remains frozen (no optimizer params from transformer).
+- Reservoir forward passes must still use the full output vocabulary
+  (`output_subset=None`). Output subsetting changes the attention token set and
+  is not a valid speed optimization for this workflow.
 
 ## 5) Training protocol
 - Outer CV: Leave-One-Out (LOO).
@@ -90,12 +94,36 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 - Loss:
   - flux loss on transformer target channels (`y_minn_np`) that exclude the 5 context columns by default
   - no separate exact cap/context loss; front-MLP context outputs are learned only through the frozen FluxTransformer target-flux loss
+  - the AMN-transfer trial notebook fits a robust `q95-q05` scale independently
+    for every target using the current training fold only, falls back to the
+    training-fold standard deviation and then unit scale for degenerate targets,
+    and applies Huber loss to prediction/target values divided by those scales
+  - exported OOF predictions and all reported biological metrics remain in the
+    original flux units
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
 - AMP:
   - use `torch.amp.autocast(...)`
   - use `torch.amp.GradScaler(...)`
+
+### 5.1) AMN-transfer trial speed protocol
+
+`ecoli_iML1515_MINN_model_testing_AMN_trial.ipynb` uses a low-fidelity HPO stage
+for its new normalized-loss two-layer MLP:
+
+- 15 Optuna trials
+- 5 inner folds
+- at most 40 epochs per low-fidelity fit
+- early-stopping patience 8
+- top 3 completed trials are re-evaluated with the full 150-epoch, patience-25
+  inner-CV protocol before selecting parameters for outer LOO
+- CUDA batch size starts at 4 and retries at 2 and 1 after an OOM, without
+  changing the required full-vocabulary FluxTransformer forward
+
+The older fixed parameters belong to the one-layer/raw-loss model and are
+intentionally disabled in this trial. Run the new HPO before populating
+`MINN_FIXED_BEST_PARAMS` for the revised architecture.
 
 ## 6) Early stopping (implemented)
 - Config keys:
