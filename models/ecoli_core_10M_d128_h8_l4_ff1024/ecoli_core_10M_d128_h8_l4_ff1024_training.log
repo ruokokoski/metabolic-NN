@@ -1,0 +1,102 @@
+============================================================
+Training run started: 2026-07-24 11:52:05
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: ecoli_core_10M
+model_name: ecoli_core_10M_d128_h8_l4_ff1024
+
+Data path: ./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv
+Device: cuda
+
+Architecture:
+d_model=128
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=256
+num_epochs=200
+patience=10
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 9805381 samples from ./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv
+Extracted input columns count:  20
+Extracted output columns count: 95
+Medium constraints are injected into these token indices (in outputs order):
+[27, 25, 32, 37, 19, 21, 38, 26, 33, 23, 20, 24, 28, 29, 22, 30, 31, 34, 35, 36]
+Training samples: 7844304
+Test samples: 1961077
+Early stopping patience: 10
+Allocated memory: 37.38 MB
+Reserved memory: 2132.00 MB
+Epoch 1/200 | Train Loss: 0.514563 | Test Loss: 0.213312 | Elapsed: 01:34:00 | Time: 13:28
+Epoch 2/200 | Train Loss: 0.222682 | Test Loss: 0.197078 | Elapsed: 03:14:49 | Time: 15:09
+Epoch 3/200 | Train Loss: 0.204473 | Test Loss: 0.189675 | Elapsed: 04:52:03 | Time: 16:46
+Epoch 4/200 | Train Loss: 0.197021 | Test Loss: 0.188325 | Elapsed: 06:30:37 | Time: 18:25
+Epoch 5/200 | Train Loss: 0.192930 | Test Loss: 0.186960 | Elapsed: 08:08:55 | Time: 20:03
+Epoch 6/200 | Train Loss: 0.190336 | Test Loss: 0.183563 | Elapsed: 09:47:39 | Time: 21:42
+Epoch 7/200 | Train Loss: 0.188535 | Test Loss: 0.183417 | Elapsed: 11:26:01 | Time: 23:20
+Epoch 8/200 | Train Loss: 0.187231 | Test Loss: 0.182448 | Elapsed: 13:04:38 | Time: 00:59
+Epoch 9/200 | Train Loss: 0.186253 | Test Loss: 0.181923 | Elapsed: 14:41:51 | Time: 02:36
+Epoch 10/200 | Train Loss: 0.185453 | Test Loss: 0.181390 | Elapsed: 16:18:46 | Time: 04:13
+Epoch 11/200 | Train Loss: 0.184836 | Test Loss: 0.182876 | Elapsed: 17:55:29 | Time: 05:50
+Epoch 12/200 | Train Loss: 0.184303 | Test Loss: 0.182868 | Elapsed: 19:32:06 | Time: 07:26
+Epoch 13/200 | Train Loss: 0.183859 | Test Loss: 0.182821 | Elapsed: 21:08:36 | Time: 09:03
+Epoch 14/200 | Train Loss: 0.183453 | Test Loss: 0.180502 | Elapsed: 22:45:17 | Time: 10:39
+Epoch 15/200 | Train Loss: 0.183149 | Test Loss: 0.181472 | Elapsed: 24:22:04 | Time: 12:16
+Epoch 16/200 | Train Loss: 0.182851 | Test Loss: 0.180672 | Elapsed: 25:58:26 | Time: 13:53
+Epoch 17/200 | Train Loss: 0.182583 | Test Loss: 0.179959 | Elapsed: 27:35:33 | Time: 15:30
+Epoch 18/200 | Train Loss: 0.182353 | Test Loss: 0.179998 | Elapsed: 29:14:02 | Time: 17:08
+Epoch 19/200 | Train Loss: 0.182150 | Test Loss: 0.180142 | Elapsed: 30:52:05 | Time: 18:46
+Epoch 20/200 | Train Loss: 0.181957 | Test Loss: 0.180241 | Elapsed: 32:29:54 | Time: 20:24
+Epoch 21/200 | Train Loss: 0.181781 | Test Loss: 0.180089 | Elapsed: 34:08:21 | Time: 22:02
+Epoch 22/200 | Train Loss: 0.181613 | Test Loss: 0.179907 | Elapsed: 35:46:18 | Time: 23:40
+Epoch 23/200 | Train Loss: 0.181460 | Test Loss: 0.179989 | Elapsed: 37:24:48 | Time: 01:19
+Epoch 24/200 | Train Loss: 0.181342 | Test Loss: 0.179603 | Elapsed: 39:02:33 | Time: 02:57
+Epoch 25/200 | Train Loss: 0.181198 | Test Loss: 0.179142 | Elapsed: 40:40:19 | Time: 04:34
+Epoch 26/200 | Train Loss: 0.181081 | Test Loss: 0.180115 | Elapsed: 42:18:04 | Time: 06:12
+Epoch 27/200 | Train Loss: 0.180976 | Test Loss: 0.179261 | Elapsed: 43:55:39 | Time: 07:50
+Epoch 28/200 | Train Loss: 0.180865 | Test Loss: 0.179077 | Elapsed: 45:33:37 | Time: 09:28
+Epoch 29/200 | Train Loss: 0.180753 | Test Loss: 0.179026 | Elapsed: 47:11:00 | Time: 11:05
+Epoch 30/200 | Train Loss: 0.180652 | Test Loss: 0.179154 | Elapsed: 48:48:24 | Time: 12:43
+Epoch 31/200 | Train Loss: 0.180593 | Test Loss: 0.179320 | Elapsed: 50:28:18 | Time: 14:22
+Epoch 32/200 | Train Loss: 0.180495 | Test Loss: 0.179447 | Elapsed: 52:08:09 | Time: 16:02
+Epoch 33/200 | Train Loss: 0.180403 | Test Loss: 0.178976 | Elapsed: 53:48:47 | Time: 17:43
+Epoch 34/200 | Train Loss: 0.180341 | Test Loss: 0.178825 | Elapsed: 55:28:52 | Time: 19:23
+Epoch 35/200 | Train Loss: 0.180270 | Test Loss: 0.179308 | Elapsed: 57:09:11 | Time: 21:03
+Epoch 36/200 | Train Loss: 0.180191 | Test Loss: 0.178820 | Elapsed: 58:49:15 | Time: 22:43
+Epoch 37/200 | Train Loss: 0.180141 | Test Loss: 0.179237 | Elapsed: 60:29:23 | Time: 00:23
+Epoch 38/200 | Train Loss: 0.180063 | Test Loss: 0.179041 | Elapsed: 62:08:40 | Time: 02:03
+Epoch 39/200 | Train Loss: 0.180001 | Test Loss: 0.178951 | Elapsed: 63:47:22 | Time: 03:41
+Epoch 40/200 | Train Loss: 0.179939 | Test Loss: 0.178929 | Elapsed: 65:25:49 | Time: 05:20
+Epoch 41/200 | Train Loss: 0.179891 | Test Loss: 0.178434 | Elapsed: 67:04:21 | Time: 06:58
+Epoch 42/200 | Train Loss: 0.179843 | Test Loss: 0.178443 | Elapsed: 68:42:34 | Time: 08:37
+Epoch 43/200 | Train Loss: 0.179784 | Test Loss: 0.178818 | Elapsed: 70:21:14 | Time: 10:15
+Epoch 44/200 | Train Loss: 0.179733 | Test Loss: 0.178599 | Elapsed: 72:01:35 | Time: 11:56
+Epoch 45/200 | Train Loss: 0.179690 | Test Loss: 0.178530 | Elapsed: 73:41:11 | Time: 13:35
+Epoch 46/200 | Train Loss: 0.179640 | Test Loss: 0.178527 | Elapsed: 75:18:27 | Time: 15:13
+Epoch 47/200 | Train Loss: 0.179602 | Test Loss: 0.178781 | Elapsed: 76:57:01 | Time: 16:51
+Epoch 48/200 | Train Loss: 0.179562 | Test Loss: 0.178903 | Elapsed: 78:36:00 | Time: 18:30
+Epoch 49/200 | Train Loss: 0.179518 | Test Loss: 0.178548 | Elapsed: 80:16:28 | Time: 20:11
+Epoch 50/200 | Train Loss: 0.179478 | Test Loss: 0.178501 | Elapsed: 81:58:22 | Time: 21:52
+Epoch 51/200 | Train Loss: 0.179437 | Test Loss: 0.179139 | Elapsed: 83:39:28 | Time: 23:34
+Early stopping at epoch 51; best test loss 0.178434 was at epoch 41.
+Restored best model state from epoch 41.
+Training Completed.
+Training took 5019 min 29.1 sec.
+Best test loss: 0.178434 at epoch 41
+
+Best-epoch model weights saved to ./models/ecoli_core_10M_d128_h8_l4_ff1024/ecoli_core_10M_d128_h8_l4_ff1024.pth (epoch 41)
+Full checkpoint saved to ./models/ecoli_core_10M_d128_h8_l4_ff1024/ecoli_core_10M_d128_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap\2026-03-30_ecoli_core_training_data_9805381_samples_X_tok.float32.mmap
+  - ./tmp_memmap\2026-03-30_ecoli_core_training_data_9805381_samples_y_tok.float32.mmap

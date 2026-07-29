@@ -17,10 +17,10 @@ from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
 
-#DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
+DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
 #DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
-DATA_PATH = "iML1515_AMN_training_data_500000_samples.csv"
-MODEL_NAME = "AMN_500k"
+#DATA_PATH = "iML1515_AMN_training_data_500000_samples.csv"
+MODEL_NAME = "ecoli_core_10M"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -773,13 +773,13 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 if __name__ == "__main__":
     #set_seed()
 
-    d_model = 256
+    d_model = 128
     n_heads = 8
-    n_layers = 3
+    n_layers = 4
     d_ff = 1024
-    batch_size = 32
-    num_epochs = 5
-    patience = 3
+    batch_size = 256
+    num_epochs = 200
+    patience = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
