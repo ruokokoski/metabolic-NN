@@ -6,7 +6,7 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.
 - By default, front MLP predicts latent reservoir context/control channels for CO2, ethanol, and acetate.
-- `MINN_GLC_O2_CONTEXT_MODE="measured"` is the default: measured glucose/oxygen are copied into the FluxTransformer context. Set it to `"predicted"` only for the older ablation where the front MLP predicts all 5 context channels.
+- The AMN-trial notebook compares both glucose/oxygen context modes: `"measured"` copies measured glucose/oxygen into the FluxTransformer context, while `"predicted"` asks the front MLP to predict all five context channels. Both downstream branches apply only the same three CO2/ethanol/acetate caps.
 - Reconstruct full transformer input as:
   - measured glucose/oxygen copied directly into their context tokens
   - latent predicted CO2/ethanol/acetate context/cap channels
@@ -66,10 +66,9 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 
 ## 4) Model architecture
 - Wrapper: frozen transformer + trainable front MLP.
-- The active baseline notebook keeps the historical one-hidden-layer, width-512 front MLP.
-- `ecoli_iML1515_MINN_model_testing_AMN_trial.ipynb` now uses a smaller two-stage
-  front MLP and searches a bounded set of widths: `(64, 32)`, `(128, 32)`, and
-  `(128, 64)`. Each hidden layer uses GELU and dropout.
+- The active notebooks use the historical one-hidden-layer, width-512 ReLU
+  front MLP. The smaller two-stage normalized-loss trial was rejected because
+  it worsened both direct reservoir and FluxTransformer-to-pFBA metrics.
 - Front-MLP context outputs use `softplus` to produce nonnegative latent context/cap values.
 - Transformer remains frozen (no optimizer params from transformer).
 - Reservoir forward passes must still use the full output vocabulary
@@ -94,12 +93,7 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 - Loss:
   - flux loss on transformer target channels (`y_minn_np`) that exclude the 5 context columns by default
   - no separate exact cap/context loss; front-MLP context outputs are learned only through the frozen FluxTransformer target-flux loss
-  - the AMN-transfer trial notebook fits a robust `q95-q05` scale independently
-    for every target using the current training fold only, falls back to the
-    training-fold standard deviation and then unit scale for degenerate targets,
-    and applies Huber loss to prediction/target values divided by those scales
-  - exported OOF predictions and all reported biological metrics remain in the
-    original flux units
+  - the active AMN/MINN trial uses raw, unnormalized Huber loss
 - Training stabilization:
   - gradient clipping (`MINN_GRAD_CLIP_MAX_NORM`)
   - LR warmup + cosine decay (`MINN_LR_WARMUP_EPOCHS`, `MINN_LR_COSINE_MIN_FACTOR`)
@@ -107,34 +101,14 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
   - use `torch.amp.autocast(...)`
   - use `torch.amp.GradScaler(...)`
 
-### 5.1) AMN-transfer trial speed protocol
+### 5.1) AMN/MINN trial legacy pipeline
 
-`ecoli_iML1515_MINN_model_testing_AMN_trial.ipynb` uses a low-fidelity HPO stage
-for its new normalized-loss two-layer MLP:
+`ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb` uses the restored legacy
+front-MLP workflow with the `AMN_MINN_500k_d256_h8_l3_ff1024`
+FluxTransformer checkpoint, `minn_fitted` data mode, context-target exclusion,
+full-vocabulary reservoir forward, and `co2_etoh_ac_cap` pFBA mode.
 
-- 15 Optuna trials
-- 5 inner folds
-- at most 40 epochs per low-fidelity fit
-- early-stopping patience 8
-- top 3 completed trials are re-evaluated with the full 150-epoch, patience-25
-  inner-CV protocol before selecting parameters for outer LOO
-- CUDA batch size starts at 4 and retries at 2 and 1 after an OOM, without
-  changing the required full-vocabulary FluxTransformer forward
-
-The older fixed parameters belong to the one-layer/raw-loss model and are
-intentionally disabled in this trial. Run the new HPO before populating
-`MINN_FIXED_BEST_PARAMS` for the revised architecture.
-
-### 5.2) Controlled legacy-MLP ablation
-
-`ecoli_iML1515_MINN_model_testing_AMN_trial_legacy_mlp_ablation.ipynb` restores
-the pre-normalization front-MLP workflow from commit `6b1e3bf` without
-overwriting the revised trial results. It intentionally uses the same
-`AMN_MINN_500k_d256_h8_l3_ff1024` FluxTransformer checkpoint,
-`minn_fitted` data mode, context-target exclusion, full-vocabulary reservoir
-forward, and `co2_etoh_ac_cap` pFBA mode as the revised AMN/MINN trial.
-
-The controlled legacy settings are:
+Its active settings are:
 
 - one hidden layer with width 512
 - ReLU activation
@@ -142,9 +116,10 @@ The controlled legacy settings are:
 - 50 HPO trials evaluated with the full 150-epoch protocol
 - historical CUDA batch configuration (requested batch 5, reduced to 2)
 
-Use its measured/predicted final pFBA table as the same-checkpoint baseline for
-deciding whether the normalized loss and smaller two-layer MLP improved the
-Tazza-style FluxTransformer-to-pFBA result.
+The predicted-context result (`R2=0.895539`, `MAE=0.486514`) slightly beats
+baseline pFBA (`R2=0.892825`, `MAE=0.495038`). Preserve this configuration as
+the reference when testing further improvements. The former two-layer GELU,
+per-flux normalized-loss pipeline is retained only in Git history.
 
 ## 6) Early stopping (implemented)
 - Config keys:
@@ -183,13 +158,10 @@ Tazza-style FluxTransformer-to-pFBA result.
 - Always print the chosen pFBA objective, and map the biomass metric to the same iML1515 biomass reaction used as the pFBA objective.
 - Keep FluxTransformer pFBA mapping in the unsplit/unpruned reaction space; only convert MINN split source-column signs into the corresponding unsplit iML1515 bounds or flux signs.
 - FluxTransformer->pFBA should use measured glucose/oxygen uptake as lower-bound uptake caps, not exact fixed fluxes.
-- `MINN_PFBA_EXTRA_CONSTRAINT_MODE` controls downstream extra constraints:
-  - `etoh_ac_cap`: predicted ethanol and acetate are nonnegative secretion upper caps; predicted CO2 is still supplied to FluxTransformer but not applied as a pFBA cap
-  - `co2_etoh_ac_cap`: predicted CO2, ethanol, and acetate are nonnegative secretion upper caps
+- `MINN_PFBA_EXTRA_CONSTRAINT_MODE="co2_etoh_ac_cap"` applies predicted CO2, ethanol, and acetate as nonnegative secretion upper caps. This is the only active cap set in the AMN-trial notebook.
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
-- The notebook includes a follow-up etoh/ac-cap retraining cell after the measured-vs-predicted pFBA comparison. It selects the better glucose/O2 FluxTransformer context mode from the `co2_etoh_ac_cap` comparison, retrains with `MINN_PFBA_EXTRA_CONSTRAINT_MODE="etoh_ac_cap"`, keeps CO2 in the FluxTransformer context/input, and evaluates downstream pFBA with only ethanol/acetate caps.
 - Do not include cap-calibration trials in the final comparison by default; direct cap-MAE calibration can over-shrink upper caps, and the pFBA-tuned safety calibration selected identity scales in testing.
-- The final comparison cell should report: baseline pFBA, FluxTransformer to pFBA measured `co2_etoh_ac_cap`, FluxTransformer to pFBA predicted `co2_etoh_ac_cap`, and FluxTransformer to pFBA better-context `etoh_ac_cap`.
+- The final comparison cell should report baseline pFBA plus measured-context and predicted-context FluxTransformer-to-pFBA results using the same `co2_etoh_ac_cap` cap set.
 - Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
 - Verify feasibility counts and print failed samples for debugging.
 ## 8.1) Table 2 benchmark notebook

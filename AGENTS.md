@@ -202,25 +202,21 @@ from the current project state.
 - For MINN-style experiments, use a pretrained FluxTransformer as a frozen
   reservoir and train only the front MLP unless the user explicitly asks for a
   different ablation.
-- The active MINN notebook default is measured glucose/oxygen copied into the
-  FluxTransformer context; CO2/ethanol/acetate are latent front-MLP context/cap
-  outputs.
+- The active MINN AMN-trial notebook compares measured versus predicted
+  glucose/oxygen FluxTransformer context. Both branches use the same three
+  latent front-MLP CO2/ethanol/acetate context/cap outputs; no alternative cap
+  sets are evaluated.
 - The active MINN pFBA comparison is Table 4-style iML1515 pFBA, not the Table
   2 benchmark. Table 2-style work belongs in `ecoli_iML1515_MINN_Table2.ipynb`.
 - MINN reservoir forward passes must keep `output_subset=None`; requesting only
   target fluxes changes the attention token set and therefore changes the frozen
   reservoir prediction.
-- `ecoli_iML1515_MINN_model_testing_AMN_trial.ipynb` now trials a smaller
-  two-layer GELU front MLP, fold-local robust per-flux normalized Huber loss,
-  CUDA batch size 4 with 2/1 OOM fallbacks, and low-fidelity HPO followed by
-  full-fidelity refinement of the top three trials. Its older one-layer fixed
-  hyperparameters are disabled and must not be reused for the revised model.
-- `ecoli_iML1515_MINN_model_testing_AMN_trial_legacy_mlp_ablation.ipynb`
-  restores the `6b1e3bf` one-layer width-512 ReLU/raw-Huber workflow for a
-  controlled same-checkpoint comparison. It uses the same AMN/MINN
+- `ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb` uses the restored
+  `6b1e3bf` one-layer width-512 ReLU/raw-Huber workflow with the AMN/MINN
   FluxTransformer, `minn_fitted` targets, full-vocabulary forward, and
-  `co2_etoh_ac_cap` pFBA mode as the revised trial. Keep its results separate
-  from the current trial notebook.
+  `co2_etoh_ac_cap` pFBA mode. Its predicted-context result slightly beats
+  baseline pFBA and is the reference configuration. The rejected two-layer
+  GELU/per-flux-normalized-loss version remains available in Git history.
 
 ## AMN Experiments
 
