@@ -125,6 +125,27 @@ The older fixed parameters belong to the one-layer/raw-loss model and are
 intentionally disabled in this trial. Run the new HPO before populating
 `MINN_FIXED_BEST_PARAMS` for the revised architecture.
 
+### 5.2) Controlled legacy-MLP ablation
+
+`ecoli_iML1515_MINN_model_testing_AMN_trial_legacy_mlp_ablation.ipynb` restores
+the pre-normalization front-MLP workflow from commit `6b1e3bf` without
+overwriting the revised trial results. It intentionally uses the same
+`AMN_MINN_500k_d256_h8_l3_ff1024` FluxTransformer checkpoint,
+`minn_fitted` data mode, context-target exclusion, full-vocabulary reservoir
+forward, and `co2_etoh_ac_cap` pFBA mode as the revised AMN/MINN trial.
+
+The controlled legacy settings are:
+
+- one hidden layer with width 512
+- ReLU activation
+- raw, unnormalized Huber loss
+- 50 HPO trials evaluated with the full 150-epoch protocol
+- historical CUDA batch configuration (requested batch 5, reduced to 2)
+
+Use its measured/predicted final pFBA table as the same-checkpoint baseline for
+deciding whether the normalized loss and smaller two-layer MLP improved the
+Tazza-style FluxTransformer-to-pFBA result.
+
 ## 6) Early stopping (implemented)
 - Config keys:
   - `minn_cv_early_stopping_patience`

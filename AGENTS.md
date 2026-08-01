@@ -215,6 +215,12 @@ from the current project state.
   CUDA batch size 4 with 2/1 OOM fallbacks, and low-fidelity HPO followed by
   full-fidelity refinement of the top three trials. Its older one-layer fixed
   hyperparameters are disabled and must not be reused for the revised model.
+- `ecoli_iML1515_MINN_model_testing_AMN_trial_legacy_mlp_ablation.ipynb`
+  restores the `6b1e3bf` one-layer width-512 ReLU/raw-Huber workflow for a
+  controlled same-checkpoint comparison. It uses the same AMN/MINN
+  FluxTransformer, `minn_fitted` targets, full-vocabulary forward, and
+  `co2_etoh_ac_cap` pFBA mode as the revised trial. Keep its results separate
+  from the current trial notebook.
 
 ## AMN Experiments
 
