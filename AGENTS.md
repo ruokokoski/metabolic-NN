@@ -288,3 +288,7 @@ from the current project state.
 - Ignore unrelated dirty files.
 - Keep large generated artifacts out of commits unless the user explicitly wants
   them tracked.
+- The August 2026 legacy-model cleanup removed old E. coli core and iML1515
+  checkpoints that had no current or recent notebook references. The legacy
+  `ecoli_core_d128_h8_l3_ff640_1M` directory was intentionally retained, and all
+  Yeast9 model directories remain relevant.
