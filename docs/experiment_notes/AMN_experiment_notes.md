@@ -20,13 +20,11 @@ The biological target is experimental growth rate.
 ## Main Files
 
 - `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
-- `generate_ecoli_iML1515_AMN_data_stable.py`: recommended simulated iML1515
-  data generator for future Faure-style AMN FluxTransformer training data.
+- `generate_ecoli_iML1515_AMN_data.py`: recommended simulated iML1515 data
+  generator for future Faure-style AMN FluxTransformer training data.
 - `generate_ecoli_iML1515_AMN_MINN_data.py`: shared AMN/MINN simulated-data
   generator for training a FluxTransformer reservoir that sees both Faure-like
   no-glucose media and MINN Table 4-style glucose/oxygen context.
-- `generate_ecoli_iML1515_AMN_data.py`: legacy AMN generator used before the
-  stable generator was added.
 - `flux_transformer.py`: canonical FluxTransformer model definition.
 - `docs/Faure etal 2023.pdf`: main paper for AMN context.
 - `docs/Faure_supplementary.pdf`: supplementary AMN architecture and benchmark
@@ -53,18 +51,16 @@ the Faure AMN figures unless the generator and checkpoint were built that way.
 
 ## Simulated AMN Data
 
-`generate_ecoli_iML1515_AMN_data_stable.py` is the recommended generator for
+`generate_ecoli_iML1515_AMN_data.py` is the recommended generator for
 new iML1515 FBA samples with media settings chosen to resemble the Faure
-experimental setup. The older `generate_ecoli_iML1515_AMN_data.py` file is kept
-for traceability because existing checkpoints and notes may have been produced
-from its output.
+experimental setup.
 
 Key points:
 
 - The model is `models/iML1515.xml`.
-- The stable generator writes input columns in the same 38-exchange order as
+- The generator writes input columns in the same 38-exchange order as
   `AMN_data/iML1515_EXP.csv`, after removing Faure's `"_i"` suffix.
-- The stable generator explicitly sets the objective to
+- The generator explicitly sets the objective to
   `BIOMASS_Ec_iML1515_core_75p37M`.
 - Variable carbon sources are selected from the Faure-style carbon set:
   ribose, maltose, melibiose, trehalose, fructose, galactose, acetate,
@@ -79,18 +75,15 @@ Key points:
   carbon-containing supplements: selected variable carbon sources, glycerol, and
   amino-acid exchanges default to `2.2`, while non-carbon base nutrients default
   to `10.0`.
-- Oxygen is deliberately flexible in the generator and is sampled between `1.0`
-  and `10.0` by default. Use `--fixed-oxygen` only for an explicit ablation.
-- The Faure Methods state that obligate uptake reactions were set to `10` for
-  FBA-simulated training data, but using `10` for fixed glycerol and amino acids
-  gives the local iML1515 model a large background carbon supply. The stable
-  generator therefore keeps those fixed carbon-containing supplements at `2.2`
-  by default; this is a deliberate local adaptation, not an exact reproduction
-  of the paper's FBA-simulation settings.
+- The Faure AMN sampling policy is retained, including the `2.2` caps for fixed
+  glycerol and the four amino acids. The only deliberate difference in which
+  AMN medium variables are sampled is oxygen: Faure keeps oxygen fixed, whereas
+  the FluxTransformer generator samples it between `1.0` and `10.0` by default.
+  Use `--fixed-oxygen` only for an explicit ablation.
 - Each sample starts from a closed uptake medium while preserving the model's
   default exchange upper bounds for secretion. This avoids carrying stale solver
   bounds between samples while keeping unselected nutrients closed.
-- The stable generator follows the robust MINN-style process: it loops until the
+- The generator follows the robust MINN-style process: it loops until the
   accepted sample target is reached, writes through a timestamped temporary CSV,
   reports attempts and feasible rate, has a max-attempt guard, and periodically
   reloads the model/solver.
@@ -120,28 +113,35 @@ Key points:
 - The default solver mode is pFBA with `fraction_of_optimum=0.999`, matching the
   MINN simulated-data convention more closely than plain FBA.
 - The generator samples explicit regimes:
-  - `minn`: glucose/oxygen uptake are sampled, base nutrients use the MINN-like
-    default rate, glycerol/amino supplements are absent, and CO2/ethanol/acetate
-    inputs are filled from realized secretion fluxes after solving.
+  - `minn`: all five MINN context caps are independently sampled as integers;
+    glucose/oxygen are uptake caps, CO2/ethanol/acetate are secretion upper
+    caps, and glycerol/amino supplements are absent.
   - `faure`: glucose is absent, oxygen is flexible, glycerol/amino acids use
-    `2.2`, and 1-4 Faure carbon sources are sampled.
-  - `mixed`: glucose/oxygen are sampled with optional non-acetate Faure carbon
-    sources to bridge the two distributions.
+    their Faure `2.2` caps, and 1-4 Faure carbon sources are sampled. Oxygen is
+    the only additional randomized AMN medium variable relative to Faure.
+  - `mixed`: the same five MINN caps are sampled with optional non-acetate
+    Faure carbon sources to bridge the two distributions.
+- Shared non-carbon base nutrients use `50` in all three regimes. Downstream
+  AMN evaluation of a checkpoint trained from this shared generator must also
+  use fixed base inputs of `50`. This is a fixed cross-regime normalization, not
+  an additional randomized AMN variable.
 - Default regime weights are `minn=0.50`, `faure=0.40`, and `mixed=0.10`.
+- Current training defaults are `1,000,000` accepted samples, seed `42`, and
+  output prefix `iML1515_AMN_MINN_training_data`. These remain normal CLI
+  options; use seed `9` and a test-specific prefix for a separate test set.
 - Acetate is necessarily context-dependent in this shared file: in no-glucose
   Faure rows it can still represent a Faure carbon-source uptake cap, while in
-  glucose/MINN rows it is used as a realized secretion-context value. Avoid using
+  glucose/MINN rows it is used as a sampled secretion upper cap. Avoid using
   this generator for claims that require a single unambiguous Faure acetate-input
   interpretation.
 - The AMN notebook now zero-fills optional absent `EX_glc__D_e` and `EX_etoh_e`
   experimental columns when a shared AMN/MINN checkpoint is loaded. Unknown
   missing inputs still raise an error.
 
-Important legacy note: the old generator looped over a fixed number of attempts
-rather than accepted samples and reset only exchange lower bounds. If AMN data
-generation appears stuck at a sample count or fails to reach the requested
-sample total, use `generate_ecoli_iML1515_AMN_data_stable.py` instead of
-editing the legacy file.
+Important legacy note: checkpoints made with an older generator may come from a
+fixed-attempt loop that reset only exchange lower bounds. The current
+`generate_ecoli_iML1515_AMN_data.py` uses an accepted-sample loop and a fully
+reset medium.
 
 ## Current Notebook Workflow
 
@@ -152,9 +152,9 @@ The notebook currently has four main parts.
    The active checkpoint is currently:
    `./models/iML1515_500k_d256_h8_l3_ff1024/iML1515_500k_d256_h8_l3_ff1024_checkpoint.pth`.
 
-   This checkpoint predates `generate_ecoli_iML1515_AMN_data_stable.py`. Do not
-   treat metrics from this checkpoint as regenerated stable-generator results
-   unless the model is retrained and the notebook is rerun with the new data.
+   This checkpoint predates the current stable generation behavior in
+   `generate_ecoli_iML1515_AMN_data.py`. Do not treat its metrics as results from
+   newly regenerated data unless the model is retrained and the notebook rerun.
 
    The simulated test data loaded for FluxTransformer diagnostics is currently:
    `./data/iML1515_test_data_50000_samples.csv`.
@@ -315,7 +315,8 @@ notebook diagnostics, not as planned thesis figures.
 - Confirm that binary carbon-source features remain 0/1 before TabPFN or
   stratified CV.
 - Check that fixed medium rates in the notebook match
-  `generate_ecoli_iML1515_AMN_data_stable.py`.
+  `generate_ecoli_iML1515_AMN_data.py` or the shared generator used to train the
+  evaluated checkpoint.
 - Print and review the variable input columns learned by the prior ANN.
 - Keep simulated-data FluxTransformer diagnostics separate from experimental
   growth-rate evaluation.
@@ -328,8 +329,8 @@ notebook diagnostics, not as planned thesis figures.
   also selected fixed/media context channels.
 - Whether oxygen should remain trainable/flexible in all final runs or be tested
   against a fixed-oxygen ablation.
-- Whether fixed glycerol and amino-acid caps should stay at the current `2.2`
-  local adaptation or be explored as a sensitivity axis.
+- Keep fixed glycerol and amino-acid caps at the Faure value of `2.2` unless an
+  explicitly named sensitivity experiment is being run.
 - Whether the FluxTransformer checkpoint should be retrained only on AMN-style
   simulated media or mixed with broader iML1515 media.
 - Whether final reporting should compare against Faure AMN-QP/LP/Wt numbers,

@@ -90,11 +90,11 @@ def parse_args():
             "MINN's five reservoir-context exchanges."
         )
     )
-    parser.add_argument("--n-samples", type=int, default=50000)
-    parser.add_argument("--seed", type=int, default=9)
+    parser.add_argument("--n-samples", type=int, default=1_000_000)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model-dir", default="./models")
     parser.add_argument("--data-dir", default="./data")
-    parser.add_argument("--output-prefix", default="iML1515_AMN_MINN_test_data")
+    parser.add_argument("--output-prefix", default="iML1515_AMN_MINN_training_data")
     parser.add_argument("--overwrite-existing", action="store_true")
 
     parser.add_argument("--objective-reaction", default="BIOMASS_Ec_iML1515_core_75p37M")
@@ -109,14 +109,17 @@ def parse_args():
     parser.add_argument("--regime-faure-weight", type=float, default=0.40)
     parser.add_argument("--regime-mixed-weight", type=float, default=0.10)
 
-    parser.add_argument("--minn-base-rate", type=float, default=50.0)
-    parser.add_argument("--faure-base-rate", type=float, default=10.0)
-    parser.add_argument("--glucose-rate-min", type=float, default=1.0)
-    parser.add_argument("--glucose-rate-max", type=float, default=15.0)
-    parser.add_argument("--oxygen-rate-min", type=float, default=1.0)
-    parser.add_argument("--oxygen-rate-max", type=float, default=30.0)
-    parser.add_argument("--oxygen-log-uniform", action="store_true", default=True)
-    parser.add_argument("--oxygen-uniform", dest="oxygen_log_uniform", action="store_false")
+    parser.add_argument("--base-rate", type=float, default=50.0)
+    parser.add_argument("--glucose-rate-min", type=int, default=1)
+    parser.add_argument("--glucose-rate-max", type=int, default=15)
+    parser.add_argument("--oxygen-rate-min", type=int, default=1)
+    parser.add_argument("--oxygen-rate-max", type=int, default=20)
+    parser.add_argument("--co2-secretion-cap-min", type=int, default=0)
+    parser.add_argument("--co2-secretion-cap-max", type=int, default=15)
+    parser.add_argument("--ethanol-secretion-cap-min", type=int, default=0)
+    parser.add_argument("--ethanol-secretion-cap-max", type=int, default=1)
+    parser.add_argument("--acetate-secretion-cap-min", type=int, default=0)
+    parser.add_argument("--acetate-secretion-cap-max", type=int, default=3)
     parser.add_argument("--faure-oxygen-rate-min", type=float, default=1.0)
     parser.add_argument("--faure-oxygen-rate-max", type=float, default=10.0)
     parser.add_argument("--carbon-rate-min", type=float, default=0.05)
@@ -144,6 +147,15 @@ def random_rate(rng, min_val, max_val, log_uniform=False):
         log_max = np.log10(max_val)
         return round(float(10 ** rng.uniform(log_min, log_max)), 2)
     return round(float(rng.uniform(min_val, max_val)), 2)
+
+
+def random_integer_cap(rng, min_val, max_val):
+    """Draw an integer cap uniformly from the inclusive range [min_val, max_val]."""
+    if not isinstance(min_val, int) or not isinstance(max_val, int):
+        raise TypeError("Integer cap endpoints must be integers.")
+    if min_val < 0 or max_val < min_val:
+        raise ValueError(f"Invalid integer cap range [{min_val}, {max_val}]")
+    return int(rng.integers(min_val, max_val + 1))
 
 
 def draw_subset(rng, exchanges, max_sources, min_sources=0):
@@ -221,7 +233,9 @@ def reset_closed_medium(model, exchange_default_bounds):
 
 def set_uptake(model, data, exchange_id, rate):
     model.reactions.get_by_id(exchange_id).lower_bound = -float(rate)
-    data[exchange_id] = float(rate)
+    # Preserve integer-valued MINN caps in the CSV while still accepting
+    # continuous Faure carbon/oxygen rates.
+    data[exchange_id] = rate
 
 
 def set_secretion_only(model, exchange_default_bounds, exchange_id):
@@ -229,6 +243,13 @@ def set_secretion_only(model, exchange_default_bounds, exchange_id):
     _, default_ub = exchange_default_bounds[exchange_id]
     rxn.lower_bound = 0.0
     rxn.upper_bound = max(0.0, float(default_ub))
+
+
+def set_secretion_cap(model, data, exchange_id, cap):
+    rxn = model.reactions.get_by_id(exchange_id)
+    rxn.lower_bound = 0.0
+    rxn.upper_bound = float(cap)
+    data[exchange_id] = int(cap)
 
 
 def solve_fluxes(model, flux_solver_mode, pfba_fraction_of_optimum):
@@ -266,27 +287,52 @@ def apply_base_medium(model, data, base_exchanges, rate):
         set_uptake(model, data, ex, rate)
 
 
-def apply_minn_regime(model, data, rng, exchange_default_bounds, base_exchanges, args):
-    apply_base_medium(model, data, base_exchanges, args.minn_base_rate)
-
-    glc_rate = random_rate(rng, args.glucose_rate_min, args.glucose_rate_max)
-    o2_rate = random_rate(
+def apply_minn_context_caps(model, data, rng, args):
+    glc_rate = random_integer_cap(
+        rng,
+        args.glucose_rate_min,
+        args.glucose_rate_max,
+    )
+    o2_rate = random_integer_cap(
         rng,
         args.oxygen_rate_min,
         args.oxygen_rate_max,
-        log_uniform=args.oxygen_log_uniform,
     )
+    secretion_caps = {
+        "EX_co2_e": random_integer_cap(
+            rng,
+            args.co2_secretion_cap_min,
+            args.co2_secretion_cap_max,
+        ),
+        "EX_etoh_e": random_integer_cap(
+            rng,
+            args.ethanol_secretion_cap_min,
+            args.ethanol_secretion_cap_max,
+        ),
+        "EX_ac_e": random_integer_cap(
+            rng,
+            args.acetate_secretion_cap_min,
+            args.acetate_secretion_cap_max,
+        ),
+    }
+
     set_uptake(model, data, "EX_glc__D_e", glc_rate)
     set_uptake(model, data, "EX_o2_e", o2_rate)
+    for ex, cap in secretion_caps.items():
+        set_secretion_cap(model, data, ex, cap)
 
-    for ex in MINN_SECRETION_CONTEXT_EXCHANGES:
-        set_secretion_only(model, exchange_default_bounds, ex)
+
+def apply_minn_regime(model, data, rng, base_exchanges, args):
+    apply_base_medium(model, data, base_exchanges, args.base_rate)
+    apply_minn_context_caps(model, data, rng, args)
 
 
 def apply_faure_regime(model, data, rng, exchange_default_bounds, base_exchanges, args):
-    apply_base_medium(model, data, base_exchanges, args.faure_base_rate)
-    set_uptake(model, data, "EX_co2_e", args.faure_base_rate)
+    apply_base_medium(model, data, base_exchanges, args.base_rate)
+    set_uptake(model, data, "EX_co2_e", args.base_rate)
 
+    # Keep the Faure AMN medium sampling unchanged except for oxygen: Faure
+    # holds oxygen fixed, whereas this FluxTransformer generator samples it.
     o2_rate = random_rate(
         rng,
         args.faure_oxygen_rate_min,
@@ -312,18 +358,9 @@ def apply_faure_regime(model, data, rng, exchange_default_bounds, base_exchanges
     set_secretion_only(model, exchange_default_bounds, "EX_etoh_e")
 
 
-def apply_mixed_regime(model, data, rng, exchange_default_bounds, base_exchanges, args):
-    apply_base_medium(model, data, base_exchanges, args.minn_base_rate)
-
-    glc_rate = random_rate(rng, args.glucose_rate_min, args.glucose_rate_max)
-    o2_rate = random_rate(
-        rng,
-        args.oxygen_rate_min,
-        args.oxygen_rate_max,
-        log_uniform=args.oxygen_log_uniform,
-    )
-    set_uptake(model, data, "EX_glc__D_e", glc_rate)
-    set_uptake(model, data, "EX_o2_e", o2_rate)
+def apply_mixed_regime(model, data, rng, base_exchanges, args):
+    apply_base_medium(model, data, base_exchanges, args.base_rate)
+    apply_minn_context_caps(model, data, rng, args)
 
     extra_carbons = draw_subset(
         rng,
@@ -340,9 +377,6 @@ def apply_mixed_regime(model, data, rng, exchange_default_bounds, base_exchanges
             set_uptake(model, data, ex, args.fixed_carbon_rate)
         for ex in AMINO_EXCHANGES:
             set_uptake(model, data, ex, args.amino_rate)
-
-    for ex in MINN_SECRETION_CONTEXT_EXCHANGES:
-        set_secretion_only(model, exchange_default_bounds, ex)
 
 
 def generate_training_sample(
@@ -363,11 +397,11 @@ def generate_training_sample(
         reset_closed_medium(model, exchange_default_bounds)
 
         if regime == "minn":
-            apply_minn_regime(model, data, rng, exchange_default_bounds, base_exchanges, args)
+            apply_minn_regime(model, data, rng, base_exchanges, args)
         elif regime == "faure":
             apply_faure_regime(model, data, rng, exchange_default_bounds, base_exchanges, args)
         elif regime == "mixed":
-            apply_mixed_regime(model, data, rng, exchange_default_bounds, base_exchanges, args)
+            apply_mixed_regime(model, data, rng, base_exchanges, args)
         else:
             raise ValueError(f"Unknown regime: {regime}")
 
@@ -379,10 +413,6 @@ def generate_training_sample(
         solution_status = getattr(solution, "status", "optimal")
         if solution_status != "optimal":
             return None, str(solution_status), regime
-
-        if regime in {"minn", "mixed"}:
-            for ex in MINN_SECRETION_CONTEXT_EXCHANGES:
-                data[ex] = max(0.0, float(solution.fluxes.get(ex, 0.0)))
 
         for rxn_id in outputs:
             data[f"{rxn_id}_flux"] = float(solution.fluxes.get(rxn_id, 0.0))
@@ -434,6 +464,28 @@ def main():
     if not (0 <= args.mixed_supplement_probability <= 1):
         raise ValueError("--mixed-supplement-probability must be in [0, 1]")
 
+    integer_cap_ranges = {
+        "glucose": (args.glucose_rate_min, args.glucose_rate_max),
+        "oxygen": (args.oxygen_rate_min, args.oxygen_rate_max),
+        "CO2 secretion": (
+            args.co2_secretion_cap_min,
+            args.co2_secretion_cap_max,
+        ),
+        "ethanol secretion": (
+            args.ethanol_secretion_cap_min,
+            args.ethanol_secretion_cap_max,
+        ),
+        "acetate secretion": (
+            args.acetate_secretion_cap_min,
+            args.acetate_secretion_cap_max,
+        ),
+    }
+    for name, (min_val, max_val) in integer_cap_ranges.items():
+        if min_val < 0 or max_val < min_val:
+            raise ValueError(
+                f"Invalid {name} integer cap range [{min_val}, {max_val}]"
+            )
+
     rng = np.random.default_rng(args.seed)
     regime_names, regime_probabilities = normalize_regime_weights(args)
     input_cols, base_exchanges = build_input_cols(include_cbl1=args.include_cbl1)
@@ -468,6 +520,7 @@ def main():
     if args.max_attempt_multiplier > 0:
         max_attempts = int(np.ceil(args.n_samples * args.max_attempt_multiplier))
 
+    print(f"Random seed: {args.seed}")
     print("Objective reaction:", model.objective)
     print(f"Flux solver mode: {args.flux_solver_mode}")
     if args.flux_solver_mode == "pfba":
@@ -477,6 +530,10 @@ def main():
     print("Regime probabilities:")
     for name, prob in zip(regime_names, regime_probabilities):
         print(f"  {name}: {prob:.3f}")
+    print(f"Shared non-carbon base nutrient rate: {args.base_rate:g}")
+    print("MINN integer context caps (inclusive min, max):")
+    for name, cap_range in integer_cap_ranges.items():
+        print(f"  {name}: {cap_range}")
     print("MINN context inputs:")
     for ex in MINN_CONTEXT_EXCHANGES:
         print(f"  {ex}")
