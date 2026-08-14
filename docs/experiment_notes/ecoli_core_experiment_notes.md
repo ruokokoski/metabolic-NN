@@ -13,8 +13,9 @@ unless the user explicitly asks otherwise.
 - Architecture-size sweep notebook: `ecoli_core_transformer.ipynb`.
 - Core-model exploration notebook: `ecoli_core_exploration.ipynb`.
 - Current data generator: `generate_ecoli_core_data.py`.
-- Older historical generator: `generate_ecoli_core_data_complex.py`. Check old
-  commits before comparing old plots or metrics, because generator changes can
+- Older historical generator: `generate_ecoli_core_data_complex.py`, available
+  in Git history rather than the current working tree. Check the relevant old
+  commit before comparing old plots or metrics, because generator changes can
   explain differences in embedding figures.
 
 ## Core Files

@@ -5,8 +5,15 @@ pics
 data
 __pycache__
 puhti.txt
+roihu.txt
 tmp
 tmp_memmap/
 MINN
 omics2flux
-.codex
+.codex/*
+!.codex/hooks.json
+!.codex/hooks/
+!.codex/hooks/**
+.codex/hooks/__pycache__/
+.agents
+AGENTS.md

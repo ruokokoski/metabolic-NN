@@ -1,0 +1,19 @@
+{
+  "description": "Fast integrity and experiment-note coupling checks after edits.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "^(apply_patch|Edit|Write)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/check_changed_files.py\"",
+            "commandWindows": "powershell -NoProfile -Command \"$root = git rev-parse --show-toplevel; py -3 (Join-Path $root '.codex/hooks/check_changed_files.py')\"",
+            "timeout": 30,
+            "statusMessage": "Checking changed files and experiment-note coupling"
+          }
+        ]
+      }
+    ]
+  }
+}

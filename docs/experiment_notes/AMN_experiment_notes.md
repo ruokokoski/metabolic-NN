@@ -98,6 +98,10 @@ names, and rate conventions when checking the notebook.
 
 ## Shared AMN/MINN Reservoir Data
 
+Cross-task generator, checkpoint, trial, and result state is maintained in
+`AMN_MINN_shared_reservoir_notes.md`. Keep this section focused on AMN-specific
+implications and update both notes when a shared change affects AMN behavior.
+
 `generate_ecoli_iML1515_AMN_MINN_data.py` is a separate generator for training a
 single iML1515 FluxTransformer reservoir that should be usable in both the
 AMN-style experimental growth notebook and the MINN Table 4-style reservoir

@@ -1,5 +1,10 @@
 # MINN Training Notes
 
+Shared generator, checkpoint, trial, and cross-task result state is maintained
+in `AMN_MINN_shared_reservoir_notes.md`. Keep this file focused on MINN-specific
+training, mapping, and pFBA behavior, and update both notes when a shared change
+affects MINN behavior.
+
 Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-style experiments.
 
 ## 1) Core goal
@@ -24,6 +29,7 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 - `generate_ecoli_iML1515_AMN_MINN_data.py` is the shared AMN/MINN reservoir generator for retraining a checkpoint that should work in both the AMN growth notebook and the MINN Table 4-style workflow. It adds glucose and ethanol to the Faure-style AMN input set, always includes the five MINN context tokens, and mixes `minn`, `faure`, and `mixed` regimes. The `minn` and `mixed` regimes independently sample the same widened integer caps as the Tazza-style generator: glucose 1--15, oxygen 1--20, CO2 0--15, ethanol 0--1, and acetate 0--3. All shared regimes use non-carbon base nutrient rate 50. Use this for AMN/MINN transfer checkpoints, not for strict Faure-only claims.
 - The AMN-trial MINN notebook showed why a strict no-glucose AMN checkpoint is not enough for Table 4: `EX_glc__D_e` was absent from the AMN training inputs and effectively constant zero in the simulated AMN data, while MINN uses measured glucose uptake as a central context channel.
 - `generate_ecoli_iML1515_MINN_data_tazza.py` is the separate Tazza-style ablation generator. It uniformly draws integer caps from deliberately widened, rounded envelopes around the raw Ishii ranges: glucose 1--15, oxygen 1--20, CO2 0--15, ethanol 0--1, and acetate 0--3. Glucose/oxygen are uptake caps; CO2/ethanol/acetate are secretion upper caps. The sampled caps remain in the input/context columns, while realized pFBA values are written to `*_flux`. This is closer to Tazza et al.'s random five-channel reservoir `Vin` setup without restricting training to the exact experimental extrema, and it intentionally retains this repo's iML1515 model, 500k-sample scale, and pFBA target generation.
+- The Tazza generator accepts the same portable run controls used by the shared generator, including `--n-samples`, `--model-dir`, `--data-dir`, `--output-prefix`, solver timeout/reset controls, bounded retry controls, and cap-range overrides. Its defaults remain 500k samples, seed 42, core biomass, pFBA at 0.999 of optimum, and the cap ranges above. Final files are named `<output-prefix>_<n-samples>_samples.csv`; timestamped temporary files are retained if generation fails.
 - `scripts/fit_minn_fluxomics_minn_like.py` is the maintained iML1515 refitting script for the 29-sample MINN split fluxomics file. It starts from `MINN_data/fluxomics_iAF1260_reduced_split.csv`, uses `models/iML1515.xml`, fixes biomass by default, and writes `MINN_data/fluxomics_iML1515_minn_like_fit.csv`.
 - The maintained fitting policy is MINN-like: glucose/O2 have weighted deviation terms but no hard soft-input band by default, because this matched the original MINN fitted-file behavior better than the stricter soft-input-band trial. The original fitted file `MINN_data/fluxomics_iAF1260_reduced_split_fit.csv` is only a descriptive audit reference, not a target to reproduce; use `--compare-output-to-reference` only when that extra comparison is explicitly wanted.
 
@@ -103,8 +109,9 @@ Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-sty
 
 ### 5.1) AMN/MINN trial legacy pipeline
 
-`ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb` uses the restored legacy
-front-MLP workflow with the `AMN_MINN_500k_d256_h8_l3_ff1024`
+`ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb` uses the legacy front-MLP
+workflow restored from commit `6b1e3bf`, with the
+`AMN_MINN_500k_d256_h8_l3_ff1024`
 FluxTransformer checkpoint, `minn_fitted` data mode, context-target exclusion,
 full-vocabulary reservoir forward, and `co2_etoh_ac_cap` pFBA mode.
 
