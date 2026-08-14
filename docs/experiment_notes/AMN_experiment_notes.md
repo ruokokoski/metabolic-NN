@@ -141,6 +141,12 @@ Key points:
 - The AMN notebook now zero-fills optional absent `EX_glc__D_e` and `EX_etoh_e`
   experimental columns when a shared AMN/MINN checkpoint is loaded. Unknown
   missing inputs still raise an error.
+- In `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`, fixed present base
+  inputs now use `50`, matching the shared generator. The earlier saved
+  reservoir metrics used `10` and are superseded; rerun the experimental
+  reservoir section through its prior-net comparison before reporting a
+  corrected shared-branch result. Glycerol and amino-acid caps remain `2.2`,
+  and absent glucose and ethanol remain zero.
 
 Important legacy note: checkpoints made with an older generator may come from a
 fixed-attempt loop that reset only exchange lower bounds. The current

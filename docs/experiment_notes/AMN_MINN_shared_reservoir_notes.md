@@ -93,16 +93,19 @@ using repeated stratified 10-fold cross-validation with split seeds 10, 11, and
 12. The frozen shared FluxTransformer is paired with a small trainable prior
 network.
 
-Saved pooled OOF metrics across split seeds:
+The previously saved pooled OOF metrics across split seeds were:
 
 | Method | R2 | MAE | RMSE |
 | --- | ---: | ---: | ---: |
-| Shared FluxTransformer reservoir | 0.8838 +/- 0.0084 | 0.022685 +/- 0.000603 | 0.028746 +/- 0.000979 |
+| Shared FluxTransformer reservoir, superseded fixed-base setup | 0.8838 +/- 0.0084 | 0.022685 +/- 0.000603 | 0.028746 +/- 0.000979 |
 | TabPFN | 0.7964 +/- 0.0037 | 0.030961 +/- 0.000498 | 0.038047 +/- 0.000349 |
 
-The shared-reservoir result is stronger than the saved TabPFN comparison on all
-three metrics. Prediction variation across split seeds has saved mean standard
-deviation `0.011157 +/- 0.006310`.
+The reservoir row was generated while the notebook converted fixed experimental
+presence flags to base bounds of `10`, rather than the shared generator's `50`.
+The notebook code was corrected on 2026-08-14 and its setup output was cleared.
+The experimental reservoir section through its prior-net comparison must be
+rerun before retaining a replacement shared-reservoir result.
+The saved TabPFN comparison is independent of this fixed-medium conversion.
 
 ## MINN Branch: Current Snapshot
 
@@ -125,9 +128,9 @@ before treating the result as independently reproducible from the notebook.
 
 ## Cross-Task Interpretation
 
-The current checkpoint is operationally compatible with both tasks and provides
-useful reservoir structure. The AMN branch shows a clear improvement over its
-saved TabPFN comparison. The MINN result is narrower: predicted context provides
+The current checkpoint is operationally compatible with both notebook input
+vocabularies. Its AMN experimental advantage must be re-established after the
+fixed-base correction. The MINN result is narrower: predicted context provides
 a small improvement over baseline pFBA in the maintained result, whereas the
 measured-context cap variant is worse. This supports continued shared-reservoir
 experiments, but does not establish that every shared-context formulation helps.
@@ -141,7 +144,8 @@ token set.
 
 | Date | Trial | Model/data | Material change | Main result | Decision |
 | --- | --- | --- | --- | --- | --- |
-| 2026-07/08 | Current shared reference | `AMN_MINN_500k_d256_h8_l3_ff1024`; shared 50k test set | One checkpoint evaluated on AMN growth and MINN Table 4-style tasks | AMN R2 0.8838; maintained MINN predicted-context R2 0.895539 | Retain as shared reference |
+| 2026-07/08 | Shared reference before AMN input correction | `AMN_MINN_500k_d256_h8_l3_ff1024`; shared 50k test set | One checkpoint evaluated on AMN growth and MINN Table 4-style tasks | AMN R2 0.8838 used fixed base 10; maintained MINN predicted-context R2 0.895539 | Retain MINN evidence; supersede AMN metric |
+| 2026-08-14 | AMN fixed-base alignment correction | Same shared checkpoint; `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb` | Changed fixed present base inputs from 10 to the shared-generator value 50; retained 2.2 glycerol/amino caps and zero absent glucose/ethanol | Corrected AMN result pending rerun | Retain code correction; do not quote a new metric yet |
 | Historical | Two-layer GELU MINN front network | Same shared reservoir family | Per-flux normalized loss and deeper front MLP | Worse than restored legacy pipeline | Rejected; retained in Git history |
 
 Add future trials chronologically. A new model trial is incomplete until its
