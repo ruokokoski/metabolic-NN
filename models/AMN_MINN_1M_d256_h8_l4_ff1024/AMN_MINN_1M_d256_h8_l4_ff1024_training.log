@@ -1,0 +1,392 @@
+============================================================
+Training run started: 2026-08-15 17:02:17
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=256
+num_epochs=5
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+Traceback (most recent call last):
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 833, in <module>
+    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 295, in load_data
+    columns = list(pd.read_csv(filepath, nrows=0).columns)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'iML1515_AMN_MINN_training_data_1000000_samples.csv'
+============================================================
+Training run started: 2026-08-15 17:07:30
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=256
+num_epochs=5
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 3
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_y_tok.float32.mmap
+Traceback (most recent call last):
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 845, in <module>
+    train_loss, test_loss, model, optimizer, train_meta = train_model(
+                                                          ^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 627, in train_model
+    preds_all_layers, selected_indices = model(batch_X, output_subset=sampled_indices)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 237, in forward
+    x, c_subset = layer(x, c_subset)
+                  ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 174, in forward
+    attn_x, attn_c = self.attention_block(x, c)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 119, in forward
+    attn_out, attn_weights = self.mha(x_norm, x_norm, x_norm, need_weights=True, average_attn_weights=False)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/modules/activation.py", line 1491, in forward
+    attn_output, attn_output_weights = F.multi_head_attention_forward(
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/functional.py", line 6590, in multi_head_attention_forward
+    attn_output_weights = softmax(attn_output_weights, dim=-1)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/torch/nn/functional.py", line 2157, in softmax
+    ret = input.softmax(dim)
+          ^^^^^^^^^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 56.12 GiB. GPU 0 has a total capacity of 95.00 GiB of which 32.14 GiB is free. Including non-PyTorch memory, this process has 62.85 GiB memory in use. Of the allocated memory 60.82 GiB is allocated by PyTorch, and 1.33 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+============================================================
+Training run started: 2026-08-15 17:38:13
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=5
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 3
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+============================================================
+Training run started: 2026-08-15 17:49:30
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=3
+patience=2
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 2
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+============================================================
+Training run started: 2026-08-15 17:56:20
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=3
+patience=2
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 2
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+Epoch 1/3 | Train Loss: 0.017737 | Test Loss: 0.002451 | Elapsed: 03:18:36 | Time: 21:18
+Epoch 2/3 | Train Loss: 0.002142 | Test Loss: 0.001111 | Elapsed: 06:33:43 | Time: 00:33
+Epoch 3/3 | Train Loss: 0.001316 | Test Loss: 0.000764 | Elapsed: 09:51:44 | Time: 03:51
+Restored best model state from epoch 3.
+Training Completed.
+Training took 591 min 44.8 sec.
+Best test loss: 0.000764 at epoch 3
+
+Best-epoch model weights saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024.pth (epoch 3)
+Full checkpoint saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-08-16 08:49:49
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=10
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 3. Target epoch: 10.
+Early stopping patience: 3
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 4/10 | Train Loss: 0.000968 | Test Loss: 0.000696 | Elapsed: 03:02:24 | Time: 11:55
+Epoch 5/10 | Train Loss: 0.000776 | Test Loss: 0.000573 | Elapsed: 06:03:50 | Time: 14:57
+Epoch 6/10 | Train Loss: 0.000646 | Test Loss: 0.000466 | Elapsed: 09:06:34 | Time: 18:00
+Epoch 7/10 | Train Loss: 0.000556 | Test Loss: 0.000429 | Elapsed: 12:09:05 | Time: 21:02
+Epoch 8/10 | Train Loss: 0.000487 | Test Loss: 0.000393 | Elapsed: 15:11:31 | Time: 00:05
+Epoch 9/10 | Train Loss: 0.000434 | Test Loss: 0.000364 | Elapsed: 18:14:20 | Time: 03:07
+Epoch 10/10 | Train Loss: 0.000392 | Test Loss: 0.000310 | Elapsed: 21:16:46 | Time: 06:10
+Restored best model state from epoch 10.
+Training Completed.
+Training took 1276 min 46.3 sec.
+Best test loss: 0.000310 at epoch 10
+
+Best-epoch model weights saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024.pth (epoch 10)
+Full checkpoint saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-08-17 07:43:30
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_MINN_1M
+model_name: AMN_MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=15
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  40
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1981, 45, 1525, 106, 40, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 10. Target epoch: 15.
+Early stopping patience: 3
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 11/15 | Train Loss: 0.000359 | Test Loss: 0.000250 | Elapsed: 03:02:27 | Time: 10:49
+Epoch 12/15 | Train Loss: 0.000333 | Test Loss: 0.000239 | Elapsed: 06:08:12 | Time: 13:55
+Epoch 13/15 | Train Loss: 0.000310 | Test Loss: 0.000202 | Elapsed: 09:14:23 | Time: 17:01
+Epoch 14/15 | Train Loss: 0.000291 | Test Loss: 0.000232 | Elapsed: 12:23:58 | Time: 20:11
+Epoch 15/15 | Train Loss: 0.000276 | Test Loss: 0.000269 | Elapsed: 15:25:05 | Time: 23:12
+Restored best model state from epoch 13.
+Training Completed.
+Training took 925 min 5.7 sec.
+Best test loss: 0.000202 at epoch 13
+
+Best-epoch model weights saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024.pth (epoch 13)
+Full checkpoint saved to ./models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_MINN_training_data_1000000_samples_y_tok.float32.mmap
