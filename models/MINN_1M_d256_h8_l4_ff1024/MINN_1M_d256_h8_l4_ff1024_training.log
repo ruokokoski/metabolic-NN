@@ -1,0 +1,116 @@
+============================================================
+Training run started: 2026-08-18 07:25:28
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: MINN_1M
+model_name: MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=10
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  27
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1525, 106, 40, 45, 92, 104, 164, 304, 621, 700, 859, 913, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 86, 934, 2243, 2320, 633]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 3
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+Epoch 1/10 | Train Loss: 0.015779 | Test Loss: 0.000854 | Elapsed: 03:05:11 | Time: 10:34
+Epoch 2/10 | Train Loss: 0.000900 | Test Loss: 0.000286 | Elapsed: 06:09:53 | Time: 13:38
+Epoch 3/10 | Train Loss: 0.000483 | Test Loss: 0.000279 | Elapsed: 09:14:43 | Time: 16:43
+Epoch 4/10 | Train Loss: 0.000341 | Test Loss: 0.000183 | Elapsed: 12:20:39 | Time: 19:49
+Epoch 5/10 | Train Loss: 0.000264 | Test Loss: 0.000252 | Elapsed: 15:25:41 | Time: 22:54
+Epoch 6/10 | Train Loss: 0.000217 | Test Loss: 0.000155 | Elapsed: 18:29:34 | Time: 01:58
+Epoch 7/10 | Train Loss: 0.000183 | Test Loss: 0.000096 | Elapsed: 21:33:20 | Time: 05:02
+Epoch 8/10 | Train Loss: 0.000159 | Test Loss: 0.000103 | Elapsed: 24:37:48 | Time: 08:06
+Epoch 9/10 | Train Loss: 0.000140 | Test Loss: 0.000092 | Elapsed: 27:43:02 | Time: 11:11
+Epoch 10/10 | Train Loss: 0.000124 | Test Loss: 0.000042 | Elapsed: 30:49:09 | Time: 14:18
+Restored best model state from epoch 10.
+Training Completed.
+Training took 1849 min 9.5 sec.
+Best test loss: 0.000042 at epoch 10
+
+Best-epoch model weights saved to ./models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024.pth (epoch 10)
+Full checkpoint saved to ./models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_MINN_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-08-19 17:09:14
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: MINN_1M
+model_name: MINN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_MINN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=20
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_MINN_training_data_1000000_samples.csv
+Extracted input columns count:  27
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1525, 106, 40, 45, 92, 104, 164, 304, 621, 700, 859, 913, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 86, 934, 2243, 2320, 633]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 10. Target epoch: 20.
+Early stopping patience: 3
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 11/20 | Train Loss: 0.000113 | Test Loss: 0.000100 | Elapsed: 03:07:00 | Time: 20:19
+Epoch 12/20 | Train Loss: 0.000102 | Test Loss: 0.000043 | Elapsed: 06:15:30 | Time: 23:28
+Epoch 13/20 | Train Loss: 0.000092 | Test Loss: 0.000161 | Elapsed: 09:29:28 | Time: 02:42
+Early stopping at epoch 13; best test loss 0.000042 was at epoch 10.
+Restored best model state from epoch 10.
+Training Completed.
+Training took 569 min 28.5 sec.
+Best test loss: 0.000042 at epoch 10
+
+Best-epoch model weights saved to ./models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024.pth (epoch 10)
+Full checkpoint saved to ./models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_MINN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_MINN_training_data_1000000_samples_y_tok.float32.mmap
