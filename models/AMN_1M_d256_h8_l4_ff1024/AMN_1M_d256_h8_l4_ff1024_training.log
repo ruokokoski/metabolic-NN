@@ -1,0 +1,119 @@
+============================================================
+Training run started: 2026-08-20 17:29:10
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_1M
+model_name: AMN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=10
+patience=3
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_training_data_1000000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 3
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+Epoch 1/10 | Train Loss: 0.012391 | Test Loss: 0.007180 | Elapsed: 03:01:51 | Time: 20:34
+Epoch 2/10 | Train Loss: 0.007212 | Test Loss: 0.007085 | Elapsed: 06:19:22 | Time: 23:52
+Epoch 3/10 | Train Loss: 0.007039 | Test Loss: 0.006934 | Elapsed: 09:27:25 | Time: 03:00
+Epoch 4/10 | Train Loss: 0.006968 | Test Loss: 0.006865 | Elapsed: 12:29:53 | Time: 06:02
+Epoch 5/10 | Train Loss: 0.006929 | Test Loss: 0.006876 | Elapsed: 15:36:25 | Time: 09:09
+Epoch 6/10 | Train Loss: 0.006903 | Test Loss: 0.006848 | Elapsed: 18:50:39 | Time: 12:23
+Epoch 7/10 | Train Loss: 0.006884 | Test Loss: 0.006841 | Elapsed: 21:58:35 | Time: 15:31
+Epoch 8/10 | Train Loss: 0.006869 | Test Loss: 0.006795 | Elapsed: 25:07:22 | Time: 18:40
+Epoch 9/10 | Train Loss: 0.006857 | Test Loss: 0.006808 | Elapsed: 28:11:14 | Time: 21:44
+Epoch 10/10 | Train Loss: 0.006848 | Test Loss: 0.006789 | Elapsed: 31:21:33 | Time: 00:54
+Restored best model state from epoch 10.
+Training Completed.
+Training took 1881 min 33.3 sec.
+Best test loss: 0.006789 at epoch 10
+
+Best-epoch model weights saved to ./models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024.pth (epoch 10)
+Full checkpoint saved to ./models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-08-22 13:54:29
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: AMN_1M
+model_name: AMN_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_AMN_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=20
+patience=4
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_AMN_training_data_1000000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 10. Target epoch: 20.
+Early stopping patience: 4
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 11/20 | Train Loss: 0.006840 | Test Loss: 0.006803 | Elapsed: 03:22:32 | Time: 17:20
+Epoch 12/20 | Train Loss: 0.006833 | Test Loss: 0.006774 | Elapsed: 06:44:45 | Time: 20:42
+Epoch 13/20 | Train Loss: 0.006827 | Test Loss: 0.006845 | Elapsed: 10:07:16 | Time: 00:05
+Epoch 14/20 | Train Loss: 0.006822 | Test Loss: 0.006873 | Elapsed: 13:29:49 | Time: 03:27
+Epoch 15/20 | Train Loss: 0.006818 | Test Loss: 0.006837 | Elapsed: 16:52:25 | Time: 06:50
+Epoch 16/20 | Train Loss: 0.006813 | Test Loss: 0.006852 | Elapsed: 20:14:50 | Time: 10:12
+Early stopping at epoch 16; best test loss 0.006774 was at epoch 12.
+Restored best model state from epoch 12.
+Training Completed.
+Training took 1214 min 50.9 sec.
+Best test loss: 0.006774 at epoch 12
+
+Best-epoch model weights saved to ./models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024.pth (epoch 12)
+Full checkpoint saved to ./models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_AMN_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_AMN_training_data_1000000_samples_y_tok.float32.mmap
