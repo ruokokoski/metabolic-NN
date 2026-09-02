@@ -7,6 +7,7 @@ __pycache__
 puhti.txt
 roihu.txt
 tmp
+docs/working_notes/
 tmp_memmap/
 MINN
 omics2flux

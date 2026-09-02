@@ -54,11 +54,12 @@ interpretation changes.
 ## Main Entry Points
 
 - `flux_transformer.py`: canonical current `FluxTransformer` implementation.
-- `train_flux_transformer.py`: older/basic in-memory training.
-- `train_flux_transformer_with_cache.py`: cached/memmap training with ordinary
-  Huber loss.
+- `train_flux_transformer.py`: cached/memmap training with ordinary Huber loss.
 - `train_flux_transformer_norm_loss.py`: per-flux normalized Huber-loss trial;
   keep removed activity-head and tail-loss experiments out of this file.
+- `yeast9_data.py`: shared Yeast9 data-loading and deterministic split helpers.
+- `yeast9_rs_transformer.py`: Yeast9 trainer with full-output training by
+  default and optional correlation-based output-subset training.
 - `ecoli_core_model_testing.ipynb`: main E. coli core evaluation.
 - `ecoli_core_transformer.ipynb`: E. coli core architecture-size sweep.
 - `ecoli_iML1515_MINN_model_testing.ipynb`: MINN frozen-reservoir workflow.

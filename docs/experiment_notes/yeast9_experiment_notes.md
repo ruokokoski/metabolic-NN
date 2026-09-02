@@ -12,6 +12,8 @@ efficiency experiments.
   `./data/2025-11-07_yeast9_data_246923_samples.csv`.
 - Test file used by the notebook:
   `./data/yeast9_test_data.csv`.
+- Shared data-loading and deterministic split helpers: `yeast9_data.py`. Both
+  Yeast9 evaluation notebooks import these helpers.
 
 The Yeast9 checkpoint was trained with the older FluxTransformer implementation.
 That model evaluates all tokens directly and does not use injected input-token
@@ -88,10 +90,21 @@ training is expensive for a large reaction vocabulary.
 Relevant files include:
 
 - `yeast9_rs_transformer.py`
-- `yeast9_rs_transformer_corr.py`
-- `yeast9_rs_transformer_sample.py`
-- `yeast9_rs_transformer_sample2.py`
 - `yeast9_explore_samples.ipynb`
+
+`yeast9_rs_transformer.py` now uses full-output training by default. Set
+`--sampling-strategy correlation` to enable signed-correlation output-subset
+training; its defaults are an output ratio of `0.5` and correlation-group
+probability of `0.7`. Full-output validation is used in full mode, while the
+correlation mode retains the historical fixed 256-output validation subset.
+The current script defaults to a batch size of `4`, matching the memory-safe
+batch size recorded by the saved full-output Yeast9 checkpoints.
+
+The former magnitude-weighted and activity-driven training scripts remain in
+Git history as provenance for the documented ablations. The obsolete
+`yeast9_transformer.py` prototype was removed after its shared data helpers
+moved to `yeast9_data.py`; its training entry point was incompatible with the
+current injected-token `FluxTransformer` API.
 
 Current interpretation:
 

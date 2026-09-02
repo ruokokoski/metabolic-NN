@@ -2,7 +2,7 @@
 
 This file captures the current E. coli core FluxTransformer work so the root
 `AGENTS.md` can stay as a repository map. Longer notes are in
-`tmp/ecoli_core_plot_notes.md` and should be treated as local draft material
+`docs/working_notes/ecoli_core_plot_notes.md` and should be treated as local draft material
 unless the user explicitly asks otherwise.
 
 ## Scope
@@ -21,8 +21,7 @@ unless the user explicitly asks otherwise.
 ## Core Files
 
 - `flux_transformer.py`: canonical model implementation.
-- `train_flux_transformer_with_cache.py`: cached/memmap training with ordinary
-  Huber loss.
+- `train_flux_transformer.py`: cached/memmap training with ordinary Huber loss.
 - `train_flux_transformer_norm_loss.py`: current normalized-loss training trial.
   Keep this file focused on per-flux normalized Huber loss; activity-head and
   tail-loss code was removed after testing.

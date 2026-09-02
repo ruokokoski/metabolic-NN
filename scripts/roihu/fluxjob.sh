@@ -20,4 +20,4 @@ source /projappl/project_2013496/venvs/vflux-gpu/bin/activate
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
-srun python3 -u "$CODEDIR/train_flux_transformer_with_cache.py"
+srun python3 -u "$CODEDIR/train_flux_transformer.py"

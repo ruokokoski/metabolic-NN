@@ -10,19 +10,17 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
 from sklearn.model_selection import train_test_split
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-DATA_PATH = "./data/iML1515_exp_training_data_500000_samples.csv"
-#DATA_PATH = "./data/iML1515_exp_training_data_250000_samples_o2.csv"
-#MODEL_NAME = "ecoli_core"
-MODEL_NAME = "iML1515_500k"
+DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
+#DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
+#DATA_PATH = "iML1515_AMN_training_data_500000_samples.csv"
+MODEL_NAME = "ecoli_core_10M"
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -245,7 +243,37 @@ class FluxTransformer(nn.Module):
         return c_subset_all_layers, selected_indices
 
 
-def load_data(filepath):
+def _count_rows(filepath):
+    with open(filepath, "rb") as f:
+        return sum(1 for _ in f) - 1
+
+
+def cleanup_memmap_files(filepath, cache_dir="./tmp_memmap"):
+    base = os.path.splitext(os.path.basename(filepath))[0]
+    targets = [
+        os.path.join(cache_dir, f"{base}_X_tok.float32.mmap"),
+        os.path.join(cache_dir, f"{base}_y_tok.float32.mmap"),
+    ]
+
+    removed = []
+    for path in targets:
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                removed.append(path)
+            except OSError as err:
+                print(f"Warning: could not remove {path}: {err}")
+
+    if os.path.isdir(cache_dir) and not os.listdir(cache_dir):
+        try:
+            os.rmdir(cache_dir)
+        except OSError:
+            pass
+
+    return removed
+
+
+def load_data(filepath, cache_dir="./tmp_memmap", chunksize=200_000):
     """
     Vocabulary = outputs only (token list == `outputs` inferred from CSV header order).
 
@@ -264,8 +292,7 @@ def load_data(filepath):
       input_token_indices: list[int]  indices in `outputs` corresponding to each input's *_flux token
       out_indices: list[int]          all other token indices (non-injected tokens)
     """
-    df = pd.read_csv(filepath)
-    columns = list(df.columns)
+    columns = list(pd.read_csv(filepath, nrows=0).columns)
 
     first_flux_idx = next((i for i, col in enumerate(columns) if col.endswith("_flux")), None)
     if first_flux_idx is None:
@@ -285,9 +312,6 @@ def load_data(filepath):
             + "\n".join(non_flux_outputs)
         )
 
-    # Medium constraints: treat missing as "not provided" -> 0
-    df[inputs] = df[inputs].fillna(0)
-
     input_flux_tokens = [f"{name}_flux" for name in inputs]
     missing = [t for t in input_flux_tokens if t not in outputs]
     if missing:
@@ -295,21 +319,48 @@ def load_data(filepath):
             "These mapped input flux tokens are missing from outputs:\n" + "\n".join(missing)
         )
 
-    n_samples = len(df)
+    n_samples = _count_rows(filepath)
     n_tokens = len(outputs)
 
-    # Realized flux targets
-    y_tok = df[outputs].to_numpy(dtype=np.float32)  # (n_samples, n_tokens)
+    input_token_indices = [outputs.index(tok) for tok in input_flux_tokens]
 
-    # Build X_tok by writing each medium value into its corresponding *_flux token index
-    X_tok = np.zeros((n_samples, n_tokens), dtype=np.float32)
+    os.makedirs(cache_dir, exist_ok=True)
+    base = os.path.splitext(os.path.basename(filepath))[0]
+    x_path = os.path.join(cache_dir, f"{base}_X_tok.float32.mmap")
+    y_path = os.path.join(cache_dir, f"{base}_y_tok.float32.mmap")
 
-    X_in = df[inputs].to_numpy(dtype=np.float32)  # (n_samples, n_inputs)
-    input_token_indices = []
-    for j, tok in enumerate(input_flux_tokens):
-        tok_idx = outputs.index(tok)
-        input_token_indices.append(tok_idx)
-        X_tok[:, tok_idx] = X_in[:, j]
+    X_tok = np.memmap(x_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
+    y_tok = np.memmap(y_path, dtype=np.float32, mode="w+", shape=(n_samples, n_tokens))
+    X_tok[:] = 0.0
+
+    usecols = inputs + outputs
+    reader = pd.read_csv(
+        filepath,
+        usecols=usecols,
+        chunksize=chunksize,
+        dtype=np.float32,
+    )
+
+    row_start = 0
+    for chunk_idx, chunk in enumerate(reader, start=1):
+        if inputs:
+            chunk[inputs] = chunk[inputs].fillna(0.0)
+
+        n_chunk = len(chunk)
+        row_end = row_start + n_chunk
+
+        y_chunk = chunk[outputs].to_numpy(dtype=np.float32, copy=False)
+        y_tok[row_start:row_end, :] = y_chunk
+
+        if inputs:
+            X_in = chunk[inputs].to_numpy(dtype=np.float32, copy=False)
+            for j, tok_idx in enumerate(input_token_indices):
+                X_tok[row_start:row_end, tok_idx] = X_in[:, j]
+
+        row_start = row_end
+
+    X_tok.flush()
+    y_tok.flush()
 
     injected_set = set(input_token_indices)
     out_indices = [i for i in range(n_tokens) if i not in injected_set]
@@ -323,49 +374,49 @@ def load_data(filepath):
     return X_tok, y_tok, inputs, outputs, input_token_indices, out_indices
 
 
-def prepare_tensors(X, y, test_size=0.2, device="cpu"):
-    """
-    Split data into train/test and convert to PyTorch tensors.
-    
-    Parameters:
-        X (ndarray): Input features.
-        y (ndarray): Output targets.
-        test_size (float): Fraction of data to reserve for testing.
-        device (str or torch.device): Device to move tensors to.
-    
-    Returns:
-        X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor (torch.Tensor)
-    """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+def prepare_split_indices(n_samples, test_size=0.2, random_state=42):
+    indices = np.arange(n_samples, dtype=np.int64)
+    train_idx, test_idx = train_test_split(indices, test_size=test_size, random_state=random_state, shuffle=True)
+    print(f"Training samples: {len(train_idx)}")
+    print(f"Test samples: {len(test_idx)}")
+    return train_idx, test_idx
 
-    print(f"Training samples: {len(X_train)}")
-    print(f"Test samples: {len(X_test)}")
 
-    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).to(device)
-    y_test_tensor = torch.tensor(y_test, dtype=torch.float32).to(device)
+class IndexedFluxDataset(Dataset):
+    def __init__(self, X, y, indices):
+        self.X = X
+        self.y = y
+        self.indices = np.asarray(indices, dtype=np.int64)
 
-    return X_train_tensor, X_test_tensor, y_train_tensor, y_test_tensor
+    def __len__(self):
+        return len(self.indices)
 
-def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
-    """
-    Create PyTorch DataLoaders for training and testing.
+    def __getitem__(self, idx):
+        row = int(self.indices[idx])
+        x = np.asarray(self.X[row], dtype=np.float32)
+        y = np.asarray(self.y[row], dtype=np.float32)
+        return torch.from_numpy(x).unsqueeze(-1), torch.from_numpy(y).unsqueeze(-1)
 
-    Parameters:
-        X_train, y_train (Tensor): Training data and labels.
-        X_test, y_test (Tensor): Test data and labels.
-        batch_size (int): Batch size for loading.
 
-    Returns:
-        train_loader, test_loader (DataLoader): PyTorch DataLoaders.
-    """
-    train_dataset = TensorDataset(X_train.unsqueeze(-1), y_train.unsqueeze(-1))
-    test_dataset = TensorDataset(X_test.unsqueeze(-1), y_test.unsqueeze(-1))
+def create_dataloaders(X, y, train_indices, test_indices, batch_size, device, num_workers=0):
+    train_dataset = IndexedFluxDataset(X, y, train_indices)
+    test_dataset = IndexedFluxDataset(X, y, test_indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    pin_memory = device.type == "cuda"
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
     return train_loader, test_loader
 
 def _empty_cache(device):
@@ -375,11 +426,42 @@ def _empty_cache(device):
         torch.mps.empty_cache()
 
 
+def _torch_load_checkpoint(path, device):
+    try:
+        return torch.load(path, map_location=device, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=device)
+
+
+def _remove_file_if_exists(path):
+    if path and os.path.exists(path):
+        os.remove(path)
+
+
 def _format_elapsed(seconds):
     seconds = int(seconds)
     hours, remainder = divmod(seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+def _save_best_checkpoint(path, model, optimizer, train_losses, test_losses, best_epoch, best_test_loss):
+    checkpoint_dir = os.path.dirname(path)
+    if checkpoint_dir:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+    torch.save(
+        {
+            "epoch": int(best_epoch),
+            "model_epoch": int(best_epoch),
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "train_losses": list(train_losses),
+            "test_losses": list(test_losses),
+            "best_test_loss": float(best_test_loss),
+            "best_epoch": int(best_epoch),
+        },
+        path,
+    )
 
 
 def train_model(
@@ -397,7 +479,9 @@ def train_model(
     learning_rate,
     dropout,
     output_sample_ratio=1.0,
-    checkpoint_path=None
+    checkpoint_path=None,
+    best_checkpoint_path=None,
+    patience=10
 ):
     model = FluxTransformer(
         vocab_size=vocab_size,
@@ -423,14 +507,32 @@ def train_model(
     start_epoch = 0
     best_test_loss = float("inf")
     best_epoch = -1
+    early_stopped = False
+    epochs_no_improve = 0
     train_losses, test_losses = [], []
+
+    if patience is not None:
+        patience = int(patience)
+        if patience < 0:
+            raise ValueError("patience must be nonnegative or None")
+
+    if checkpoint_path and best_checkpoint_path is None:
+        checkpoint_root, checkpoint_ext = os.path.splitext(checkpoint_path)
+        best_checkpoint_path = f"{checkpoint_root}_best_tmp{checkpoint_ext}"
+
+    if (
+        checkpoint_path
+        and best_checkpoint_path
+        and os.path.abspath(best_checkpoint_path) == os.path.abspath(checkpoint_path)
+    ):
+        raise ValueError("best_checkpoint_path must be different from checkpoint_path")
+
+    if best_checkpoint_path:
+        _remove_file_if_exists(best_checkpoint_path)
 
     if checkpoint_path and os.path.exists(checkpoint_path):
         print(f"Found checkpoint at {checkpoint_path}. Trying to resume training.")
-        try:
-            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        except TypeError:
-            checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _torch_load_checkpoint(checkpoint_path, device)
 
         try:
             model.load_state_dict(checkpoint["model_state_dict"])
@@ -443,13 +545,38 @@ def train_model(
                 except Exception as err:
                     print(f"Could not load optimizer state. Continuing with fresh optimizer. Error: {err}")
 
-            start_epoch = int(checkpoint.get("epoch", 0))
+            checkpoint_has_best_state = "model_epoch" in checkpoint or "best_epoch" in checkpoint
+            start_epoch = int(checkpoint.get("model_epoch", checkpoint.get("epoch", 0)))
             train_losses = list(checkpoint.get("train_losses", []))
             test_losses = list(checkpoint.get("test_losses", []))
+            train_losses = train_losses[:start_epoch]
+            test_losses = test_losses[:start_epoch]
 
             if test_losses:
-                best_test_loss = float(min(test_losses))
-                best_epoch = int(np.argmin(test_losses) + 1)
+                history_best_epoch = int(np.argmin(test_losses) + 1)
+                history_best_loss = float(min(test_losses))
+                if checkpoint_has_best_state:
+                    best_test_loss = float(checkpoint.get("best_test_loss", history_best_loss))
+                    best_epoch = int(checkpoint.get("best_epoch", history_best_epoch))
+                else:
+                    best_test_loss = float(test_losses[-1])
+                    best_epoch = int(start_epoch)
+                    if history_best_epoch != start_epoch:
+                        print(
+                            "Existing checkpoint predates best-epoch metadata; "
+                            f"using loaded epoch {start_epoch} as the resumable best state."
+                        )
+
+                if best_checkpoint_path and best_epoch == start_epoch:
+                    _save_best_checkpoint(
+                        best_checkpoint_path,
+                        model,
+                        optimizer,
+                        train_losses,
+                        test_losses,
+                        best_epoch,
+                        best_test_loss,
+                    )
 
             print(f"Resumed from epoch {start_epoch}. Target epoch: {num_epochs}.")
 
@@ -466,17 +593,25 @@ def train_model(
             "output_sample_ratio": float(output_sample_ratio),
             "start_epoch": int(start_epoch),
             "end_epoch": int(start_epoch),
+            "model_epoch": int(best_epoch if best_epoch > 0 else start_epoch),
+            "training_end_epoch": int(start_epoch),
             "resumed": bool(start_epoch > 0),
+            "early_stopped": False,
+            "patience": patience,
         }
+        _remove_file_if_exists(best_checkpoint_path)
         return train_losses, test_losses, model, optimizer, train_meta
 
     total_outputs = len(out_indices)
+    print(f"Early stopping patience: {patience}")
 
     for epoch in range(start_epoch, num_epochs):
         model.train()
         epoch_train_loss = 0.0
 
-        for batch_X, batch_y in train_loader:
+        for batch_idx, (batch_X, batch_y) in enumerate(train_loader):
+            batch_X = batch_X.to(device, non_blocking=True)
+            batch_y = batch_y.to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
 
             if output_sample_ratio >= 1.0:
@@ -499,6 +634,8 @@ def train_model(
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
+            if epoch == start_epoch and batch_idx == 0:
+                print_gpu_memory()
 
             epoch_train_loss += loss.item() * batch_X.size(0)
 
@@ -512,6 +649,8 @@ def train_model(
         epoch_test_loss = 0.0
         with torch.no_grad():
             for batch_X, batch_y in test_loader:
+                batch_X = batch_X.to(device, non_blocking=True)
+                batch_y = batch_y.to(device, non_blocking=True)
                 if output_sample_ratio >= 1.0:
                     sampled_indices = None
                 else:
@@ -547,9 +686,44 @@ def train_model(
         if epoch_test_loss < best_test_loss:
             best_test_loss = epoch_test_loss
             best_epoch = epoch + 1
+            epochs_no_improve = 0
+            if best_checkpoint_path:
+                _save_best_checkpoint(
+                    best_checkpoint_path,
+                    model,
+                    optimizer,
+                    train_losses,
+                    test_losses,
+                    best_epoch,
+                    best_test_loss,
+                )
+        else:
+            epochs_no_improve += 1
+            if (
+                patience is not None
+                and epochs_no_improve >= patience
+            ):
+                early_stopped = True
+                print(
+                    f"Early stopping at epoch {epoch+1}; "
+                    f"best test loss {best_test_loss:.6f} was at epoch {best_epoch}."
+                )
+                break
 
         _empty_cache(device)
         gc.collect()
+
+    training_end_epoch = len(test_losses)
+
+    if best_checkpoint_path and os.path.exists(best_checkpoint_path):
+        best_checkpoint = _torch_load_checkpoint(best_checkpoint_path, device)
+        model.load_state_dict(best_checkpoint["model_state_dict"])
+        if "optimizer_state_dict" in best_checkpoint:
+            optimizer.load_state_dict(best_checkpoint["optimizer_state_dict"])
+        train_losses = list(best_checkpoint.get("train_losses", train_losses))
+        test_losses = list(best_checkpoint.get("test_losses", test_losses))
+        _remove_file_if_exists(best_checkpoint_path)
+        print(f"Restored best model state from epoch {best_epoch}.")
 
     elapsed = time.time() - start_time
     mins, secs = divmod(elapsed, 60)
@@ -564,18 +738,23 @@ def train_model(
         "num_epochs": int(num_epochs),
         "output_sample_ratio": float(output_sample_ratio),
         "start_epoch": int(start_epoch),
-        "end_epoch": int(num_epochs),
+        "end_epoch": int(training_end_epoch),
+        "model_epoch": int(best_epoch),
+        "training_end_epoch": int(training_end_epoch),
         "resumed": bool(start_epoch > 0),
+        "early_stopped": bool(early_stopped),
+        "patience": patience,
     }
     return train_losses, test_losses, model, optimizer, train_meta
 
 
 def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff, save_path=None, log_scale=True):
+    epochs = np.arange(1, len(train_losses) + 1)
     plt.figure(figsize=(14, 10))
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.plot(train_losses, label="Training Loss")
-    plt.plot(test_losses, label="Test Loss")
+    plt.plot(epochs, train_losses, label="Training Loss")
+    plt.plot(epochs, test_losses, label="Test Loss")
     if log_scale:
         plt.yscale('log')
     plt.xlabel("Epoch", fontsize=18)
@@ -594,15 +773,17 @@ def plot_loss_curves(train_losses, test_losses, d_model, n_heads, n_layers, d_ff
 if __name__ == "__main__":
     #set_seed()
 
-    d_model = 256
+    d_model = 128
     n_heads = 8
-    n_layers = 3
+    n_layers = 4
     d_ff = 1024
-    batch_size = 8
-    num_epochs = 10
+    batch_size = 256
+    num_epochs = 200
+    patience = 10
     learning_rate = 1e-4
     dropout = 0.02
     output_sample_ratio = 1.0
+    cache_dir = "./tmp_memmap"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     today = date.today().isoformat()
@@ -635,6 +816,7 @@ if __name__ == "__main__":
                 [
                     ("batch_size", batch_size),
                     ("num_epochs", num_epochs),
+                    ("patience", patience),
                     ("learning_rate", learning_rate),
                     ("output_sample_ratio", output_sample_ratio),
                 ],
@@ -644,83 +826,114 @@ if __name__ == "__main__":
     )
     print(f"Using device: {device}")
 
-    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH)
+    X = y = None
+    train_loader = test_loader = None
+    train_indices = test_indices = None
+    try:
+        X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
+        train_indices, test_indices = prepare_split_indices(len(X), test_size=0.2, random_state=42)
+        train_loader, test_loader = create_dataloaders(
+            X,
+            y,
+            train_indices,
+            test_indices,
+            batch_size=batch_size,
+            device=device,
+            num_workers=0,
+        )
 
-    X_train, X_test, y_train, y_test = prepare_tensors(X, y, test_size=0.2, device=device)
-    train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size)
+        train_loss, test_loss, model, optimizer, train_meta = train_model(
+            train_loader=train_loader,
+            test_loader=test_loader,
+            device=device,
+            input_token_indices=input_token_indices,
+            out_indices=out_indices,
+            vocab_size=len(outputs),
+            d_model=d_model,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            d_ff=d_ff,
+            num_epochs=num_epochs,
+            learning_rate=learning_rate,
+            dropout=dropout,
+            output_sample_ratio=output_sample_ratio,
+            checkpoint_path=checkpoint_path,
+            patience=patience
+        )
 
-    train_loss, test_loss, model, optimizer, train_meta = train_model(
-        train_loader=train_loader,
-        test_loader=test_loader,
-        device=device,
-        input_token_indices=input_token_indices,
-        out_indices=out_indices,
-        vocab_size=len(outputs),
-        d_model=d_model,
-        n_heads=n_heads,
-        n_layers=n_layers,
-        d_ff=d_ff,
-        num_epochs=num_epochs,
-        learning_rate=learning_rate,
-        dropout=dropout,
-        output_sample_ratio=output_sample_ratio,
-        checkpoint_path=checkpoint_path
-    )
+        model_save_path = f"{model_save_dir}/{model_name}.pth"
+        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+        torch.save(model.state_dict(), model_save_path)
+        model_epoch = int(train_meta.get("model_epoch", train_meta.get("best_epoch", num_epochs)))
+        training_end_epoch = int(train_meta.get("training_end_epoch", train_meta.get("end_epoch", model_epoch)))
+        print(f"\nBest-epoch model weights saved to {model_save_path} (epoch {model_epoch})")
 
-    model_save_path = f"{model_save_dir}/{model_name}.pth"
-    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-    torch.save(model.state_dict(), model_save_path)
-    print(f"\nModel weights saved to {model_save_path}")
 
-    completed_epochs = int(train_meta.get("end_epoch", num_epochs))
+        checkpoint = {
+            "epoch": model_epoch,
+            "model_epoch": model_epoch,
+            "training_end_epoch": training_end_epoch,
+            "best_epoch": int(train_meta.get("best_epoch", model_epoch)),
+            "best_test_loss": train_meta.get("best_test_loss"),
+            "early_stopped": bool(train_meta.get("early_stopped", False)),
+            "patience": train_meta.get("patience", patience),
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "train_losses": train_loss,
+            "test_losses": test_loss,
+            "config": {
+                "d_model": d_model,
+                "n_heads": n_heads,
+                "n_layers": n_layers,
+                "d_ff": d_ff,
+                "dropout": dropout,
+                "batch_size": batch_size,
+                "learning_rate": learning_rate,
+                "num_epochs": model_epoch,
+                "requested_num_epochs": num_epochs,
+                "training_end_epoch": training_end_epoch,
+                "patience": patience,
+                "vocab_size": len(outputs),
+                "input_token_indices": [int(i) for i in input_token_indices],
+                "output_sample_ratio": output_sample_ratio,
+            },
+            "rng_state": {
+                "torch": torch.get_rng_state(),
+                "numpy": np.random.get_state(),
+                "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                "python": random.getstate(),
+            },
+            "data_info": {
+                "dataset": DATA_PATH,
+                "input_cols": inputs,
+                "output_cols": outputs,
+                "n_train": int(len(train_indices)),
+                "n_test": int(len(test_indices)),
+                "input_token_indices": [int(i) for i in input_token_indices],
+                "out_indices": [int(i) for i in out_indices],
+            },
+        }
 
-    checkpoint = {
-        "epoch": completed_epochs,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "train_losses": train_loss,
-        "test_losses": test_loss,
-        "config": {
-            "d_model": d_model,
-            "n_heads": n_heads,
-            "n_layers": n_layers,
-            "d_ff": d_ff,
-            "dropout": dropout,
-            "batch_size": batch_size,
-            "learning_rate": learning_rate,
-            "num_epochs": completed_epochs,
-            "requested_num_epochs": num_epochs,
-            "vocab_size": len(outputs),
-            "input_token_indices": [int(i) for i in input_token_indices],
-            "output_sample_ratio": output_sample_ratio,
-        },
-        "rng_state": {
-            "torch": torch.get_rng_state(),
-            "numpy": np.random.get_state(),
-            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
-            "python": random.getstate(),
-        },
-        "data_info": {
-            "dataset": DATA_PATH,
-            "input_cols": inputs,
-            "output_cols": outputs,
-            "n_train": int(len(X_train)),
-            "n_test": int(len(X_test)),
-            "input_token_indices": [int(i) for i in input_token_indices],
-            "out_indices": [int(i) for i in out_indices],
-        },
-    }
+        torch.save(checkpoint, checkpoint_path)
+        print(f"Full checkpoint saved to {checkpoint_path}")
 
-    torch.save(checkpoint, checkpoint_path)
-    print(f"Full checkpoint saved to {checkpoint_path}")
-
-    '''
-    plot_loss_curves(
-        train_loss, test_loss, 
-        d_model=d_model,
-        n_heads=n_heads,
-        n_layers=n_layers,
-        d_ff=d_ff,
-        save_path=f"{pic_dir}/training_curve.png"
-    )
-    '''
+        plot_loss_curves(
+            train_loss, test_loss, 
+            d_model=d_model,
+            n_heads=n_heads,
+            n_layers=n_layers,
+            d_ff=d_ff,
+            save_path=None
+            #save_path=f"{pic_dir}/training_curve.png"
+        )
+    finally:
+        train_loader = None
+        test_loader = None
+        X = None
+        y = None
+        gc.collect()
+        removed_files = cleanup_memmap_files(DATA_PATH, cache_dir=cache_dir)
+        if removed_files:
+            print("Removed memmap cache files:")
+            for path in removed_files:
+                print(f"  - {path}")

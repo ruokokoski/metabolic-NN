@@ -60,8 +60,8 @@ def parse_args():
             "iML1515 model."
         )
     )
-    parser.add_argument("--n-samples", type=int, default=50000)
-    parser.add_argument("--seed", type=int, default=9) # test data: 9
+    parser.add_argument("--n-samples", type=int, default=500000)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--model-dir", default="./models")
     parser.add_argument("--data-dir", default="./data")
     parser.add_argument(
