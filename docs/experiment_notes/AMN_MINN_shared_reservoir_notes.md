@@ -32,6 +32,10 @@ must still write an evidence-based update.
 ## Main Files
 
 - `generate_ecoli_iML1515_AMN_MINN_data.py`: shared simulated-data generator.
+- `generate_ecoli_iML1515_AB_union_data.py`: balanced literal A union B
+  simulated-data generator.
+- `iML1515_sampling_study_notes.md`: broader A/B/A union B/C/D/E comparison
+  across both downstream tasks.
 - `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`: AMN growth branch.
 - `ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb`: MINN Table 4-style branch.
 - `models/AMN_MINN_500k_d256_h8_l3_ff1024/`: current shared model directory.
@@ -67,6 +71,30 @@ As of 2026-08-13, the generator's working defaults are 50,000 accepted samples,
 seed 9, and output prefix `iML1515_AMN_MINN_test_data`. These are test-data
 defaults. For a training run, set the sample count, seed, and training-specific
 prefix explicitly and record the exact command here.
+
+## Literal A Union B Generator
+
+`generate_ecoli_iML1515_AB_union_data.py` is the separate literal-union
+baseline for the broader iML1515 sampling study. It does not contain the mixed
+bridge regime from `generate_ecoli_iML1515_AMN_MINN_data.py`.
+
+- Default dataset size: 1,000,000 accepted samples.
+- Accepted regime quotas: exactly 500,000 A and 500,000 Tazza-style B rows,
+  deterministically shuffled before generation.
+- Default seed: 42.
+- Objective: `BIOMASS_Ec_iML1515_core_75p37M`.
+- Solver: pFBA with `fraction_of_optimum=0.999`.
+- Input vocabulary: 41 exchanges, the exact union of the current A and
+  Tazza-style B input identities.
+- A oxygen: continuous 1--10; B oxygen: integer 1--20. The ranges remain
+  regime-specific to preserve the component distributions.
+- A rows retain base rate 10 and glycerol/amino-acid rates of 2.2. B rows retain
+  base rate 50 and the widened integer Tazza-style glucose/O2/CO2/ethanol/
+  acetate bounds.
+- Inputs outside the selected regime are zero. The regime label is used only
+  during generation and is not written as a FluxTransformer input.
+
+No full A union B dataset or checkpoint has been generated yet.
 
 ## Current Shared Checkpoint
 

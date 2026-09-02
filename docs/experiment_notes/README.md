@@ -10,6 +10,8 @@ trial outcomes, and experiment-specific interpretation in the files below.
 - `AMN_experiment_notes.md`: iML1515 AMN-style growth prediction experiments.
 - `AMN_MINN_shared_reservoir_notes.md`: shared iML1515 generator, checkpoint,
   cross-task trials, and current AMN/MINN result snapshot.
+- `iML1515_sampling_study_notes.md`: planned A/B/A ∪ B/C/D/E pretraining study
+  across AMN growth prediction and MINN missing-flux evaluation.
 - `MINN_training_notes.md`: iML1515 MINN-style reservoir and pFBA experiments.
 - `yeast9_experiment_notes.md`: Yeast9 flux prediction and training-efficiency experiments.
 

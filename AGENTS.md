@@ -42,6 +42,8 @@ interpretation changes.
 - E. coli core work: `docs/experiment_notes/ecoli_core_experiment_notes.md`.
 - Shared AMN/MINN generator, checkpoint, or trial work:
   `docs/experiment_notes/AMN_MINN_shared_reservoir_notes.md`.
+- Cross-model iML1515 sampling study across both AMN and MINN tasks:
+  `docs/experiment_notes/iML1515_sampling_study_notes.md`.
 - MINN-only reservoir or Table 2 work:
   `docs/experiment_notes/MINN_training_notes.md`.
 - AMN-only growth prediction or data:
@@ -158,6 +160,9 @@ Read the matching experiment note before running or modifying a generator.
   checkpoints and notebooks before editing consumers.
 - When changing AMN generation, update
   `docs/experiment_notes/AMN_experiment_notes.md` in the same change.
+- When changing an A/B/A union B/C/D/E sampling-study generator, dataset,
+  checkpoint, evaluation, or interpretation, update
+  `docs/experiment_notes/iML1515_sampling_study_notes.md` in the same change.
 - When changing MINN context, cap, mapping, or benchmark behavior, update
   `docs/experiment_notes/MINN_training_notes.md` in the same change.
 - When changing E. coli core training, evaluation, or plotting behavior, update
