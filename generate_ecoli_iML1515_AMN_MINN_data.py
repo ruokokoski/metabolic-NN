@@ -130,7 +130,16 @@ def parse_args():
     parser.add_argument("--max-mixed-extra-carbon-sources", type=int, default=2)
     parser.add_argument("--mixed-supplement-probability", type=float, default=0.0)
 
-    parser.add_argument("--include-cbl1", action="store_true")
+    parser.add_argument(
+        "--exclude-cbl1",
+        action="store_true",
+        help=(
+            "Exclude the fixed cobalamin exchange EX_cbl1_e from the base "
+            "medium. By default EX_cbl1_e is included because it is required "
+            "for the wild-type objective BIOMASS_Ec_iML1515_WT_75p37M and is "
+            "harmless for the core objective."
+        ),
+    )
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--progress-interval", type=int, default=1000)
     parser.add_argument("--attempt-progress-interval", type=int, default=10000)
@@ -194,9 +203,9 @@ def load_generation_model(model_dir, objective_reaction, solver_timeout_seconds)
     return model, exchange_default_bounds, outputs
 
 
-def build_input_cols(include_cbl1=False):
+def build_input_cols(exclude_cbl1=False):
     base_exchanges = list(BASE_EXCHANGES)
-    if include_cbl1:
+    if not exclude_cbl1:
         base_exchanges.append("EX_cbl1_e")
 
     input_cols = (
@@ -488,7 +497,7 @@ def main():
 
     rng = np.random.default_rng(args.seed)
     regime_names, regime_probabilities = normalize_regime_weights(args)
-    input_cols, base_exchanges = build_input_cols(include_cbl1=args.include_cbl1)
+    input_cols, base_exchanges = build_input_cols(exclude_cbl1=args.exclude_cbl1)
 
     os.makedirs(args.data_dir, exist_ok=True)
     planned_final_filename = os.path.join(

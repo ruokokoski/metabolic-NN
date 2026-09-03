@@ -114,6 +114,18 @@ No full A union B dataset or checkpoint has been generated yet.
 Both shared notebooks load the 50,000-sample seed-9 test dataset and assert
 vocabulary size and input-token index compatibility with the checkpoint.
 
+Generator change (2026-09): `generate_ecoli_iML1515_AMN_MINN_data.py` now
+includes the fixed cobalamin exchange `EX_cbl1_e` in the base medium by
+default (opt-out with `--exclude-cbl1`). Cobalamin is required by the
+wild-type iML1515 objective if that variant is used and is harmless for the
+core objective; it is a fixed basal nutrient, not a variable carbon source.
+This makes the shared/AMN-MINN vocabulary 41 inputs by default instead of 40.
+The earlier 40-input C model (`AMN_MINN_1M_*`) was generated without
+cobalamin; any new shared-C generation should use the default (41 inputs), and
+a data-volume comparison against the 1M C checkpoint should keep the
+vocabulary consistent (regenerate C) or explicitly treat the 40/41 difference
+as a controlled change.
+
 ## AMN Branch: Current Snapshot
 
 The AMN shared-reservoir notebook predicts experimental `GR_AVG` for 110 samples

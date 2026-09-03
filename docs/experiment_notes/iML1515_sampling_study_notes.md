@@ -47,9 +47,9 @@ that independently samples glucose, oxygen, CO2, ethanol, and acetate bounds.
 - Current fixed base rate: 10.
 - Current generator supports FBA and pFBA; use pFBA for the new comparison.
 
-The working plan also considers a later experimental-medium-faithful A variant
-without glycerol. That variant is not the current implemented A contract and
-must receive a separate dataset/checkpoint identity if adopted.
+Model A keeps glycerol fixed at 2.2, matching the current implemented A
+generator and Faure's simulated reservoir. A glycerol-absent A variant is not
+planned.
 
 ### B — Tazza-style MINN-specific
 
@@ -83,16 +83,56 @@ been recorded as submitted or completed.
 - Uses the current shared AMN/MINN generator.
 - Default regime weights are 0.50 MINN, 0.40 Faure, and 0.10 mixed.
 - The mixed regime introduces conditions outside the literal A ∪ B mixture.
-- Uses 40 inputs because cobalamin is excluded by default.
+- Uses 41 inputs because cobalamin (`EX_cbl1_e`) is now included by default
+  (opt-out with `--exclude-cbl1`). Cobalamin is a fixed basal nutrient, not a
+  variable carbon source. The earlier 40-input C checkpoint and runs used
+  `--exclude-cbl1` semantics; regenerate C data before comparing C against
+  other 1M-row models.
 - Default solver is pFBA with `fraction_of_optimum=0.999`.
 
 ### D and E — broad distributions
 
-D and E are planned but not implemented. They must use the same broad exchange
-vocabulary and general bound ranges. D explicitly allocates probability mass to
-A- and B-like regimes, while E samples only from the task-agnostic broad rule.
+D and E are planned but not implemented. They must use the same shared
+selectable organic-source pool and the same general broad distribution P_G, so
+the only difference is that D explicitly allocates probability mass to exact
+A- and B-style regimes, while E samples only from the task-agnostic broad rule.
 The D-versus-E comparison is intended to isolate the value of explicit
-task-relevant sampling density.
+task-aware density allocation versus task-agnostic sampling.
+
+The concrete D/E nutrient pool is recorded in
+`docs/working_notes/iML1515_sampling_plan.md` under "D/E nutrient pool --
+concrete design". In short:
+
+- Shared selectable organic-source pool: the same 31-source pool for both D
+  and E, including all ten AMN carbon sources, glucose, glycerol (variable),
+  the four AMN amino acids, common side-stream sugars/sugar alcohols, organic
+  acids and fermentation products.
+- D also injects exact A- and B-style regimes; E uses only the general broad
+  distribution P_G. The D-versus-E comparison isolates task-aware density
+  allocation from task-agnostic sampling.
+- General G/E uptake: log-uniform over 0.05--5.0 (tentative ceiling),
+  broader than the A-specific 0.05--2.2 so the broad models cover higher-flux
+  side-stream conditions.
+- Oxygen is separately variable (not counted toward the active-source count).
+- In the shared P_G, the four AMN amino acids are ordinary members of the
+  selectable pool for both D and E; D's explicit P_A component supplies dense
+  all-four-present AMN coverage.
+- The required "at least both AMN and MINN" condition is met by keeping the
+  exact A and B regime contracts as the A/B components of D.
+
+| Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
+|---|---|---|---|---|
+| **A** | 10 AMN carbons (ribose, maltose, melibiose, trehalose, fructose, galactose, acetate, D-lactate, succinate, pyruvate) | AMN base (22) + fixed glycerol + four fixed amino acids; O2 variable 1--10 | 0.05--2.2 | 1--4 |
+| **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN base (23, incl. cobalamin), base 50 | Glucose 1--15; O2 1--20; secretion caps CO2 0--15, ethanol 0--1, acetate 0--3 | 1 |
+| **A ∪ B** | Union: 10 AMN carbons + glucose (per regime) | A base or B base per regime | A 0.05--2.2; B integer bounds | 1--4 or 1 |
+| **C** | 10 AMN carbons + glucose + amino acids + CO2/ethanol/acetate | Shared base (41 inputs, fixed cobalamin included) | A-like and B-like ranges | mixed |
+| **D** | Shared 31-source general pool (glycerol variable) + A/B task regimes | 23 fixed base (incl. cobalamin); O2 variable 1--10 | G log-uniform 0.05--5.0; A/B task ranges | G 1--8, E[K]=3 |
+| **E** | Same shared 31-source general pool, no task regimes | Same 23 fixed base (incl. cobalamin); O2 variable | log-uniform 0.05--5.0 | 1--8, E[K]=3 |
+
+The 181 growth-capable organic-exchange pool was computed on
+`models/iML1515.xml` for the D-like base medium, close to the 185 carbon
+sources reported in `ecoli_iML1515_exploration.ipynb`. The shared 31-source
+D/E pool is the frozen reviewed subset chosen from this larger list.
 
 ## Controlled Comparison Requirements
 
@@ -112,11 +152,19 @@ Use seed 42 for final training generation and a different seed, currently 9,
 for held-out simulated data. Record every exact command, dataset path, accepted
 sample count, input order, checkpoint, and training log.
 
-The current task-specific A and B checkpoints were trained at a smaller scale
-than the planned one-million-row broad models. Treat them as historical anchors
-unless matched-size retraining or an explicit data-volume control is included.
-Do not attribute a difference solely to sampling breadth when training-set size
-also differs.
+Trained checkpoints already exist for A, B, and C, each trained on one
+million rows (800k train / 200k test):
+- A: `AMN_1M_d256_h8_l4_ff1024` on
+  `data/iML1515_AMN_training_data_1000000_samples.csv`;
+- B: `MINN_1M_d256_h8_l4_ff1024` on
+  `data/iML1515_MINN_training_data_1000000_samples.csv`;
+- C: `AMN_MINN_1M_d256_h8_l4_ff1024` on
+  `data/iML1515_AMN_MINN_training_data_1000000_samples.csv`.
+
+These 1M-row models match the planned scale of the broad D/E models, so a data
+volume control is not needed for A/B/C versus D/E comparisons on that axis.
+Treat earlier 500k-row variants (e.g. `AMN_500k_*`, `iML1515_MINN_500k_*`) as
+historical anchors, not as the current A/B/C checkpoints.
 
 ## Evaluation Plan
 
@@ -177,10 +225,10 @@ Record each trained sampling-study model here.
 
 | Model | Training data | Checkpoint | Changed variable | Validation protocol | Main results | Decision |
 |---|---|---|---|---|---|---|
-| A | Pending | Pending | Specialized A distribution | Pending | Pending | Pending |
-| B | Pending | Pending | Specialized Tazza-B distribution | Pending | Pending | Pending |
+| A | `data/iML1515_AMN_training_data_1000000_samples.csv` | `models/AMN_1M_d256_h8_l4_ff1024/AMN_1M_d256_h8_l4_ff1024.pth` | Specialized A distribution (1M rows) | 800k/200k; Huber; d256 h8 l4; best test loss 0.006774 at epoch 12 | Pending | Keep |
+| B | `data/iML1515_MINN_training_data_1000000_samples.csv` | `models/MINN_1M_d256_h8_l4_ff1024/MINN_1M_d256_h8_l4_ff1024.pth` | Specialized Tazza-B distribution (1M rows) | 800k/200k; Huber; d256 h8 l4; best test loss 0.000042 at epoch 10 | Pending | Keep |
 | A ∪ B | Pending | Pending | Balanced literal mixture | Pending | Pending | Pending |
-| C | Pending | Pending | Added task-relevant bridge coverage | Pending | Pending | Pending |
+| C | `data/iML1515_AMN_MINN_training_data_1000000_samples.csv` | `models/AMN_MINN_1M_d256_h8_l4_ff1024/AMN_MINN_1M_d256_h8_l4_ff1024.pth` | Added task-relevant bridge coverage (1M rows) | 800k/200k; Huber; d256 h8 l4; best test loss 0.000202 at epoch 13 | Pending | Keep |
 | D | Pending | Pending | Broad sampling with explicit task coverage | Pending | Pending | Pending |
 | E | Pending | Pending | Broad task-agnostic sampling | Pending | Pending | Pending |
 
