@@ -29,8 +29,8 @@ it is allowed to be evaluated.
 | **B** | Tazza-style MINN-specific | `generate_ecoli_iML1515_MINN_data_tazza.py` | Implemented |
 | **A ∪ B** | Balanced literal mixture of A and B | `generate_ecoli_iML1515_AB_union_data.py` | Implemented |
 | **C** | Task-relevant AMN/MINN distribution with a bridge regime | `generate_ecoli_iML1515_AMN_MINN_data.py` | Implemented |
-| **D** | Broad distribution with explicit A- and B-like coverage | Planned: `generate_ecoli_iML1515_broad_task_aware_data.py` | Not implemented |
-| **E** | Broad task-agnostic distribution | Planned: `generate_ecoli_iML1515_broad_agnostic_data.py` | Not implemented |
+| **D** | Broad distribution with explicit A- and B-like coverage | `generate_ecoli_iML1515_D_data.py` | Implemented |
+| **E** | Broad task-agnostic distribution | `generate_ecoli_iML1515_E_data.py` | Implemented |
 
 `generate_ecoli_iML1515_MINN_data.py` belongs to the earlier MINN workflow. It
 does not define B in this study because B uses the separate Tazza-style sampler
@@ -92,8 +92,9 @@ been recorded as submitted or completed.
 
 ### D and E — broad distributions
 
-D and E are planned but not implemented. They must use the same shared
-selectable organic-source pool and the same general broad distribution P_G, so
+D and E are implemented with separate entry points and a shared sampling module.
+They use the same shared selectable organic-source pool and the same general
+broad distribution P_G, so
 the only difference is that D explicitly allocates probability mass to exact
 A- and B-style regimes, while E samples only from the task-agnostic broad rule.
 The D-versus-E comparison is intended to isolate the value of explicit
@@ -119,6 +120,29 @@ concrete design". In short:
   all-four-present AMN coverage.
 - The required "at least both AMN and MINN" condition is met by keeping the
   exact A and B regime contracts as the A/B components of D.
+
+Implementation defaults and schema:
+
+- D entry point: `generate_ecoli_iML1515_D_data.py`.
+- E entry point: `generate_ecoli_iML1515_E_data.py`.
+- Default output prefixes: `iML1515_D_training_data` and
+  `iML1515_E_training_data`.
+- Shared implementation: `iml1515_broad_sampling.py`.
+- Both default to 1,000,000 accepted samples, seed 42, and pFBA with
+  `fraction_of_optimum=0.999`.
+- Both use the same ordered 55-exchange input vocabulary: the five MINN context
+  exchanges first, followed by the remaining fixed-base and selectable-organic
+  exchanges without duplicates.
+- P_G uses a fixed-base rate of 50, continuous oxygen 1--10, and the documented
+  truncated-geometric active-source distribution with `E[K]=3`.
+- D uses `--task-fraction 0.2` as a configurable pilot default and schedules
+  exact accepted-row quotas. At 1M rows this gives 100k A, 100k B, and 800k G.
+  The final task fraction still requires the planned pilot comparison.
+- E schedules all accepted rows from P_G.
+- Roihu generation jobs: `scripts/roihu/samplejob_D.sh` and
+  `scripts/roihu/samplejob_E.sh`. Both use the `small` partition, one CPU,
+  72-hour wall time, and 16 GiB memory, matching the A union B job setup.
+- No D or E production dataset has yet been recorded as generated.
 
 | Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
 |---|---|---|---|---|
