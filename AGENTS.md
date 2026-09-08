@@ -90,8 +90,7 @@ biological constraints or generators.
 - AMN and shared AMN/MINN: `generate_ecoli_iML1515_AMN_data.py` and
   `generate_ecoli_iML1515_AMN_MINN_data.py`.
 - Broad sampling-study models D and E: `generate_ecoli_iML1515_D_data.py` and
-  `generate_ecoli_iML1515_E_data.py`; shared rules are in
-  `iml1515_broad_sampling.py`.
+  `generate_ecoli_iML1515_E_data.py`.
 - Yeast9: `generate_yeast9_data.py`.
 
 Read the matching experiment note before running or modifying a generator.

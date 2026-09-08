@@ -92,9 +92,9 @@ been recorded as submitted or completed.
 
 ### D and E — broad distributions
 
-D and E are implemented with separate entry points and a shared sampling module.
-They use the same shared selectable organic-source pool and the same general
-broad distribution P_G, so
+D and E are implemented as standalone generator scripts for direct Roihu
+deployment. They use the same shared selectable organic-source pool and the
+same general broad distribution P_G, so
 the only difference is that D explicitly allocates probability mass to exact
 A- and B-style regimes, while E samples only from the task-agnostic broad rule.
 The D-versus-E comparison is intended to isolate the value of explicit
@@ -127,7 +127,9 @@ Implementation defaults and schema:
 - E entry point: `generate_ecoli_iML1515_E_data.py`.
 - Default output prefixes: `iML1515_D_training_data` and
   `iML1515_E_training_data`.
-- Shared implementation: `iml1515_broad_sampling.py`.
+- Each generator contains its complete sampling implementation. Keep their P_G
+  constants, input order, and shared regime behavior synchronized when editing
+  either file.
 - Both default to 1,000,000 accepted samples, seed 42, and pFBA with
   `fraction_of_optimum=0.999`.
 - Both use the same ordered 55-exchange input vocabulary: the five MINN context
@@ -142,6 +144,9 @@ Implementation defaults and schema:
 - Roihu generation jobs: `scripts/roihu/samplejob_D.sh` and
   `scripts/roihu/samplejob_E.sh`. Both use the `small` partition, one CPU,
   72-hour wall time, and 16 GiB memory, matching the A union B job setup.
+- The initial thin entry points imported `iml1515_broad_sampling.py` and failed
+  on Roihu when that helper was absent from `CODEDIR`. The generators are now
+  standalone so each sampling job requires only its corresponding generator.
 - No D or E production dataset has yet been recorded as generated.
 
 | Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
