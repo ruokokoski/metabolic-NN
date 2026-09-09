@@ -204,3 +204,20 @@ protocol, metrics, and keep/reject decision are recorded.
 - Record failed trials and the reason for rejection.
 - Update `AMN_experiment_notes.md` or `MINN_training_notes.md` when their
   task-specific workflows or conclusions also change.
+
+## Combined literal-union evaluation implementation (2026-09-08)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` and `iml1515_ab_evaluation.py`
+implement a single evaluation notebook for the literal A union B reservoir.
+It shares only the frozen checkpoint: AMN and each MINN context mode train
+independent MLPs. No TabPFN tests are included. The A branch preserves base
+10/absent cobalamin and the B branch base 50/present cobalamin. The C trial
+notebooks and their generator contracts are unchanged.
+
+Outer-test targets are excluded from tuning and epoch selection in the new
+workflow. Both MINN context modes remain in the final pFBA comparison, using
+observed glucose/O2 bounds and predicted secretion caps. The sampling-study
+note records full scope, metric definitions and pending production provenance.
+The user reports a new union model, but its checkpoint/log path is not yet
+verified locally; the notebook requires explicit configuration. No new
+production result or keep/reject decision follows from implementation checks.

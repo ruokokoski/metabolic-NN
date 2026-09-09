@@ -66,6 +66,9 @@ interpretation changes.
 - `ecoli_core_transformer.ipynb`: E. coli core architecture-size sweep.
 - `ecoli_iML1515_MINN_model_testing.ipynb`: MINN frozen-reservoir workflow.
 - `ecoli_iML1515_MINN_Table2.ipynb`: separate Table 2-style benchmark.
+- `ecoli_iML1515_AB_union_model_testing.ipynb`: combined literal-union AMN/MINN
+  evaluation; `iml1515_ab_evaluation.py` contains its training and evaluation
+  helpers.
 - `ecoli_iML1515_AMN_model_testing.ipynb`: AMN-style experimental growth-rate
   workflow.
 - `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`: AMN branch using the

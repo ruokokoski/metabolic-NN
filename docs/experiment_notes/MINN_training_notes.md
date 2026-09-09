@@ -224,3 +224,24 @@ per-flux normalized-loss pipeline is retained only in Git history.
 - Confirm pFBA evaluated sample count and metric table shape.
 - Confirm FluxTransformer->pFBA `pred_vin_df` contains only the predicted extra constraints for the selected mode, never predicted glucose/oxygen.
 - For the Table 2 notebook, confirm the benchmark prints 29 samples, 141 features, and 45 targets.
+
+## A union B combined notebook (2026-09-08)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` independently trains measured- and
+predicted-glucose/O2 context MLPs, in addition to its separate AMN MLP. The
+primary data has 29 conditions, 141 features and 42 non-context training
+targets; pFBA retains all 47 mapped source fluxes plus a non-context summary.
+The union B neural context uses base 50 and cobalamin, with A-only inputs zero.
+
+HPO and feature scaling are confined to outer-training data. Each LOO refit
+uses the winning trial's median inner best epoch, with no outer-test early
+stopping or global HPO. Both modes use observed glucose/O2 pFBA uptake caps
+and OOF secretion caps. All pFBA methods retain the same SBML background
+medium and explicit 0.999 fraction. Optional target-file and ethanol/acetate
+cap-only sensitivities are paired across both modes. No TabPFN tests are added.
+
+The legacy pFBA `R2` metric is squared Pearson correlation. The new helper
+exports `Pearson_r2` separately from regression `R2`, preserves undefined
+metrics, and reports own-success/common-success counts and failed samples.
+Current main/trial notebooks are unchanged; no production union result is
+recorded. See the sampling-study note for implementation scope and provenance.

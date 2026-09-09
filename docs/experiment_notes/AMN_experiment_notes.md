@@ -345,3 +345,17 @@ notebook diagnostics, not as planned thesis figures.
   simulated media or mixed with broader iML1515 media.
 - Whether final reporting should compare against Faure AMN-QP/LP/Wt numbers,
   TabPFN only, or additional pFBA baselines.
+
+## A union B combined notebook (2026-09-08)
+
+The AMN branch in `ecoli_iML1515_AB_union_model_testing.ipynb` trains its own
+width-512 prior MLP, separately from both MINN MLPs, with no TabPFN tests. Its
+union A-regime inputs use base 10, fixed glycerol/amino acids 2.2, and absent
+glucose/ethanol/cobalamin zero. The loader joins GR_STD by medium composition
+and verifies growth alignment. Repeated ten-fold CV uses seeds 10/11/12; an
+inner 20% training split selects epochs and a fresh full outer-training refit
+predicts the untouched outer fold. This corrects outer-fold early-stopping
+selection for this new workflow; existing notebooks are unchanged.
+
+Settings and exports are explicit in the notebook; helpers are in
+`iml1515_ab_evaluation.py`. No production union growth results are recorded yet.

@@ -268,3 +268,37 @@ checkpoint, training configuration, downstream evaluation, result, or
 interpretation changes. Continue to update `AMN_experiment_notes.md` and
 `MINN_training_notes.md` for task-specific implementation details, and
 `AMN_MINN_shared_reservoir_notes.md` for the current shared C workflow.
+
+## Combined A union B evaluation notebook (2026-09-08)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` now implements one notebook for
+both experimental tasks, backed by `iml1515_ab_evaluation.py`. It shares the
+frozen union reservoir and trains independent AMN, MINN measured-context, and
+MINN predicted-context MLPs. No TabPFN tests are included. A-style neural inputs
+use base 10 and absent cobalamin; B-style inputs use base 50 with cobalamin.
+
+AMN uses repeated stratified ten-fold CV with training-only inner epoch
+selection and outer-training refits. MINN uses LOO with five-fold HPO inside
+each outer training set; the median winning-trial inner epoch controls the
+refit. Neither task uses outer-test targets for early stopping. Historical
+A/B/C scores require matching reruns under this protocol. Both MINN modes
+retain observed glucose/O2 pFBA caps and OOF secretion caps. The pFBA fraction
+is 0.999; the maintained Table 4 SBML background medium is retained.
+
+The notebook exports A/B simulated fidelity, OOF metrics, fold provenance,
+context values, solver coverage and cap-binding diagnostics. Regression R2
+and squared Pearson correlation are separate. Optional target-file/cap-set
+sensitivities are supported; C/broad fidelity remains deferred.
+
+The local union checkpoint path and production provenance remain unconfirmed.
+The user reports creating the model; configure its actual checkpoint and log
+in the notebook. Implementation validation uses a small untrained reservoir
+and representative real-data/pFBA checks, not production performance results.
+The union result/decision registry remains pending.
+
+Verification: ten focused tests passed, including miniature-reservoir AMN/CV
+and MINN/HPO execution, real-data mappings, frozen gradients, checkpoint
+rejection, simulated A/B bound/objective reconstruction, and representative
+iML1515 pFBA solves. Notebook JSON and code-cell syntax were validated.
+Clean-kernel setup reached the expected missing-artifact preflight stop; the
+production notebook has not been executed through training.
