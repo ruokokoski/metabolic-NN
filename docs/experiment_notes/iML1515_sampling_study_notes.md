@@ -302,3 +302,82 @@ rejection, simulated A/B bound/objective reconstruction, and representative
 iML1515 pFBA solves. Notebook JSON and code-cell syntax were validated.
 Clean-kernel setup reached the expected missing-artifact preflight stop; the
 production notebook has not been executed through training.
+
+## Union checkpoint paths configured (2026-09-10)
+
+The combined notebook now selects
+`models/AB_1M_d256_h8_l4_ff1024/AB_1M_d256_h8_l4_ff1024_checkpoint.pth`
+and its sibling `AB_1M_d256_h8_l4_ff1024_training.log`. These files are now
+available locally, superseding the earlier pending-path status. The log records
+41 inputs, 2712 outputs, and an 800k/200k split of
+`data/iML1515_AB_union_training_data_1000000_samples.csv`.
+Exact command provenance and simulated-test paths remain unset in the
+notebook; this path configuration does not constitute an evaluation run.
+
+## Notebook usability and checkpoint plots (2026-09-10)
+
+Command provenance is optional and never blocks evaluation. The training log
+is optional. Full A/B simulated fidelity is off by default and skipped optional
+sections no longer mark otherwise completed requested evaluations incomplete.
+The notebook selects the available union test CSV for a biomass-only diagnostic;
+if that optional file is absent it skips the plot and proceeds with experiments.
+Checkpoint training/validation loss curves and the biomass 2x2 diagnostic reuse
+the earlier AMN notebook's plotting style (sizes, colors, fonts, residual limits,
+and histograms), with an A union B label. No other simulated flux plots are added.
+The biomass diagnostic checks exact token order and uses full-output inference.
+
+The notebook's final cell now displays and exports `experimental_final_summary.csv`:
+biomass and pooled regression R2, MAE and RMSE for AMN, both direct MINN context
+modes and available pFBA variants. AMN scores are averaged across repeat scores;
+its sole measured target is biomass, so pooled and biomass scores coincide.
+MINN biomass is scored across conditions; pooled scores flatten conditions and
+fluxes. Direct and pFBA target counts and successful sample coverage are explicit.
+
+## Union MINN numerical stability (2026-09-12)
+
+A reported MINN trial stopped at gradient clipping because its gradient norm
+was nonfinite with CUDA AMP enabled. The trace establishes gradient failure;
+mixed-precision overflow is a suspected cause, not a reproduced diagnosis.
+The union notebook now defaults to FP32. If AMP is explicitly enabled, a
+nonfinite fit restarts from its original seed in FP32 before any result is
+accepted. Invalid gradients never update weights. Numerical HPO failures are
+recorded as failed trials and do not terminate remaining trials; if all fail,
+the run stops explicitly. Fit histories record actual AMP use.
+
+## AMN plot and metric alignment with model C (2026-09-12)
+
+The union AMN growth-error plot now uses the fourth OOF plot in the model C
+AMN trial notebook: 6x6 figure, blue #3F7BD9 points, orange #CC6E00 experimental
+and prediction SD bars, red dashed identity line, 0--0.5 axes, matching fonts,
+gray spines, grid, and R2 annotation. Values are computed from union results.
+The plot and final summary now score per-medium mean OOF predictions, matching
+model C, instead of averaging repeat scores. Metric uncertainty remains the
+population SD of per-repeat scores; prediction error bars use sample SD across
+repeats. Repeat scores remain available separately. This supersedes earlier
+mean-of-repeat-score descriptions for the final AMN summary. Training and inner
+epoch selection are unchanged; this does not make the legacy validation
+protocol identical to the union protocol or copy its historical score.
+
+## Current MINN protocol: model C-style tuning (2026-09-12)
+
+At the user's request, this supersedes the earlier per-outer-fold HPO and
+inner-epoch refit plan for MINN. Each glucose/O2 context mode now runs ONE
+full-dataset five-fold HPO study (50 trials), then reuses its best parameters
+for all 29 LOO fits. The sampler uses multivariate/group TPE and median pruning,
+matching model C. Each LOO fit early-stops on its held-out condition and restores
+the best front-MLP weights, matching the current C notebook. HPO records are
+saved once per mode; fold records explicitly identify full-dataset HPO and
+outer-test early stopping. Early stopping may be revised AFTER the first run.
+This protocol can yield optimistic scores; it is retained for the requested
+runtime and C-protocol comparison. AMN validation remains unchanged.
+
+Downstream pFBA now uses fraction_of_optimum=1.0, matching C. Simulated-data
+objective checks retain the generator's 0.999 contract. FP32 and numerical
+failure handling remain enabled after the reported AMP crash. The comparison
+table retains C-compatible mean-per-condition Pearson_r2, MAE and RMSE;
+regression R2 and pooled scores remain separately labelled additional metrics.
+
+Notebook compatibility fix (2026-09-13): the AMN plot and final summary cells
+reload an older imported evaluation module if `summarize_amn_oof` is absent.
+Existing trained results remain in memory; rerunning these cells does not
+require a kernel restart or retraining. Metric formulas are unchanged.

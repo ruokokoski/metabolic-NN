@@ -115,6 +115,28 @@ def metric_tables(truth, prediction, names, ids):
     return per_flux, per_sample
 
 
+def summarize_amn_oof(oof, n_samples, split_seeds):
+    """Match model C: score per-medium mean predictions; SD over repeat scores."""
+    if set(oof["repeat"]) != set(split_seeds):
+        raise ValueError("AMN OOF repeat seeds do not match configuration.")
+    if oof.duplicated(["repeat", "row"]).any():
+        raise ValueError("Duplicate AMN OOF sample within a repeat.")
+    for _, part in oof.groupby("repeat"):
+        if set(part["row"]) != set(range(n_samples)):
+            raise ValueError("Incomplete AMN OOF repeat.")
+    if not oof.groupby("row")["truth"].nunique().eq(1).all():
+        raise ValueError("AMN truth changes between repeats.")
+    means = oof.groupby("row", sort=True).agg(
+        truth=("truth", "first"), prediction=("prediction", "mean"),
+        prediction_std=("prediction", "std"))
+    means["prediction_std"] = means["prediction_std"].fillna(0.0)
+    scores = metrics(means.truth, means.prediction)
+    repeat_scores = pd.DataFrame([metrics(part.truth, part.prediction)
+                                 for _, part in oof.groupby("repeat")])
+    spread = repeat_scores.std(ddof=0).to_dict()
+    return means, scores, spread
+
+
 def finite_frame(frame, label):
     if not np.isfinite(frame.to_numpy(dtype=float)).all():
         raise ValueError(f"{label} contains missing/nonfinite values; resolve explicitly.")
@@ -268,6 +290,22 @@ def predict_front(model, x, observed, batch_size=1):
 
 def fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
               seed, validation_ids=None, epochs=None):
+    """Retry an overflowing mixed-precision fit from its original seed in FP32."""
+    try:
+        return _fit_front(reservoir, outputs, data, task, mode, train_ids, settings,
+                          params, seed, validation_ids, epochs)
+    except FloatingPointError:
+        if not settings["amp"] or next(reservoir.parameters()).device.type != "cuda":
+            raise
+    # Leave the exception handler before retrying so failed-fit tensors are released.
+    torch.cuda.empty_cache()
+    print(f"{task} {mode}: mixed-precision overflow; restarting this fit in FP32.", flush=True)
+    return _fit_front(reservoir, outputs, data, task, mode, train_ids,
+                      {**settings, "amp": False}, params, seed, validation_ids, epochs)
+
+
+def _fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
+               seed, validation_ids=None, epochs=None):
     """Outer test rows are never passed here; refits have no validation targets."""
     seed_all(seed)
     train_ids = np.asarray(train_ids)
@@ -311,14 +349,19 @@ def fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
                 raise FloatingPointError("Nonfinite front-network loss.")
             amp_scaler.scale(loss).backward()
             amp_scaler.unscale_(optimizer)
-            nn.utils.clip_grad_norm_(model.front.parameters(), settings["clip"], error_if_nonfinite=True)
+            try:
+                nn.utils.clip_grad_norm_(model.front.parameters(), settings["clip"], error_if_nonfinite=True)
+            except RuntimeError as exc:
+                if "non-finite" not in str(exc):
+                    raise
+                raise FloatingPointError("Nonfinite front-network gradients; optimizer update rejected.") from exc
             amp_scaler.step(optimizer)
             amp_scaler.update()
             train_loss += loss.item() * len(x)
             count += len(x)
         if scheduler:
             scheduler.step()
-        row = {"epoch": epoch + 1, "train_loss": train_loss / count}
+        row = {"epoch": epoch + 1, "train_loss": train_loss / count, "amp": use_amp}
         if validation_ids is not None:
             pred, _ = predict_front(model, transform(validation_ids), data["observed"][validation_ids], settings["batch_size"])
             val_loss = criterion(torch.from_numpy(pred), torch.from_numpy(data["y"][validation_ids])).item()
@@ -385,44 +428,61 @@ def run_minn(reservoir, outputs, data, mode, settings, destination):
     predictions = np.full_like(data["y"], np.nan)
     contexts = np.full((len(data["X"]), 5), np.nan)
     fold_records = []
+    # Model C protocol: one full-dataset HPO study per context mode, then LOO.
+    hpo_rows = np.arange(len(data["X"]))
+    inner_splits = list(KFold(settings["inner_folds"], shuffle=True,
+                             random_state=settings["seed"]).split(hpo_rows))
+    def objective(trial):
+        params = {"drop_rate": trial.suggest_categorical("drop_rate", settings["drop_rates"]),
+            "learning_rate": trial.suggest_float("learning_rate", *settings["lr_range"], log=True),
+            "weight_decay": trial.suggest_float("weight_decay", *settings["wd_range"], log=True)}
+        losses, epochs = [], []
+        for inner, (itr, iva) in enumerate(inner_splits):
+            model, _, best_epoch, loss, _ = fit_front(reservoir, outputs, data, "minn", mode,
+                hpo_rows[itr], settings, params, settings["seed"] + inner, validation_ids=hpo_rows[iva])
+            losses.append(loss)
+            epochs.append(best_epoch)
+            del model
+            running = float(np.mean(losses) + settings["std_penalty"] * (np.std(losses, ddof=1) if len(losses) > 1 else 0.0))
+            trial.report(running, step=inner)
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+        trial.set_user_attr("inner_epochs", epochs)
+        trial.set_user_attr("inner_losses", losses)
+        return float(np.mean(losses) + settings["std_penalty"] * np.std(losses, ddof=1))
+    study = optuna.create_study(direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=settings["seed"], multivariate=True, group=True),
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=max(5, settings["inner_folds"]),
+                                         n_warmup_steps=1, interval_steps=1))
+    study.optimize(objective, n_trials=settings["trials"], catch=(FloatingPointError,))
+    study.trials_dataframe().to_csv(destination / "global_hpo_trials.csv", index=False)
+    if not any(t.state == optuna.trial.TrialState.COMPLETE for t in study.trials):
+        raise RuntimeError("No MINN HPO trial completed with finite gradients/loss. Inspect the failed trials.")
+    print(f"MINN {mode} global best parameters: {study.best_params}", flush=True)
+    hpo_splits = [{"train": hpo_rows[a].tolist(), "validation": hpo_rows[b].tolist()}
+                  for a, b in inner_splits]
+    save_json(destination / "global_hpo.json", {"params": study.best_params,
+        "objective": study.best_value, "splits": hpo_splits, "scope": "full_dataset"})
     for outer, (train, test) in enumerate(LeaveOneOut().split(data["X"])):
-        inner_splits = list(KFold(settings["inner_folds"], shuffle=True,
-                                 random_state=settings["seed"]).split(train))
-        def objective(trial):
-            params = {"drop_rate": trial.suggest_categorical("drop_rate", settings["drop_rates"]),
-                "learning_rate": trial.suggest_float("learning_rate", *settings["lr_range"], log=True),
-                "weight_decay": trial.suggest_float("weight_decay", *settings["wd_range"], log=True)}
-            losses, epochs = [], []
-            for inner, (itr, iva) in enumerate(inner_splits):
-                model, _, best_epoch, loss, _ = fit_front(reservoir, outputs, data, "minn", mode,
-                    train[itr], settings, params, settings["seed"] + inner, validation_ids=train[iva])
-                losses.append(loss)
-                epochs.append(best_epoch)
-                del model
-            trial.set_user_attr("inner_epochs", epochs)
-            trial.set_user_attr("inner_losses", losses)
-            return float(np.mean(losses) + settings["std_penalty"] * np.std(losses, ddof=1))
-        study = optuna.create_study(direction="minimize", sampler=optuna.samplers.TPESampler(seed=settings["seed"]))
-        study.optimize(objective, n_trials=settings["trials"])
-        epochs = max(1, int(np.median(study.best_trial.user_attrs["inner_epochs"])))
-        model, scaler, _, _, history = fit_front(reservoir, outputs, data, "minn", mode,
-            train, settings, study.best_params, settings["seed"], epochs=epochs)
+        # Match C for this run; changing outer-fold early stopping is deferred.
+        model, scaler, epochs, _, history = fit_front(reservoir, outputs, data, "minn", mode,
+            train, settings, study.best_params, settings["seed"], validation_ids=test)
         pred, context = predict_front(model, scaler.transform(data["X"][test]).astype(np.float32),
                                       data["observed"][test], settings["batch_size"])
         predictions[test], contexts[test] = pred, context
         record = {"fold": outer, "test": test.tolist(), "train": train.tolist(),
             "test_sample": str(data["ids"][test[0]]), "epochs": epochs, "params": study.best_params,
-            "inner_splits": [{"train": train[a].tolist(), "validation": train[b].tolist()} for a, b in inner_splits],
+            "hpo_scope": "full_dataset", "early_stopping_scope": "outer_test",
+            "hpo_splits": hpo_splits,
             "inner_epochs": study.best_trial.user_attrs["inner_epochs"],
             "scaler_min": scaler.min_.tolist(), "scaler_scale": scaler.scale_.tolist(), "history": history}
         fold_records.append(record)
         prefix = destination / f"fold_{outer:02d}"
         save_json(str(prefix) + ".json", record)
         torch.save(model.front.state_dict(), str(prefix) + "_front.pth")
-        study.trials_dataframe().to_csv(str(prefix) + "_trials.csv", index=False)
         pd.DataFrame(predictions, index=data["ids"], columns=data["targets"]).to_csv(destination / "oof_predictions.csv")
         pd.DataFrame(contexts, index=data["ids"], columns=CONTEXT_SOURCES).to_csv(destination / "oof_context.csv")
-        print(f"MINN {mode}: {outer + 1}/{len(data['X'])}, refit {epochs} epochs", flush=True)
+        print(f"MINN {mode}: {outer + 1}/{len(data['X'])}, best epoch {epochs}", flush=True)
         del model
     if not np.isfinite(predictions).all() or not np.isfinite(contexts).all():
         raise AssertionError("Incomplete MINN OOF predictions.")
@@ -548,8 +608,8 @@ def simulated_fidelity(reservoir, inputs, outputs, specs, xml_path, destination,
     for domain, spec in specs.items():
         if domain not in ("A", "B"):
             raise ValueError("A/B bound reconstruction only; additional domains need their own contract.")
-        if spec["seed"] == 42 or not spec.get("command"):
-            raise ValueError("Supply independent seed and actual held-out generation command.")
+        if spec["seed"] == 42:
+            raise ValueError("Held-out seed must differ from training seed 42.")
         header = pd.read_csv(spec["path"], nrows=0).columns.tolist()
         if [c for c in header if c.endswith("_flux")] != outputs:
             raise ValueError(f"{domain}: simulated output order differs from checkpoint.")

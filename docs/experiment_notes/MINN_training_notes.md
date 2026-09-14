@@ -245,3 +245,33 @@ exports `Pearson_r2` separately from regression `R2`, preserves undefined
 metrics, and reports own-success/common-success counts and failed samples.
 Current main/trial notebooks are unchanged; no production union result is
 recorded. See the sampling-study note for implementation scope and provenance.
+
+## Union MINN numerical stability (2026-09-12)
+
+A reported MINN trial stopped at gradient clipping because its gradient norm
+was nonfinite with CUDA AMP enabled. The trace establishes gradient failure;
+mixed-precision overflow is a suspected cause, not a reproduced diagnosis.
+The union notebook now defaults to FP32. If AMP is explicitly enabled, a
+nonfinite fit restarts from its original seed in FP32 before any result is
+accepted. Invalid gradients never update weights. Numerical HPO failures are
+recorded as failed trials and do not terminate remaining trials; if all fail,
+the run stops explicitly. Fit histories record actual AMP use.
+
+## Current MINN protocol: model C-style tuning (2026-09-12)
+
+At the user's request, this supersedes the earlier per-outer-fold HPO and
+inner-epoch refit plan for MINN. Each glucose/O2 context mode now runs ONE
+full-dataset five-fold HPO study (50 trials), then reuses its best parameters
+for all 29 LOO fits. The sampler uses multivariate/group TPE and median pruning,
+matching model C. Each LOO fit early-stops on its held-out condition and restores
+the best front-MLP weights, matching the current C notebook. HPO records are
+saved once per mode; fold records explicitly identify full-dataset HPO and
+outer-test early stopping. Early stopping may be revised AFTER the first run.
+This protocol can yield optimistic scores; it is retained for the requested
+runtime and C-protocol comparison. AMN validation remains unchanged.
+
+Downstream pFBA now uses fraction_of_optimum=1.0, matching C. Simulated-data
+objective checks retain the generator's 0.999 contract. FP32 and numerical
+failure handling remain enabled after the reported AMP crash. The comparison
+table retains C-compatible mean-per-condition Pearson_r2, MAE and RMSE;
+regression R2 and pooled scores remain separately labelled additional metrics.

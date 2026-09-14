@@ -107,7 +107,59 @@ def test_metric_definitions():
     assert np.isnan(ev.metrics([1, 1], [1, 1])["R2"])
 
 
-def test_nested_minn_smoke_and_saved_split_disjointness(setup, tmp_path):
+def test_amn_summary_scores_mean_predictions_like_model_c():
+    import pandas as pd
+    oof = pd.DataFrame({"row": [0, 1, 0, 1], "repeat": [10, 10, 11, 11],
+                        "truth": [1., 2., 1., 2.], "prediction": [0., 1., 2., 3.]})
+    means, scores, spread = ev.summarize_amn_oof(oof, 2, [10, 11])
+    assert scores["R2"] == 1 and scores["MAE"] == scores["RMSE"] == 0
+    assert spread["R2"] == 0
+    np.testing.assert_allclose(means.prediction_std, np.sqrt(2))
+    # Averaging the repeat R2 scores would give -3, not 1.
+    assert ev.metrics([1, 2], [0, 1])["R2"] == -3
+    with pytest.raises(ValueError, match="Incomplete"):
+        ev.summarize_amn_oof(oof.iloc[:-1], 2, [10, 11])
+
+
+def test_amp_overflow_retries_once_with_same_seed_in_fp32(monkeypatch):
+    from types import SimpleNamespace
+    reservoir = SimpleNamespace(parameters=lambda: iter([SimpleNamespace(device=torch.device("cuda"))]))
+    calls = []
+
+    def fake_fit(*args):
+        calls.append(args)
+        if args[6]["amp"]:
+            raise FloatingPointError("overflow")
+        return "finite fit"
+
+    monkeypatch.setattr(ev, "_fit_front", fake_fit)
+    monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
+    config = settings() | {"amp": True}
+    assert ev.fit_front(reservoir, [], {}, "minn", "measured", [0], config, {}, 42) == "finite fit"
+    assert len(calls) == 2 and calls[0][8] == calls[1][8] == 42
+    assert calls[1][6]["amp"] is False and config["amp"] is True
+
+
+def test_nonfinite_gradients_cannot_update_front_weights(setup, monkeypatch):
+    reservoir, tokens, _, data = setup
+    original = ev.FrontReservoir
+    captured = []
+
+    def overflowing_front(*args, **kwargs):
+        model = original(*args, **kwargs)
+        captured.append((model, {k: v.clone() for k, v in model.front.state_dict().items()}))
+        model.front[0].weight.register_hook(lambda grad: torch.full_like(grad, float("inf")))
+        return model
+
+    monkeypatch.setattr(ev, "FrontReservoir", overflowing_front)
+    with pytest.raises(FloatingPointError, match="gradients"):
+        ev.fit_front(reservoir, tokens, data, "minn", "measured", [0, 1], settings(),
+                     dict(drop_rate=0, learning_rate=0.001, weight_decay=0), 10)
+    model, before = captured[0]
+    assert all(torch.equal(before[k], v) for k, v in model.front.state_dict().items())
+
+
+def test_global_minn_hpo_once_and_loo_early_stopping(setup, tmp_path):
     reservoir, tokens, _, original = setup
     data = dict(original)
     for key in ("X", "y", "observed", "ids"):
@@ -119,10 +171,16 @@ def test_nested_minn_smoke_and_saved_split_disjointness(setup, tmp_path):
     assert np.isfinite(result["context"]).all()
     for fold in result["folds"]:
         assert not set(fold["train"]) & set(fold["test"])
-        for inner in fold["inner_splits"]:
+        assert fold["hpo_scope"] == "full_dataset"
+        assert fold["early_stopping_scope"] == "outer_test"
+        for inner in fold["hpo_splits"]:
             assert not set(inner["train"]) & set(inner["validation"])
-            assert set(inner["train"] + inner["validation"]) == set(fold["train"])
+            assert set(inner["train"] + inner["validation"]) == set(range(4))
     assert (tmp_path / "oof_context.csv").is_file()
+    import pandas as pd
+    assert len(pd.read_csv(tmp_path / "global_hpo_trials.csv")) == 1
+    assert not list(tmp_path.glob("fold_*_trials.csv"))
+    assert all(fold["params"] == result["folds"][0]["params"] for fold in result["folds"])
 
 
 def test_amn_cv_smoke(setup, tmp_path):
@@ -166,6 +224,20 @@ def test_notebook_valid_and_no_forbidden_benchmark():
         if cell.cell_type == "code":
             compile(cell.source, f"cell_{i}", "exec")
             assert cell.execution_count is None and not cell.outputs
+
+
+def test_notebook_preflight_allows_unknown_provenance_and_optional_files(tmp_path):
+    notebook = json.loads((ROOT / "ecoli_iML1515_AB_union_model_testing.ipynb").read_text())
+    preflight = next("".join(c["source"]) for c in notebook["cells"]
+                     if "required = {\"CHECKPOINT\"" in "".join(c["source"]))
+    placeholder = tmp_path / "required_artifact"
+    placeholder.touch()
+    scope = dict(Path=Path, CHECKPOINT=placeholder, XML_PATH=placeholder,
+        TRAINING_LOG=None, METADATA_JSON=None, BIOMASS_TEST_PATH=None,
+        RUN_AMN=False, RUN_MINN=False, RUN_SIMULATED=False,
+        TRAINING_PROVENANCE={"generation_command": "", "training_command": "", "seed": 42})
+    exec(preflight.split("reservoir, input_names")[0], scope)
+    assert set(scope["required"]) == {"CHECKPOINT", "XML"}
 
 
 def test_simulated_regime_bounds_and_objective_checks(tmp_path):

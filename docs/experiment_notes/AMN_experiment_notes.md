@@ -359,3 +359,22 @@ selection for this new workflow; existing notebooks are unchanged.
 
 Settings and exports are explicit in the notebook; helpers are in
 `iml1515_ab_evaluation.py`. No production union growth results are recorded yet.
+
+## AMN plot and metric alignment with model C (2026-09-12)
+
+The union AMN growth-error plot now uses the fourth OOF plot in the model C
+AMN trial notebook: 6x6 figure, blue #3F7BD9 points, orange #CC6E00 experimental
+and prediction SD bars, red dashed identity line, 0--0.5 axes, matching fonts,
+gray spines, grid, and R2 annotation. Values are computed from union results.
+The plot and final summary now score per-medium mean OOF predictions, matching
+model C, instead of averaging repeat scores. Metric uncertainty remains the
+population SD of per-repeat scores; prediction error bars use sample SD across
+repeats. Repeat scores remain available separately. This supersedes earlier
+mean-of-repeat-score descriptions for the final AMN summary. Training and inner
+epoch selection are unchanged; this does not make the legacy validation
+protocol identical to the union protocol or copy its historical score.
+
+Notebook compatibility fix (2026-09-13): the AMN plot and final summary cells
+reload an older imported evaluation module if `summarize_amn_oof` is absent.
+Existing trained results remain in memory; rerunning these cells does not
+require a kernel restart or retraining. Metric formulas are unchanged.
