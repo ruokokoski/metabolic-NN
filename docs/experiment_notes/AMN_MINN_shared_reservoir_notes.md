@@ -300,3 +300,7 @@ Notebook compatibility fix (2026-09-13): the AMN plot and final summary cells
 reload an older imported evaluation module if `summarize_amn_oof` is absent.
 Existing trained results remain in memory; rerunning these cells does not
 require a kernel restart or retraining. Metric formulas are unchanged.
+
+Final summary update (2026-09-14): the last union-notebook cell and its CSV
+now contain only pooled R2, MAE and RMSE, with separate biomass metric columns
+removed. The pooled target sets and aggregation are unchanged.
