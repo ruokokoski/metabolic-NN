@@ -288,3 +288,23 @@ def test_simulated_regime_bounds_and_objective_checks(tmp_path):
     assert physical.mass_balance_max.max() < 1e-4
     assert (physical.objective_status == "optimal").all()
     assert physical.prediction_minus_pfba_objective.abs().max() < 1e-5
+
+
+@pytest.mark.parametrize("family,exclude", [("C", True), ("C", False), ("D", False), ("E", False)])
+def test_shared_model_contracts_and_media(tmp_path, family, exclude):
+    inputs = ev.input_contract(family, exclude_cbl1=exclude)
+    tokens = [f"{name}_flux" for name in inputs]
+    model = FluxTransformer(len(tokens), list(range(len(inputs))), d_model=4,
+                            n_heads=2, n_layers=1, d_ff=8, dropout=0)
+    path = tmp_path / "checkpoint.pth"
+    torch.save(dict(model_state_dict=model.state_dict(), config=dict(d_model=4,
+        n_heads=2, n_layers=1, d_ff=8, dropout=0, vocab_size=len(tokens)),
+        data_info=dict(input_cols=inputs, output_cols=tokens)), path)
+    _, loaded_inputs, *_ = ev.load_reservoir(path, "cpu", model_family=family)
+    assert loaded_inputs == inputs
+    amn = ev.load_amn(ROOT / "AMN_data", input_names=inputs, model_family=family)
+    assert amn["fixed"]["EX_pi_e"] == (10 if family == "D" else 50)
+    if exclude:
+        assert "EX_cbl1_e" not in amn["fixed"]
+    else:
+        assert amn["fixed"]["EX_cbl1_e"] == (0 if family == "D" else 50)

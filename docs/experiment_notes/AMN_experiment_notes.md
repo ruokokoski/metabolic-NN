@@ -378,3 +378,5 @@ Notebook compatibility fix (2026-09-13): the AMN plot and final summary cells
 reload an older imported evaluation module if `summarize_amn_oof` is absent.
 Existing trained results remain in memory; rerunning these cells does not
 require a kernel restart or retraining. Metric formulas are unchanged.
+
+Model C combined evaluation (2026-09-14): `ecoli_iML1515_C_model_testing.ipynb` uses `iml1515_evaluation.py` with explicit C input schema and basal 50. The configured legacy 40-input checkpoint excludes cobalamin; it is not injected. Existing union defaults and training protocols are unchanged. See `iML1515_sampling_study_notes.md` for details.

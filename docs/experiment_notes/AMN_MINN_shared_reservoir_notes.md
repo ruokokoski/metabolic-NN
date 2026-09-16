@@ -304,3 +304,24 @@ require a kernel restart or retraining. Metric formulas are unchanged.
 Final summary update (2026-09-14): the last union-notebook cell and its CSV
 now contain only pooled R2, MAE and RMSE, with separate biomass metric columns
 removed. The pooled target sets and aggregation are unchanged.
+
+## Combined model C notebook (2026-09-14)
+
+`ecoli_iML1515_C_model_testing.ipynb` uses shared `iml1515_evaluation.py`;
+`iml1515_ab_evaluation.py` remains a compatibility import. Explicit generator
+contracts support AB, C (40/41 inputs), D and E. The configured
+`AMN_MINN_1M_d256_h8_l4_ff1024` checkpoint has 40 inputs (no cobalamin).
+`data/iML1515_AMN_MINN_test_data_50000_samples.csv` matches its ordered schema
+and supplies the default independent biomass diagnostic.
+
+C AMN uses basal inputs including CO2 at 50, glycerol/amino acids at 2.2;
+MINN common basal inputs are 50. Cobalamin is 50 only when included in the
+checkpoint inputs. AB/D AMN retain basal 10; E uses 50. E experimental-media
+mapping is an evaluation choice, not evidence of a matched training regime.
+D/E checkpoint execution remains unverified.
+
+Training protocols, plot styles and pooled-only final metrics remain unchanged.
+MINN tunes once per context mode; LOO held-out-condition early stopping may
+change after the first run. No TabPFN tests. Copied outputs are cleared.
+Optional A/B cross-domain physics uses A/B source bounds; C intermediate and
+D/E broad physics remain deferred. No new scores or keep/reject decision yet.

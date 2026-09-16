@@ -275,3 +275,5 @@ objective checks retain the generator's 0.999 contract. FP32 and numerical
 failure handling remain enabled after the reported AMP crash. The comparison
 table retains C-compatible mean-per-condition Pearson_r2, MAE and RMSE;
 regression R2 and pooled scores remain separately labelled additional metrics.
+
+Model C combined evaluation (2026-09-14): `ecoli_iML1515_C_model_testing.ipynb` uses `iml1515_evaluation.py` with explicit C input schema and basal 50. The configured legacy 40-input checkpoint excludes cobalamin; it is not injected. Existing union defaults and training protocols are unchanged. See `iML1515_sampling_study_notes.md` for details.
