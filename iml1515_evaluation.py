@@ -155,7 +155,7 @@ def finite_frame(frame, label):
         raise ValueError(f"{label} contains missing/nonfinite values; resolve explicitly.")
 
 
-def load_amn(root, input_names=None, model_family="AB_union"):
+def load_amn(root, input_names=None, model_family="AB_union", feature_order="carbons_first"):
     input_names = input_contract(model_family) if input_names is None else list(input_names)
     root = Path(root)
     frame = pd.read_csv(root / "iML1515_EXP.csv").rename(columns=lambda c: c.removesuffix("_i"))
@@ -175,6 +175,12 @@ def load_amn(root, input_names=None, model_family="AB_union"):
     if not np.allclose(joined.GR_AVG, joined.GR_AVG_uncertainty, atol=1e-6):
         raise ValueError("AMN growth values disagree after uncertainty alignment.")
     features = carbons + ["EX_o2_e"]
+    if feature_order == "checkpoint":
+        features = [name for name in input_names if name in features]
+        if set(features) != set(carbons + ["EX_o2_e"]):
+            raise ValueError("Checkpoint is missing AMN variable inputs.")
+    elif feature_order != "carbons_first":
+        raise ValueError(f"Unknown AMN feature order: {feature_order}")
     if not np.isin(frame[features], [0, 1]).all():
         raise ValueError("Expected binary AMN presence features.")
     absent = ["EX_glc__D_e", "EX_etoh_e", "EX_cbl1_e"]
@@ -215,7 +221,7 @@ def map_minn(source, outputs):
     return token, sign
 
 
-def load_minn(root, outputs, mode="minn_fitted", input_names=None, model_family="AB_union"):
+def load_minn(root, outputs, mode="minn_fitted", input_names=None, model_family="AB_union", legacy_protocol=False):
     input_names = input_contract(model_family) if input_names is None else list(input_names)
     root = Path(root)
     frames = [pd.read_csv(root / name).set_index("experiment") for name in
@@ -236,13 +242,19 @@ def load_minn(root, outputs, mode="minn_fitted", input_names=None, model_family=
     observed = flux[CONTEXT_SOURCES[:2]].to_numpy(np.float32)
     if (observed < 0).any():
         raise ValueError("Glucose/O2 inputs must be positive split uptake magnitudes.")
+    fixed = {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES if name in input_names}
+    if legacy_protocol:
+        # The original MINN trial injects basal cobalamin through the output token,
+        # including for the historical 40-input C checkpoint.
+        fixed = {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES
+                 if f"{name}_flux" in outputs}
     return {
         "X": features.to_numpy(np.float32),
         "y": flux[[s for s, _, _ in target_map]].to_numpy(np.float32)
              * np.array([sign for _, _, sign in target_map], np.float32),
         "observed": observed, "ids": flux.index.to_numpy(),
         "features": features.columns.tolist(), "targets": [t for _, t, _ in target_map],
-        "fixed": {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES if name in input_names},
+        "fixed": fixed, "legacy_minn_protocol": legacy_protocol,
         "mapping": mappings, "flux": flux, "mode": mode,
         "context_truth": flux[CONTEXT_SOURCES].to_numpy(float),
     }
@@ -260,6 +272,8 @@ class FrontReservoir(nn.Module):
         controlled = data["features"] if task == "amn" else list(MINN_CONTEXT_EXCHANGES)
         active_inputs = {outputs[i] for i in reservoir.input_token_indices.tolist()}
         required_inputs = set(controlled) | {name for name, value in data["fixed"].items() if value != 0}
+        if task == "minn" and data.get("legacy_minn_protocol"):
+            required_inputs.discard("EX_cbl1_e")
         if any(f"{name}_flux" not in active_inputs for name in required_inputs):
             raise ValueError("Experimental medium contains controls absent from checkpoint inputs.")
         self.register_buffer("controlled", torch.tensor([outputs.index(f"{s}_flux") for s in controlled]))
@@ -312,6 +326,9 @@ def predict_front(model, x, observed, batch_size=1):
 def fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
               seed, validation_ids=None, epochs=None):
     """Retry an overflowing mixed-precision fit from its original seed in FP32."""
+    if task == "minn" and settings.get("legacy_protocol"):
+        return _fit_minn_legacy(reservoir, outputs, data, mode, train_ids,
+                                validation_ids, settings, params)
     try:
         return _fit_front(reservoir, outputs, data, task, mode, train_ids, settings,
                           params, seed, validation_ids, epochs)
@@ -327,7 +344,7 @@ def fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
 
 def _fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params,
                seed, validation_ids=None, epochs=None):
-    """Outer test rows are never passed here; refits have no validation targets."""
+    """Fit a front model; the caller chooses the validation protocol."""
     seed_all(seed)
     train_ids = np.asarray(train_ids)
     if validation_ids is not None and np.intersect1d(train_ids, validation_ids).size:
@@ -371,7 +388,8 @@ def _fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params
             amp_scaler.scale(loss).backward()
             amp_scaler.unscale_(optimizer)
             try:
-                nn.utils.clip_grad_norm_(model.front.parameters(), settings["clip"], error_if_nonfinite=True)
+                nn.utils.clip_grad_norm_(model.front.parameters(),
+                    float("inf") if settings["clip"] is None else settings["clip"], error_if_nonfinite=True)
             except RuntimeError as exc:
                 if "non-finite" not in str(exc):
                     raise
@@ -384,8 +402,21 @@ def _fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params
             scheduler.step()
         row = {"epoch": epoch + 1, "train_loss": train_loss / count, "amp": use_amp}
         if validation_ids is not None:
-            pred, _ = predict_front(model, transform(validation_ids), data["observed"][validation_ids], settings["batch_size"])
-            val_loss = criterion(torch.from_numpy(pred), torch.from_numpy(data["y"][validation_ids])).item()
+            if task == "amn" and settings.get("validation_protocol") == "legacy_outer_early_stopping":
+                validation_batch = settings.get("validation_batch_size", settings["batch_size"])
+                # Match the original AMN notebook's device-side, batch-weighted loss.
+                model.eval()
+                val_running = 0.0
+                with torch.no_grad():
+                    for start in range(0, len(validation_ids), validation_batch):
+                        ids = validation_ids[start:start + validation_batch]
+                        pred, _ = model(torch.as_tensor(transform(ids), device=device),
+                                        torch.as_tensor(data["observed"][ids], device=device))
+                        val_running += criterion(pred, torch.as_tensor(data["y"][ids], device=device)).item() * len(ids)
+                val_loss = val_running / len(validation_ids)
+            else:
+                pred, _ = predict_front(model, transform(validation_ids), data["observed"][validation_ids], settings["batch_size"])
+                val_loss = criterion(torch.from_numpy(pred), torch.from_numpy(data["y"][validation_ids])).item()
             row["validation_loss"] = val_loss
             if val_loss < best_loss - settings["min_delta"]:
                 best_loss, best_epoch, stale = val_loss, epoch + 1, 0
@@ -404,7 +435,103 @@ def _fit_front(reservoir, outputs, data, task, mode, train_ids, settings, params
     return model, scaler, best_epoch, best_loss, history
 
 
+def _fit_minn_legacy(reservoir, outputs, data, mode, train_ids, validation_ids, settings, params):
+    """Original MINN_AMN fit, including RNG consumption and CUDA autocast.
+
+    Seed once before the measured-mode study; never reseed individual fits or
+    the subsequent predicted-mode study. Keep this opt-in reproduction separate
+    from the default FP32/fold-seeded trainer.
+    """
+    if validation_ids is None or np.intersect1d(train_ids, validation_ids).size:
+        raise ValueError("Legacy MINN requires a disjoint validation fold.")
+    device = next(reservoir.parameters()).device
+    scaler = MinMaxScaler()
+    x_train = scaler.fit_transform(data["X"][train_ids])
+    x_val = scaler.transform(data["X"][validation_ids])
+    model = FrontReservoir(reservoir, outputs, data, "minn", mode,
+                           params["drop_rate"], settings["hidden"]).to(device)
+    optimizer = torch.optim.AdamW(model.front.parameters(), lr=params["learning_rate"],
+                                  weight_decay=params["weight_decay"])
+    criterion = nn.HuberLoss()
+    use_amp = device.type == "cuda"
+    amp_scaler = torch.amp.GradScaler(device.type, enabled=use_amp)
+    epochs = settings["epochs"]
+    warmup = max(1, min(settings["warmup"], epochs))
+    def lr_factor(epoch):
+        if epoch < warmup:
+            return (epoch + 1) / warmup
+        progress = max(0.0, min(1.0, (epoch - warmup) / max(1, epochs - warmup)))
+        return 0.05 + 0.95 * 0.5 * (1.0 + np.cos(np.pi * progress))
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_factor)
+    def loader(x, ids, shuffle):
+        dataset = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32),
+            torch.tensor(data["y"][ids], dtype=torch.float32),
+            torch.tensor(data["observed"][ids], dtype=torch.float32))
+        return torch.utils.data.DataLoader(dataset, batch_size=settings["batch_size"],
+            shuffle=shuffle, num_workers=0, pin_memory=use_amp)
+    train_loader = loader(x_train, train_ids, True)
+    val_loader = loader(x_val, validation_ids, False)
+    def forward_loss(x, y, observed):
+        prediction, _ = model(x, observed)
+        loss = criterion(prediction, y)
+        # The original calls the front twice. The second training call consumes
+        # dropout RNG even though only the first call contributes to the loss.
+        context = nn.functional.softplus(model.front(x))
+        if mode == "measured":
+            context = torch.cat([observed, context], dim=1)
+        return loss, prediction, context
+    def validate():
+        model.eval()
+        total, count, predictions, contexts = 0.0, 0, [], []
+        with torch.no_grad():
+            for x, y, observed in val_loader:
+                x, y, observed = [v.to(device, non_blocking=True) for v in (x, y, observed)]
+                with torch.amp.autocast(device.type, enabled=use_amp):
+                    loss, prediction, context = forward_loss(x, y, observed)
+                total += loss.item() * len(x)
+                count += len(x)
+                predictions.append(prediction.detach().cpu().numpy())
+                contexts.append(context.detach().cpu().numpy())
+        return total / max(count, 1), np.concatenate(predictions), np.concatenate(contexts)
+    best_loss, best_state, best_epoch, stale = float("inf"), None, 0, 0
+    history = []
+    for epoch in range(epochs):
+        model.train()
+        for x, y, observed in train_loader:
+            x, y, observed = [v.to(device, non_blocking=True) for v in (x, y, observed)]
+            optimizer.zero_grad(set_to_none=True)
+            with torch.amp.autocast(device.type, enabled=use_amp):
+                loss, _, _ = forward_loss(x, y, observed)
+            amp_scaler.scale(loss).backward()
+            amp_scaler.unscale_(optimizer)
+            nn.utils.clip_grad_norm_(model.front.parameters(), settings["clip"])
+            amp_scaler.step(optimizer)
+            amp_scaler.update()
+        val_loss, _, _ = validate()
+        scheduler.step()
+        history.append({"epoch": epoch + 1, "validation_loss": val_loss, "amp": use_amp})
+        if val_loss + settings["min_delta"] < best_loss:
+            best_loss, best_epoch, stale = val_loss, epoch + 1, 0
+            best_state = {k: v.detach().cpu().clone() for k, v in model.front.state_dict().items()}
+        else:
+            stale += 1
+            if stale >= settings["patience"]:
+                break
+    if best_state is None:
+        raise FloatingPointError("Legacy MINN produced no finite validation checkpoint.")
+    model.front.load_state_dict(best_state)
+    # The original makes a final validation-loader pass after restoring weights.
+    best_loss, prediction, context = validate()
+    model.legacy_validation = (prediction, context)
+    if use_amp:
+        torch.cuda.empty_cache()
+    return model, scaler, best_epoch, best_loss, history
+
+
 def run_amn(reservoir, outputs, data, settings, destination):
+    protocol = settings.get("validation_protocol", "inner_refit")
+    if protocol not in ("inner_refit", "legacy_outer_early_stopping"):
+        raise ValueError(f"Unknown AMN validation protocol: {protocol}")
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     rows, selection = [], []
@@ -412,17 +539,25 @@ def run_amn(reservoir, outputs, data, settings, destination):
     for repeat in settings["split_seeds"]:
         folds = StratifiedKFold(settings["folds"], shuffle=True, random_state=repeat)
         for fold, (train, test) in enumerate(folds.split(data["X"], data["strata"]), 1):
-            inner_train, inner_val = train_test_split(train, test_size=settings["inner_fraction"],
-                stratify=data["strata"][train], random_state=repeat + fold)
-            selected, _, epochs, _, history = fit_front(reservoir, outputs, data, "amn", "measured",
-                inner_train, settings, params, settings["train_seed"], validation_ids=inner_val)
-            del selected
-            model, _, _, _, refit_history = fit_front(reservoir, outputs, data, "amn", "measured",
-                train, settings, params, settings["train_seed"], epochs=epochs)
-            prediction, context = predict_front(model, data["X"][test], data["observed"][test], settings["batch_size"])
+            if protocol == "legacy_outer_early_stopping":
+                inner_train, inner_val, refit_history = np.array([], dtype=int), np.array([], dtype=int), []
+                model, _, epochs, _, history = fit_front(reservoir, outputs, data, "amn", "measured",
+                    train, settings, params, settings["train_seed"], validation_ids=test)
+            else:
+                inner_train, inner_val = train_test_split(train, test_size=settings["inner_fraction"],
+                    stratify=data["strata"][train], random_state=repeat + fold)
+                selected, _, epochs, _, history = fit_front(reservoir, outputs, data, "amn", "measured",
+                    inner_train, settings, params, settings["train_seed"], validation_ids=inner_val)
+                del selected
+                model, _, _, _, refit_history = fit_front(reservoir, outputs, data, "amn", "measured",
+                    train, settings, params, settings["train_seed"], epochs=epochs)
+            prediction, context = predict_front(model, data["X"][test], data["observed"][test],
+                                                settings.get("validation_batch_size", settings["batch_size"]))
             prefix = destination / f"repeat_{repeat}_fold_{fold}"
             torch.save(model.front.state_dict(), str(prefix) + "_front.pth")
             save_json(str(prefix) + "_fold.json", {"train": train.tolist(), "test": test.tolist(),
+                "validation_protocol": protocol,
+                "selection_validation": (test if protocol == "legacy_outer_early_stopping" else inner_val).tolist(),
                 "inner_train": inner_train.tolist(), "inner_validation": inner_val.tolist(),
                 "epochs": epochs, "params": params, "selection_history": history, "refit_history": refit_history})
             pd.DataFrame(context, index=data["ids"][test], columns=data["features"]).to_csv(str(prefix) + "_context.csv")
@@ -431,7 +566,7 @@ def run_amn(reservoir, outputs, data, settings, destination):
                 rows.append({"sample": data["ids"][i], "row": int(i), "repeat": repeat, "fold": fold,
                     "truth": float(data["y"][i, 0]), "prediction": float(value), "carbon_count": int(data["strata"][i])})
             pd.DataFrame(rows).to_csv(destination / "oof.csv", index=False)
-            print(f"AMN repeat {repeat}, fold {fold}: refit {epochs} epochs", flush=True)
+            print(f"AMN repeat {repeat}, fold {fold}: {protocol}, selected epoch {epochs}", flush=True)
             del model
     oof = pd.DataFrame(rows)
     if not oof.groupby(["repeat", "sample"]).size().eq(1).all() or len(oof) != len(data["X"]) * len(settings["split_seeds"]):
@@ -488,8 +623,11 @@ def run_minn(reservoir, outputs, data, mode, settings, destination):
         # Match C for this run; changing outer-fold early stopping is deferred.
         model, scaler, epochs, _, history = fit_front(reservoir, outputs, data, "minn", mode,
             train, settings, study.best_params, settings["seed"], validation_ids=test)
-        pred, context = predict_front(model, scaler.transform(data["X"][test]).astype(np.float32),
-                                      data["observed"][test], settings["batch_size"])
+        if settings.get("legacy_protocol"):
+            pred, context = model.legacy_validation
+        else:
+            pred, context = predict_front(model, scaler.transform(data["X"][test]).astype(np.float32),
+                                          data["observed"][test], settings["batch_size"])
         predictions[test], contexts[test] = pred, context
         record = {"fold": outer, "test": test.tolist(), "train": train.tolist(),
             "test_sample": str(data["ids"][test[0]]), "epochs": epochs, "params": study.best_params,
@@ -533,7 +671,10 @@ def run_pfba(xml_path, data, context=None, cap_mode="co2_etoh_ac_cap", fraction=
     prediction = np.full((len(data["ids"]), len(mappings)), np.nan)
     statuses, diagnostics = [], []
     truth = data["flux"][[s for s, _, _ in mappings]].to_numpy(float)
+    base_model = model
     for i, sample in enumerate(data["ids"]):
+        if data.get("legacy_minn_protocol"):
+            model = base_model.copy()
         with model:
             # Preserve the maintained Table 4 SBML background medium for all methods.
             for j, name in enumerate(MINN_CONTEXT_EXCHANGES[:2]):
@@ -572,6 +713,18 @@ def run_pfba(xml_path, data, context=None, cap_mode="co2_etoh_ac_cap", fraction=
     return {"prediction": prediction, "truth": truth, "success": success, "names": names,
             "status": pd.DataFrame(statuses), "caps": pd.DataFrame(diagnostics),
             "per_flux": per_flux, "per_sample": per_sample}
+
+
+def legacy_pfba_summary(result):
+    """Original trial's per-condition Table 4 metrics and zero-denominator rules."""
+    rows = []
+    for truth, prediction in zip(result["truth"][result["success"]], result["prediction"][result["success"]]):
+        row = metrics(truth, prediction)
+        row["R2"] = row["Pearson_r2"] if np.isfinite(row["Pearson_r2"]) else 0.0
+        row["NE"] = row["NE"] if np.isfinite(row["NE"]) else 0.0
+        rows.append({key: row[key] for key in ("R2", "MAE", "RMSE", "NE")})
+    frame = pd.DataFrame(rows, columns=["R2", "MAE", "RMSE", "NE"])
+    return pd.DataFrame({"avg": frame.mean(), "std": frame.std(ddof=0)})
 
 
 def compare_pfba(results, data, destination):

@@ -325,3 +325,68 @@ MINN tunes once per context mode; LOO held-out-condition early stopping may
 change after the first run. No TabPFN tests. Copied outputs are cleared.
 Optional A/B cross-domain physics uses A/B source bounds; C intermediate and
 D/E broad physics remain deferred. No new scores or keep/reject decision yet.
+
+## Combined C AMN protocol restoration (2026-09-16)
+
+The combined C notebook now explicitly uses `legacy_outer_early_stopping`
+to reproduce `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb` with
+`AMN_MINN_1M_d256_h8_l4_ff1024` and `AMN_data/iML1515_EXP.csv` (110 media).
+It restores checkpoint-order variable features, no gradient clipping,
+training/validation batches 1/2, and best-checkpoint selection on the scored
+outer fold, without inner splitting or refitting. Seeds 10/11/12, training
+seed 10, width 512, zero dropout, AdamW lr/weight decay 0.001, Huber delta
+0.03, 100 maximum epochs and patience 15 match the original. Both score
+per-medium mean repeated predictions. MINN and the default inner-refit AMN
+protocol for other callers are unchanged. Fold exports identify the actual
+selection protocol and validation rows.
+
+Original saved pooled R2: 0.8723; superseded combined result: 0.812463.
+Affected combined outputs were cleared. No replacement score is claimed
+until the full AMN run completes. Held-out targets select epochs in the
+restored protocol, so its OOF score is not an untouched-test estimate.
+Decision: retain the original protocol for the requested reproduction.
+
+## Combined C glycolysis t-SNE plots (2026-09-16)
+
+The combined C notebook now includes reaction-colored and nutrient-context
+rainbow glycolysis plots, using the original AMN_MINN notebook's plotting
+function and 14-reaction list. Both take the first 4,000 independent simulated
+test CSV contexts, perplexity 40, seed 10, batch 128, and final-layer embeddings
+from the original glycolysis-plus-injected-input subset forward. They retain
+reaction-center annotations, the reaction palette and reversed rainbow map.
+This is a qualitative subset visualization, not full-vocabulary evaluation.
+Both PNGs save under `pic_dir` with model-specific names; `tsne_settings.json`
+records context rows, source hash and extraction settings. The context selection
+is explicit and does not depend on the legacy notebook's `X_test` split.
+
+## Combined C MINN original-protocol restoration (2026-09-16)
+
+The combined C notebook now opts into `legacy_protocol` for MINN to reproduce
+`ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb`. It retains the same 1M C
+checkpoint, original MINN-fitted targets (29 conditions, 141 features, 42 neural
+targets), and 47-flux pFBA evaluation. Basal cobalamin is injected at 50 through
+its output token even though the historical checkpoint has only 40 inputs.
+This is an explicit reproduction exception, not a change to the training schema.
+
+The legacy trainer seeds once before measured-mode HPO and preserves RNG state
+through both studies and LOO fits. It uses CUDA AMP, batch 2 on CUDA/5 on CPU,
+and the original duplicate front forward, validation DataLoader passes, AdamW,
+raw Huber loss, clipping, warmup/cosine schedule and best-checkpoint restoration.
+Global HPO and held-out-condition early stopping remain as in the original.
+Default evaluator callers retain their existing FP32/fold-seeded behavior.
+
+pFBA makes a fresh SBML-model copy per condition as in the original. Its original
+final comparison is mean/population-SD per condition of squared Pearson r,
+MAE, RMSE and NE; pooled regression scores remain separately labelled.
+Affected MINN outputs are cleared; no reproduced full-run score is claimed.
+
+Verification: short CPU and CUDA fits for both context modes match the original
+notebook function in weights, predictions, context values and final RNG states.
+The evaluator test suite has 24 passing tests and one existing unrelated failure
+requiring the AB-union notebook to have no saved outputs. Combined notebook
+schema/syntax and the final diff pass validation. Full HPO/LOO was not rerun.
+
+The restored pFBA baseline was rerun successfully for all 29 conditions.
+Its original-style mean/SD reproduces the original saved baseline to six
+decimals: R2 0.892825/0.132254, MAE 0.495038/0.365933,
+RMSE 0.832498/0.633807, and NE 0.309400/0.373326.

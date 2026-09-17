@@ -308,3 +308,155 @@ def test_shared_model_contracts_and_media(tmp_path, family, exclude):
         assert "EX_cbl1_e" not in amn["fixed"]
     else:
         assert amn["fixed"]["EX_cbl1_e"] == (0 if family == "D" else 50)
+
+
+def test_legacy_amn_matches_original_notebook_training(setup):
+    """Compare restored training directly with the original notebook functions."""
+    import ast
+    from copy import deepcopy
+    from torch.utils.data import DataLoader, TensorDataset
+    from torch.utils.checkpoint import checkpoint
+
+    reservoir, tokens, _, _ = setup
+    inputs = ev.build_input_columns()
+    data = ev.load_amn(ROOT / "AMN_data", inputs, "C", feature_order="checkpoint")
+    variable = data["features"]
+    assert variable == [name for name in inputs if name in ev.AMN_CARBON_EXCHANGES + ["EX_o2_e"]]
+    fixed = [name for name in inputs if name not in variable]
+    ns = dict(torch=torch, nn=torch.nn, np=np, deepcopy=deepcopy,
+              DataLoader=DataLoader, TensorDataset=TensorDataset, checkpoint=checkpoint,
+              set_seed=ev.seed_all, device=torch.device("cpu"), model=reservoir,
+              inputs=inputs, outputs=tokens, variable_input_cols=variable,
+              hidden_dim=8, dropout=0.0, num_epochs=3, patience=15,
+              out_scale_vec=np.array([10.0 if c == "EX_o2_e" else 2.2 for c in variable], np.float32),
+              var_pos=torch.tensor([inputs.index(c) for c in variable]),
+              fixed_pos=torch.tensor([inputs.index(c) for c in fixed]),
+              fixed_values=torch.tensor([data["fixed"][c] for c in fixed]),
+              token_idx=reservoir.input_token_indices,
+              biomass_idx=tokens.index(data["targets"][0]))
+    original = json.loads((ROOT / "ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb").read_text(encoding="utf-8"))
+    wanted = {"PriorDenseNetwork", "compose_full_medium", "medium_to_reservoir_input",
+              "_model_only", "_predict_growth_with_prior", "train_prior_one_seed"}
+    for cell in original["cells"]:
+        if cell["cell_type"] != "code":
+            continue
+        source = "".join(cell["source"])
+        if not any(f"def {name}(" in source or f"class {name}(" in source for name in wanted):
+            continue
+        tree = ast.parse(source)
+        tree.body = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in wanted]
+        exec(compile(tree, "original_notebook", "exec"), ns)
+    x, y = torch.from_numpy(data["X"]), torch.from_numpy(data["y"][:, 0])
+    reference = ns["train_prior_one_seed"](10, x[:8], y[:8], x[8:13], y[8:13], 1, 2, "parity", True)
+    config = dict(settings(), epochs=3, patience=15, batch_size=1, validation_batch_size=2,
+                  delta=0.03, clip=None, validation_protocol="legacy_outer_early_stopping")
+    params = dict(drop_rate=0, learning_rate=0.001, weight_decay=0.001)
+    actual, _, epoch, loss, history = ev.fit_front(reservoir, tokens, data, "amn", "measured",
+        np.arange(8), config, params, 10, validation_ids=np.arange(8, 13))
+    assert epoch == reference["best_epoch"]
+    np.testing.assert_allclose([r["validation_loss"] for r in history], reference["val_losses"], rtol=1e-6)
+    for key, value in actual.front.state_dict().items():
+        torch.testing.assert_close(value, reference["model"].net.state_dict()[key], rtol=1e-6, atol=1e-7)
+    prediction, _ = ev.predict_front(actual, data["X"][8:13], data["observed"][8:13], 2)
+    np.testing.assert_allclose(prediction[:, 0], reference["y_val_pred"], rtol=1e-6)
+
+
+def test_legacy_amn_scores_selected_fold_model(setup, tmp_path, monkeypatch):
+    import iml1515_evaluation as shared
+    reservoir, tokens, data, _ = setup
+    calls = []
+    def fit(*args, **kwargs):
+        train = np.asarray(args[5])
+        validation = np.asarray(kwargs["validation_ids"])
+        assert not np.intersect1d(train, validation).size
+        assert "epochs" not in kwargs
+        calls.append((train, validation))
+        return shared.FrontReservoir(reservoir, tokens, data, "amn", hidden=8), None, 1, 0.0, []
+    monkeypatch.setattr(shared, "fit_front", fit)
+    config = dict(settings(), folds=10, split_seeds=[10], train_seed=10,
+                  validation_protocol="legacy_outer_early_stopping", params={})
+    result = shared.run_amn(reservoir, tokens, data, config, tmp_path)
+    assert len(calls) == 10 and len(result["oof"]) == 110
+    for fold, (train, validation) in enumerate(calls, 1):
+        record = json.loads((tmp_path / f"repeat_10_fold_{fold}_fold.json").read_text())
+        assert len(train) == 99 and len(validation) == 11
+        assert record["test"] == record["selection_validation"] == validation.tolist()
+        assert record["inner_validation"] == record["refit_history"] == []
+
+
+@pytest.mark.parametrize("mode", ["measured", "predicted"])
+@pytest.mark.parametrize("device_name", ["cpu", "cuda"])
+def test_legacy_minn_matches_original_fit_and_rng(setup, mode, device_name):
+    import ast
+    from sklearn.preprocessing import MinMaxScaler
+    if device_name == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA unavailable")
+    reservoir, tokens, _, data = setup
+    device = torch.device(device_name)
+    reservoir.to(device)
+    data["legacy_minn_protocol"] = True
+    original = json.loads((ROOT / "ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb").read_text(encoding="utf-8"))
+    ns = dict(torch=torch, nn=torch.nn, F=torch.nn.functional, np=np, outputs=tokens,
+              MinMaxScaler=MinMaxScaler, minn_cv_early_stopping_patience=2,
+              minn_cv_early_stopping_min_delta=1e-5, MINN_GRAD_CLIP_MAX_NORM=1.0,
+              MINN_LR_WARMUP_EPOCHS=2, MINN_LR_COSINE_MIN_FACTOR=0.05,
+              minn_target_indices_t=torch.tensor([tokens.index(t) for t in data["targets"]]),
+              minn_context_signs_t=torch.tensor([-1., -1., 1., 1., 1.]),
+              minn_measured_context_positions_t=torch.tensor([0, 1] if mode=="measured" else [], dtype=torch.long),
+              minn_predicted_context_positions_t=torch.tensor([2, 3, 4] if mode=="measured" else [0, 1, 2, 3, 4]))
+    wanted = {"FrozenFluxTransformerWithMLP", "_train_eval_split"}
+    for cell in original["cells"]:
+        source = "".join(cell["source"])
+        if cell["cell_type"] != "code" or not any(f"def {s}(" in source or f"class {s}(" in source for s in wanted):
+            continue
+        tree = ast.parse(source)
+        tree.body = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in wanted]
+        exec(compile(tree, "original_minn_notebook", "exec"), ns)
+    models = []
+    def make_model(drop_rate, device_obj):
+        context = [s.removeprefix("R_").removesuffix("_rev").removesuffix("_fwd") + "_flux" for s in ev.CONTEXT_SOURCES]
+        m = ns["FrozenFluxTransformerWithMLP"](reservoir, data["X"].shape[1],
+            context[2:] if mode=="measured" else context, context[:2] if mode=="measured" else [],
+            [139, 140] if mode=="measured" else [], {k+"_flux":v for k,v in data["fixed"].items()},
+            hidden_dim=8, drop_rate=drop_rate).to(device_obj)
+        models.append(m)
+        return m
+    ns["_make_model"] = make_model
+    params = dict(drop_rate=0.2, learning_rate=0.001, weight_decay=0.0001)
+    cfg = dict(settings(), legacy_protocol=True, epochs=3, patience=2, min_delta=1e-5,
+               delta=1.0, warmup=2, hidden=8)
+    context = data["context_truth"].astype(np.float32) * np.array([-1,-1,1,1,1],np.float32)
+    ev.seed_all(12345)
+    reference = ns["_train_eval_split"](data["X"][:8], data["y"][:8], context[:8],
+        data["X"][8:11], data["y"][8:11], context[8:11], params, 3, 2, device)
+    expected_rng = torch.get_rng_state().clone()
+    expected_cuda_rng = torch.cuda.get_rng_state().clone() if device_name=="cuda" else None
+    ev.seed_all(12345)
+    actual, _, _, loss, _ = ev.fit_front(reservoir, tokens, data, "minn", mode,
+        np.arange(8), cfg, params, 999, validation_ids=np.arange(8,11))
+    assert torch.equal(expected_rng, torch.get_rng_state())
+    if expected_cuda_rng is not None:
+        assert torch.equal(expected_cuda_rng, torch.cuda.get_rng_state())
+    np.testing.assert_allclose(loss, reference[0], rtol=1e-6)
+    pred, caps = actual.legacy_validation
+    np.testing.assert_allclose(pred, reference[1], rtol=1e-6, atol=1e-7)
+    np.testing.assert_allclose(caps, reference[3], rtol=1e-6, atol=1e-7)
+    for key,value in actual.front.state_dict().items():
+        torch.testing.assert_close(value,models[0].front_mlp.state_dict()[key],rtol=1e-6,atol=1e-7)
+
+
+def test_legacy_cobalamin_and_pfba_summary(setup):
+    reservoir, tokens, _, _ = setup
+    inputs = [x for x in ev.build_input_columns() if x != "EX_cbl1_e"]
+    current = ev.load_minn(ROOT / "MINN_data", tokens, "minn_fitted", input_names=inputs, model_family="C")
+    legacy = ev.load_minn(ROOT / "MINN_data", tokens, "minn_fitted", input_names=inputs, model_family="C", legacy_protocol=True)
+    assert "EX_cbl1_e" not in current["fixed"] and legacy["fixed"]["EX_cbl1_e"] == 50
+    reservoir.input_token_indices = torch.tensor([i for i in reservoir.input_token_indices if tokens[i] != "EX_cbl1_e_flux"])
+    model = ev.FrontReservoir(reservoir, tokens, legacy, "minn", hidden=8)
+    medium, _ = model.medium(torch.from_numpy(legacy["X"][:1]), torch.from_numpy(legacy["observed"][:1]))
+    assert medium[0,tokens.index("EX_cbl1_e_flux")] == 50
+    result = dict(truth=np.array([[1.,2.,3.],[2.,4.,6.]]), prediction=np.array([[2.,4.,6.],[4.,8.,12.]]), success=np.array([True,True]))
+    summary = ev.legacy_pfba_summary(result)
+    assert summary.loc["R2","avg"] == pytest.approx(1)
+    assert summary.loc["MAE","avg"] == pytest.approx(3)
+    assert summary.loc["MAE","std"] == pytest.approx(1)
