@@ -460,3 +460,44 @@ def test_legacy_cobalamin_and_pfba_summary(setup):
     assert summary.loc["R2","avg"] == pytest.approx(1)
     assert summary.loc["MAE","avg"] == pytest.approx(3)
     assert summary.loc["MAE","std"] == pytest.approx(1)
+
+
+def test_ab_union_matches_corrected_c_notebook_protocol():
+    """Every executable cell must match C except explicit model identity strings."""
+    ab = json.loads((ROOT / "ecoli_iML1515_AB_union_model_testing.ipynb").read_text(encoding="utf-8"))
+    c = json.loads((ROOT / "ecoli_iML1515_C_model_testing.ipynb").read_text(encoding="utf-8"))
+    replacements = {
+        'MODEL_FAMILY = "AB_union"': 'MODEL_FAMILY = "C"',
+        "AB_1M_d256_h8_l4_ff1024": "AMN_MINN_1M_d256_h8_l4_ff1024",
+        "iML1515_AB_union_test_data": "iML1515_AMN_MINN_test_data",
+        '"AB_union_evaluation"': '"C_evaluation"',
+        "generate_ecoli_iML1515_AB_union_data.py": "generate_ecoli_iML1515_AMN_MINN_data.py",
+        "ecoli_iML1515_AB_union_model_testing.ipynb": "ecoli_iML1515_C_model_testing.ipynb",
+        "A-union-B simulated test CSV": "model C simulated test CSV",
+    }
+    assert len(ab["cells"]) == len(c["cells"]) == 40
+    allowed_markdown_differences = {0, 2, 17, 19, 23}
+    for i, (actual, reference) in enumerate(zip(ab["cells"], c["cells"])):
+        assert actual["cell_type"] == reference["cell_type"]
+        source = "".join(actual["source"])
+        if actual["cell_type"] == "code":
+            for before, after in replacements.items():
+                source = source.replace(before, after)
+            assert source == "".join(reference["source"]), f"Protocol drift in cell {i}"
+        elif i not in allowed_markdown_differences:
+            assert source == "".join(reference["source"]), f"Unreviewed markdown drift in cell {i}"
+    assert "basal inputs (including CO2) at 10" in "".join(ab["cells"][17]["source"])
+    assert "41-input AB-union checkpoint" in "".join(ab["cells"][23]["source"])
+
+
+def test_ab_union_protocol_retains_regime_media(setup):
+    model, outputs, _, _ = setup
+    inputs = ev.build_input_columns()
+    amn = ev.load_amn(ROOT / "AMN_data", inputs, "AB_union", feature_order="checkpoint")
+    minn = ev.load_minn(ROOT / "MINN_data", outputs, input_names=inputs,
+                        model_family="AB_union", legacy_protocol=True)
+    assert amn["fixed"]["EX_pi_e"] == amn["fixed"]["EX_co2_e"] == 10
+    assert amn["fixed"]["EX_glyc_e"] == 2.2
+    assert all(amn["fixed"][x] == 0 for x in ["EX_glc__D_e", "EX_etoh_e", "EX_cbl1_e"])
+    assert minn["fixed"]["EX_pi_e"] == minn["fixed"]["EX_cbl1_e"] == 50
+    assert amn["features"] == [x for x in inputs if x in ev.AMN_CARBON_EXCHANGES + ["EX_o2_e"]]

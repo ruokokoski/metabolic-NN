@@ -471,3 +471,37 @@ The restored pFBA baseline was rerun successfully for all 29 conditions.
 Its original-style mean/SD reproduces the original saved baseline to six
 decimals: R2 0.892825/0.132254, MAE 0.495038/0.365933,
 RMSE 0.832498/0.633807, and NE 0.309400/0.373326.
+
+## AB-union alignment with corrected C evaluation (2026-09-17)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` now follows the corrected C
+notebook cell sequence and shared evaluation implementation. It retains
+`AB_1M_d256_h8_l4_ff1024`, the independent
+`iML1515_AB_union_test_data_50000_samples.csv`, explicit `AB_union` schema,
+and its own artifact directory. AMN retains generator-aligned basal 10,
+glycerol/amino acids 2.2 and absent cobalamin/glucose/ethanol zero; MINN
+retains basal 50 including its declared cobalamin input.
+
+AMN now uses checkpoint-order features, outer-fold best-checkpoint selection,
+no inner refit, no clipping, and training/validation batches 1/2, matching C.
+MINN uses the original-protocol trainer, CUDA AMP (CPU FP32), batches 2/5,
+one seed before measured-mode HPO, continued RNG state through predicted-mode
+HPO/LOO, and fresh pFBA model copies per condition. The final table includes
+the original per-condition Pearson-r-squared/MAE/RMSE/NE mean and population SD;
+pooled regression diagnostics remain separately labelled as in C.
+
+Both glycolysis post-layer t-SNE plots are present: reaction colors and
+nutrient-context rainbow, using 4,000 AB-union test contexts, perplexity 40,
+seed 10, original styles and recorded extraction settings. Old AB-union outputs
+are cleared because their training protocols differ. No C scores are copied.
+Full AB-union HPO/LOO results require rerunning; held-out epoch selection
+and global HPO retain the same interpretation limits as the reference C run.
+
+Verification: compared all 40 cells against C: 31 have identical source;
+the other nine contain reviewed model identity/path or media/provenance text
+changes. All executable cells match after normalizing only model-specific
+strings, enforced by a regression test. All 27 evaluator tests pass. Notebook
+schema and syntax pass. A clean-scope smoke execution loads the real AB
+checkpoint and CSV, verifies both media loaders, runs all three front-model
+forward paths, and renders both t-SNE PNGs with 16 contexts. Full HPO/LOO and
+the default 4,000-context t-SNE runs were not executed. C is unchanged.
