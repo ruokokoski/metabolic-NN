@@ -505,3 +505,19 @@ schema and syntax pass. A clean-scope smoke execution loads the real AB
 checkpoint and CSV, verifies both media loaders, runs all three front-model
 forward paths, and renders both t-SNE PNGs with 16 contexts. Full HPO/LOO and
 the default 4,000-context t-SNE runs were not executed. C is unchanged.
+
+## Model D notebook identity correction (2026-09-21)
+
+`ecoli_iML1515_D_model_testing.ipynb` now selects family D,
+`models/D_1M_d256_h8_l4_ff1024/D_1M_d256_h8_l4_ff1024_checkpoint.pth`,
+its matching training log, and `data/iML1515_D_test_data_50000_samples.csv`.
+Artifact paths and manifest code hashes identify D. Copied C-specific text,
+40-input claims and saved outputs are removed. D has 55 inputs; experimental
+AMN uses its A-regime basal 10 with absent cobalamin, while MINN uses B-regime
+basal 50 including cobalamin. Unused broad carbon channels are zero in these
+task evaluations. Training, metric formulas and t-SNE procedures are unchanged.
+
+Verified: real D checkpoint loads with 55 inputs and 2712 outputs; test CSV
+input/output order matches exactly. Full-vocabulary test inference and AMN,
+measured-MINN and predicted-MINN forwards are finite. Notebook JSON/schema,
+code syntax and stale-C-reference checks pass. Full evaluation was not rerun.
