@@ -521,3 +521,23 @@ Verified: real D checkpoint loads with 55 inputs and 2712 outputs; test CSV
 input/output order matches exactly. Full-vocabulary test inference and AMN,
 measured-MINN and predicted-MINN forwards are finite. Notebook JSON/schema,
 code syntax and stale-C-reference checks pass. Full evaluation was not rerun.
+
+## Model E notebook identity correction (2026-09-22)
+
+`ecoli_iML1515_E_model_testing.ipynb` selects family E,
+`models/E_1M_d256_h8_l4_ff1024/E_1M_d256_h8_l4_ff1024_checkpoint.pth`,
+its matching training log, and `data/iML1515_E_test_data_50000_samples.csv`.
+The biomass diagnostic and both t-SNE plots use that final test path. Artifact
+paths, manifest code hashes and descriptions now identify E; copied D outputs
+are cleared. E has 55 inputs. Its experimental AMN mapping uses basal inputs
+including CO2 and cobalamin at 50, fixed glycerol/amino acids at 2.2, and other
+unused channels at zero. MINN uses basal inputs including cobalamin at 50.
+These describe experimental task mappings, not D's A/B training regimes.
+Training, metrics and t-SNE procedures remain unchanged from the copied D notebook.
+
+Verified: notebook schema and code syntax; all 40 cells compared against D,
+with executable differences limited to model identity/path strings. The real
+E checkpoint loads with 55 inputs and 2712 outputs. AMN, measured-MINN and
+predicted-MINN prediction/context forwards are finite. The final E test CSV
+is still being generated, so its schema, simulated inference and t-SNE plots
+remain unverified. Full experimental evaluation was not rerun.
