@@ -380,3 +380,34 @@ Existing trained results remain in memory; rerunning these cells does not
 require a kernel restart or retraining. Metric formulas are unchanged.
 
 Model C combined evaluation (2026-09-14): `ecoli_iML1515_C_model_testing.ipynb` uses `iml1515_evaluation.py` with explicit C input schema and basal 50. The configured legacy 40-input checkpoint excludes cobalamin; it is not injected. Existing union defaults and training protocols are unchanged. See `iML1515_sampling_study_notes.md` for details.
+
+
+## Controlled AMN fructose/oxygen sweep (2026-09-24)
+
+`generate_AMN_sweep.py` is a standalone diagnostic-data generator for a future
+AMN embedding analysis. Defaults are a deterministic 100 x 100 Cartesian grid:
+fructose 0.05--2.2 and oxygen 1--10, with endpoints included and oxygen varying
+fastest. It preserves the current AMN generator's 38 ordered inputs, native
+2,712 reaction outputs, closed-medium reset and secretion bounds, basal uptake
+10, and fixed glycerol/four amino acids at 2.2. Other variable carbons and
+glucose have zero uptake. The default is FBA, matching the current AMN script;
+optional pFBA retains fraction_of_optimum=0.999. This does not change the
+sampling study's separate recommendation to use pFBA for new comparisons.
+
+The model CSV is `data/iML1515_AMN_sweep_10000_samples.csv`; metadata is
+`data/iML1515_AMN_sweep_10000_metadata.csv`. The notebook's current `load_data`
+requires only nutrient inputs before the first flux column and only flux
+columns thereafter, so metadata must remain separate. Metadata `sample_id`
+is the zero-based model row number for complete grids, with
+`sample_id = sweep_fructose_index * oxygen_levels + sweep_oxygen_index`.
+Any later row selection/reordering must apply the same indices to metadata.
+
+Only optimal finite solutions are retained. Failed points are reported with
+rates and grid indices; no replacements are sampled. Incomplete runs raise an
+error and retain explicitly named `.partial.csv` files rather than publishing
+a final dataset. Partial metadata retains original grid IDs despite missing
+rows. Existing outputs require `--overwrite-existing`.
+
+Validation: a 3 x 3 FBA smoke run produced nine optimal solutions with the
+expected schema. Full 10,000-point generation and notebook integration are
+not performed; the training generator and notebook remain unchanged.

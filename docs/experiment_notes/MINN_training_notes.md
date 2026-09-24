@@ -7,6 +7,50 @@ affects MINN behavior.
 
 Detailed guide for `ecoli_iML1515_MINN_model_testing.ipynb` and related MINN-style experiments.
 
+## Current MINN metric contract (2026-09-23)
+
+MINN method comparisons must use regression `R2`, calculated with
+`sklearn.metrics.r2_score(y_true, y_pred)` (1 - SSE/SST), not squared Pearson
+correlation. Tazza adopts the Goncalves metrics; the formula supplied from
+`docs/Goncalves2023.pdf` specifies regression R2. For the Table 4-style pFBA
+comparison, calculate R2 across the 47 mapped fluxes within each held-out
+condition, then report mean and population SD (`ddof=0`) across the 29
+conditions. Preserve negative scores. Undefined constant-truth cases must
+remain explicit (`force_finite=False`); report any excluded/failed conditions.
+Pooled regression R2 is a separate diagnostic, not a replacement for this
+per-condition aggregation. Pearson r squared may be reported only under its
+own explicit label. MAE, RMSE, NE and the pFBA constraints remain unchanged.
+
+This requirement applies to every MINN evaluation of sample spaces A, B,
+A-union-B, C, D and E, including the standalone MINN notebook and shared
+MINN/AMN trial. It supersedes historical instructions below that preserve
+Pearson r squared as Table 4 R2. Old Pearson-labelled-as-R2 results are
+historical correlation results and must not be interpreted as regression R2.
+
+Implementation scope in this change: only
+`ecoli_iML1515_MINN_model_testing.ipynb` is corrected. Both pFBA metric
+implementations now use `r2_score(..., force_finite=False)`. Its context-mode
+comparison cell can re-score cached pFBA predictions without retraining.
+The shared evaluator and AB/C/D/E/shared-trial notebooks still need their
+legacy summary corrected in a subsequent change; their old tables do not
+yet satisfy this contract.
+
+The baseline was recomputed on all 29 conditions and 47 fluxes:
+regression R2 **0.658478 +/- 1.189478**, MAE 0.495038 +/- 0.365933,
+RMSE 0.832498 +/- 0.633807, NE 0.309400 +/- 0.373326. The old baseline
+0.892825 +/- 0.132254 was Pearson r squared. Full predictions for the two
+standalone reservoir variants were unavailable; the user will rerun training
+and evaluation. No new measured/predicted reservoir scores are claimed.
+
+The standalone biomass diagnostic now selects
+`BIOMASS_Ec_iML1515_core_75p37M_flux`; its pFBA objective already used core.
+`PLOT_ALL_46_FLUX_DIAGNOSTICS = False`. The removed trainer helper
+`prepare_tensors` is replaced locally by the same 80/20 split (`random_state=42`)
+and float32 tensor conversion so imports work with the current trainer.
+Stale affected outputs are cleared; the freshly recomputed baseline is saved.
+Two targeted tests cover regression versus correlation (including negative
+scores), constant predictions and experiment-aligned cached rescoring.
+
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.

@@ -231,6 +231,23 @@ Report R2, MAE, RMSE, normalized error, feasibility counts, and per-sample
 constraint-binding diagnostics. Keep predicted context values distinct from
 hard pFBA bounds.
 
+**Metric correction, 2026-09-23:** all MINN comparisons of sample spaces A,
+B, A-union-B, C, D and E must use regression R2 (`sklearn.metrics.r2_score`,
+1 - SSE/SST), preserving negative scores. For Table 4-style baseline pFBA
+versus measured/predicted-context reservoir plus CO2/ethanol/acetate caps,
+compute across the 47 mapped fluxes per held-out condition, then report mean
+and population SD across the 29 conditions. Pooled regression R2 is additional
+and must be labelled separately. Squared Pearson correlation is not Table 4
+regression R2 and must not be labelled R2 in these comparisons. Undefined
+scores and failed conditions require explicit coverage reporting.
+
+This supersedes the historical Pearson-based Table 4 conventions recorded
+later in this note. The standalone `ecoli_iML1515_MINN_model_testing.ipynb`
+is corrected first; the shared evaluator and AB/C/D/E/shared-trial legacy
+summaries remain pending, not corrected by this documentation change.
+See `MINN_training_notes.md` for the verified regression baseline and exact
+implementation scope. The user will rerun the standalone reservoir variants.
+
 ## Required Comparisons
 
 The final result matrix should contain every available model on both tasks:
@@ -541,3 +558,15 @@ E checkpoint loads with 55 inputs and 2712 outputs. AMN, measured-MINN and
 predicted-MINN prediction/context forwards are finite. The final E test CSV
 is still being generated, so its schema, simulated inference and t-SNE plots
 remain unverified. Full experimental evaluation was not rerun.
+
+
+## AMN controlled diagnostic sweep (2026-09-24)
+
+`generate_AMN_sweep.py` adds a standalone 100 x 100 fructose/oxygen grid
+using the current A/AMN medium and exact 38-input/2,712-output schema.
+It defaults to FBA as the authoritative AMN generator does; the study's
+pFBA comparison policy is unchanged. This is diagnostic data, not a change
+to pretraining. Separate metadata preserves grid coordinates without
+changing model tokens. A 3 x 3 smoke run is optimal throughout; the full
+grid and embedding analysis remain pending. See `AMN_experiment_notes.md`
+for the complete sweep and failure-handling contract.

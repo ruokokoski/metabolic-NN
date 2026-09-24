@@ -149,6 +149,18 @@ The saved TabPFN comparison is independent of this fixed-medium conversion.
 
 ## MINN Branch: Current Snapshot
 
+**Metric correction required (2026-09-23):** MINN comparisons across sample
+spaces A through E (including A-union-B and this shared trial) must use
+regression `r2_score` (1 - SSE/SST), following the Goncalves formula adopted
+by Tazza. Table 4 summaries require R2 across 47 fluxes per condition, then
+mean and population SD across 29 conditions; pooled R2 is a separate result.
+The historical R2 values in this snapshot and later Pearson-based summaries
+are squared correlations, not regression R2. Those conventions are superseded.
+The standalone MINN notebook is corrected first; shared-trial and AB/C/D/E
+legacy summaries still require implementation changes and recomputation.
+The recomputed standalone pFBA baseline regression R2 is
+0.658478 +/- 1.189478; see `MINN_training_notes.md` for validation and scope.
+
 The MINN shared-reservoir notebook uses the restored `6b1e3bf` workflow: a
 one-hidden-layer width-512 ReLU front MLP, raw Huber loss, full-vocabulary frozen
 reservoir forward, `minn_fitted` targets, and `co2_etoh_ac_cap` downstream pFBA.
