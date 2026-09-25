@@ -228,7 +228,8 @@ per-flux normalized-loss pipeline is retained only in Git history.
   - all fluxomics columns except the two fixed uptake fluxes
   - expected shape: 45 target fluxes over 29 samples
 - Table 2 notebook rows include:
-  - TabPFN ML-to-flux benchmark
+  - TabPFN ML-to-flux benchmark (separate from the standalone AMN notebook,
+    which now explicitly selects TabPFN-3.5; this MINN notebook is unchanged)
   - Goncalves-style pFBA baseline recomputed with `models/iML1515.xml`
   - MLP + frozen FluxTransformer ML-to-flux benchmark
   - final Table 2-style comparison against published Tazza rows

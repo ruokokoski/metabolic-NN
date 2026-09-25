@@ -216,7 +216,9 @@ Use the maintained AMN pipeline and the 110 Faure experimental media. Freeze
 each pretrained FluxTransformer and train the same front model under identical
 cross-validation splits and tuning rules. Report pooled out-of-fold R2, MAE,
 and RMSE with repeat variability. Keep the TabPFN and other retained baselines
-fixed across model comparisons.
+fixed across model comparisons. The standalone AMN notebook now explicitly
+selects TabPFN-3.5 for future baseline runs. Historical scores are not 3.5
+results; rerun before using the updated baseline in model comparisons.
 
 ### MINN missing-flux prediction
 
@@ -570,3 +572,9 @@ to pretraining. Separate metadata preserves grid coordinates without
 changing model tokens. A 3 x 3 smoke run is optimal throughout; the full
 grid and embedding analysis remain pending. See `AMN_experiment_notes.md`
 for the complete sweep and failure-handling contract.
+
+AMN visualization update (2026-09-25): glycolysis and PPP now also provide
+a separate joint embedding of the 10,000-condition sweep with 10,000 seeded
+random independent AMN test conditions. The original sweep-only figures remain
+unchanged. This is qualitative context coverage, not a new predictive score;
+see `AMN_experiment_notes.md` for sampling and plotting provenance.

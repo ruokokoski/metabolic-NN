@@ -291,7 +291,12 @@ Current prior-network out-of-fold summary:
 - Pooled OOF `MAE`: about `0.0235`.
 - Pooled OOF `RMSE`: about `0.0294`.
 
-Current TabPFN baseline:
+Future runs of `ecoli_iML1515_AMN_model_testing.ipynb` explicitly use
+TabPFN-3.5 (`ModelVersion.V3_5`) for main CV, repeated CV, and uncertainty
+experiments. Package version and checkpoint are printed; existing features,
+splits and seeds are retained. No 3.5 evaluation has been run for this update.
+
+Historical TabPFN baseline (predates the 3.5 switch):
 
 - Pooled OOF `R2`: about `0.807`.
 - Pooled OOF `MAE`: about `0.0297`.
@@ -411,3 +416,49 @@ rows. Existing outputs require `--overwrite-existing`.
 Validation: a 3 x 3 FBA smoke run produced nine optimal solutions with the
 expected schema. Full 10,000-point generation and notebook integration are
 not performed; the training generator and notebook remain unchanged.
+
+
+Glycolysis t-SNE display update: a second plot immediately follows the existing
+glycolysis plot, using the existing helper's `sample_color_mode="rainbow"`
+(as in TCA). It retains 4,000 contexts and perplexity 40, and saves separately
+with suffix `_tsne_glycolysis_reactions_rainbow`. Rainbow colors encode the
+helper's nutrient-context ordering; reaction identity remains in center markers
+and labels. Plot generation was not rerun for this addition.
+
+PPP sweep visualization: a dedicated execution cell follows the glycolysis
+sweep and calls `plot_AMN_sweep_tsne` with `ppp_reactions`, perplexity 40 and
+seed 10. It uses all sweep contexts, produces the two single-variable panels
+then the joint bivariate figure from one fit, and retains its result as
+`sweep_ppp_tsne_result`. Pathway-specific filenames preserve glycolysis plots.
+The full PPP sweep t-SNE was not run for this addition.
+
+Joint sweep styling now uses light gray `#D9D9D9`, high-fructose orange
+`#E69F00`, high-oxygen blue `#0072B2`, and high-both dark purple `#542788`.
+The cloud and square legend share the same bilinear mapping. Joint-figure
+point alpha is 0.90 and reaction centers are white with black edges; the
+single-variable panels retain their existing colors, opacity and markers.
+Existing saved figures require rerunning the plotting cells to adopt this style.
+
+
+## Sweep plus random test contexts (2026-09-25)
+
+Each glycolysis/PPP sweep joint figure is followed by a separate combined
+t-SNE figure. It fits all 10,000 sweep contexts plus the same 10,000 independent
+AMN test CSV rows, chosen without replacement from the full 50,000-row file
+with NumPy seed 10. Input/output schemas are checked against the checkpoint;
+inputs use the same nutrient-token injection as `load_data`. Existing figures
+and their fits are unchanged. Combined fits use openTSNE FFT, PCA initialization,
+perplexity 40 and seed 10. Coordinates differ from sweep-only fits and should
+be interpreted within each combined figure.
+
+Random points are light green `#B8D8A8`, alpha 0.20, and drawn behind the
+bivariate sweep points (alpha 0.90). White reaction centers use sweep points
+only in the combined embedding. Filenames end in `_with_random_bivariate.png`.
+Results retain dataset labels, original source-row IDs, reaction labels and
+coordinates as `sweep_random_glycolysis_result` and `sweep_random_ppp_result`.
+Nutrient-color arrays apply only to the returned `sweep_mask`.
+Full 20,000-context fits were not run during implementation.
+
+The redundant single-run TabPFN OOF plotting cell and its saved notebook
+output were removed. The repeated-CV plot remains; training, metric
+calculations and epoch-selection behavior are unchanged by this removal.

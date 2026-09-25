@@ -146,6 +146,8 @@ The notebook code was corrected on 2026-08-14 and its setup output was cleared.
 The experimental reservoir section through its prior-net comparison must be
 rerun before retaining a replacement shared-reservoir result.
 The saved TabPFN comparison is independent of this fixed-medium conversion.
+The standalone AMN notebook now selects TabPFN-3.5 for future runs; this
+historical shared-trial comparison is unchanged and is not a 3.5 result.
 
 ## MINN Branch: Current Snapshot
 
