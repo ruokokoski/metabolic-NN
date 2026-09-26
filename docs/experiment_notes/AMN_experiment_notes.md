@@ -432,8 +432,8 @@ then the joint bivariate figure from one fit, and retains its result as
 `sweep_ppp_tsne_result`. Pathway-specific filenames preserve glycolysis plots.
 The full PPP sweep t-SNE was not run for this addition.
 
-Joint sweep styling now uses light gray `#D9D9D9`, high-fructose orange
-`#E69F00`, high-oxygen blue `#0072B2`, and high-both dark purple `#542788`.
+Joint sweep styling uses light gray `#F0F0F0`, high-fructose red
+`#D73027`, high-oxygen blue `#0072B2`, and high-both yellow-green `#A6CE39`.
 The cloud and square legend share the same bilinear mapping. Joint-figure
 point alpha is 0.90 and reaction centers are white with black edges; the
 single-variable panels retain their existing colors, opacity and markers.
@@ -451,7 +451,7 @@ and their fits are unchanged. Combined fits use openTSNE FFT, PCA initialization
 perplexity 40 and seed 10. Coordinates differ from sweep-only fits and should
 be interpreted within each combined figure.
 
-Random points are light green `#B8D8A8`, alpha 0.20, and drawn behind the
+Random points are darker peach-yellow `#D9AA73`, alpha 0.20, and drawn behind the
 bivariate sweep points (alpha 0.90). White reaction centers use sweep points
 only in the combined embedding. Filenames end in `_with_random_bivariate.png`.
 Results retain dataset labels, original source-row IDs, reaction labels and
@@ -462,3 +462,41 @@ Full 20,000-context fits were not run during implementation.
 The redundant single-run TabPFN OOF plotting cell and its saved notebook
 output were removed. The repeated-CV plot remains; training, metric
 calculations and epoch-selection behavior are unchanged by this removal.
+
+
+## Combined t-SNE density revision (2026-09-25)
+
+Supersedes the combined-fit settings above: use 1,000 sweep contexts selected
+as 25 evenly spaced fructose indices x 40 evenly spaced oxygen indices from
+the validated 100 x 100 grid, including both endpoints on both axes. Preserve
+original sweep sample IDs and align colors by selected row order. Both pathways
+reuse this subset and the same 10,000 random test rows. Combined perplexity is
+80, seed 10, with PCA initialization and FFT; fits contain 154,000 glycolysis
+points or 88,000 PPP points. Sweep/random marker sizes are 8/3 and opacity
+0.85/0.20; all random reactions retain one peach-yellow color.
+
+Other AMN t-SNE point markers are size 5; reaction centers and labels retain
+their sizes. Sweep-only fits retain all 10,000 contexts and perplexity 40.
+Stale t-SNE notebook outputs were cleared. Execution replaces the same PNG
+filenames rather than creating an additional comparison variant. Existing PNGs
+on disk are not regenerated until the plotting cells run.
+
+Verified the 1,000 unique grid selections, full ranges and all four corners,
+original sample IDs, nutrient-color alignment, and both combined calls with
+mocked inference/t-SNE. Syntax and diff checks passed; full fits were not run.
+
+
+## Fructose-only sweep with random contexts
+
+After each glycolysis/PPP combined plot, an additional fit uses the 100
+fructose levels at oxygen uptake 10 from the full sweep, plus the same 10,000
+random AMN test conditions. Original sweep IDs (99, 199, ..., 9999) are
+preserved. Only the sweep oxygen is fixed; random conditions retain their
+original nutrient values. Perplexity 80, seed 10, point styling and inference
+logic match the combined experiment. Sweep colors use the high-oxygen edge
+of the existing palette with a one-dimensional fructose colorbar. Outputs
+end in `_oxygen10_with_random.png`; separate result dictionaries end in
+`_oxygen10_result`. Previous figures remain unchanged.
+
+Validated the 100 full-range levels, original IDs, color mapping and both
+plotting paths with mocked inference/t-SNE. Full fits were not run.

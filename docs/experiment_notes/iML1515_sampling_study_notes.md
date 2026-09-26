@@ -578,3 +578,13 @@ a separate joint embedding of the 10,000-condition sweep with 10,000 seeded
 random independent AMN test conditions. The original sweep-only figures remain
 unchanged. This is qualitative context coverage, not a new predictive score;
 see `AMN_experiment_notes.md` for sampling and plotting provenance.
+
+Combined AMN visualization settings now use a full-range 25 x 40 sweep
+subset (1,000 conditions) plus the same 10,000 random test contexts, with
+perplexity 80 and smaller points. This supersedes the earlier equal-sized
+combined fit; sweep-only data and predictive evaluation remain unchanged.
+
+The standalone AMN notebook also adds a fructose-only diagnostic slice:
+100 sweep conditions at oxygen uptake 10 plus the same 10,000 random test
+conditions, separately for glycolysis and PPP. These are additional
+qualitative plots; no pretraining or predictive metrics change.
