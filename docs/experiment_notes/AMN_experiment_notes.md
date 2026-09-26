@@ -472,11 +472,13 @@ the validated 100 x 100 grid, including both endpoints on both axes. Preserve
 original sweep sample IDs and align colors by selected row order. Both pathways
 reuse this subset and the same 10,000 random test rows. Combined perplexity is
 80, seed 10, with PCA initialization and FFT; fits contain 154,000 glycolysis
-points or 88,000 PPP points. Sweep/random marker sizes are 8/3 and opacity
+points or 88,000 PPP points. Sweep/random marker sizes are 10/3 and opacity
 0.85/0.20; all random reactions retain one peach-yellow color.
 
-Other AMN t-SNE point markers are size 5; reaction centers and labels retain
-their sizes. Sweep-only fits retain all 10,000 contexts and perplexity 40.
+Sweep-only point markers are size 4. Normal reaction-subset plots retain their
+original marker sizes (10 generally, 30 for up to 20 reactions, and 36 for up
+to 10 reactions); reaction centers and labels retain their sizes. Sweep-only
+fits retain all 10,000 contexts and perplexity 40.
 Stale t-SNE notebook outputs were cleared. Execution replaces the same PNG
 filenames rather than creating an additional comparison variant. Existing PNGs
 on disk are not regenerated until the plotting cells run.
@@ -500,3 +502,7 @@ end in `_oxygen10_with_random.png`; separate result dictionaries end in
 
 Validated the 100 full-range levels, original IDs, color mapping and both
 plotting paths with mocked inference/t-SNE. Full fits were not run.
+
+Joint sweep legend axes use Fructose and Oxygen (units retained), with
+17-point labels and 19-point legend titles in sweep-only and combined plots.
+The fixed-oxygen combined legend uses Fructose uptake with a 17-point label.
