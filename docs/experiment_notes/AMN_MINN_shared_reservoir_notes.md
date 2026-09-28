@@ -156,6 +156,11 @@ spaces A through E (including A-union-B and this shared trial) must use
 regression `r2_score` (1 - SSE/SST), following the Goncalves formula adopted
 by Tazza. Table 4 summaries require R2 across 47 fluxes per condition, then
 mean and population SD across 29 conditions; pooled R2 is a separate result.
+The papers' wording and released code differ: Goncalves Section 2.5,
+Equation 4 defines `1 - SSE/SST`, and Tazza Section 2.4 says it uses the same
+metrics, while both `omics2flux` and `MINN` compute `linregress(...).r**2`.
+See `MINN_training_notes.md` for the PDF pages, code paths, fitted-file check,
+and numerical comparison. Do not infer a Pearson definition from the papers.
 The historical R2 values in this snapshot and later Pearson-based summaries
 are squared correlations, not regression R2. Those conventions are superseded.
 The standalone MINN notebook is corrected first; shared-trial and AB/C/D/E

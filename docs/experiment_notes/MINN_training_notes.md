@@ -21,6 +21,23 @@ Pooled regression R2 is a separate diagnostic, not a replacement for this
 per-condition aggregation. Pearson r squared may be reported only under its
 own explicit label. MAE, RMSE, NE and the pFBA constraints remain unchanged.
 
+**Paper versus released-code discrepancy (checked 2026-09-27):** Goncalves et
+al., Section 2.5, Equation 4 (`docs/Goncalves2023.pdf`, PDF p. 3), explicitly
+define R2 as `1 - SSE/SST`. Tazza et al., Section 2.4
+(`docs/tazza-minn.pdf`, PDF p. 5), say they use the same metrics and call R2 a
+regression coefficient; they do not define it as squared Pearson correlation.
+However, `omics2flux/utils.py:r2_metric` and `MINN/src/utils/plots.py:r2_metric`
+both return `linregress(y_true, y_pred).r**2` per condition. Thus the papers'
+stated definition and the released implementations disagree. For the saved
+29-condition iML1515 baseline predictions against the original MINN-fitted
+47-flux targets, mean regression R2 is 0.658478 +/- 1.189478, while mean
+squared Pearson correlation is 0.892825 +/- 0.132254. The published Tazza
+Table 4 pFBA/MINN-reservoir values (0.892/0.910) should be treated as
+historical paper-reported R2; numerical proximity to the code's Pearson
+metric does not by itself establish how every published result was calculated.
+The active `minn_fitted` file is byte-identical to MINN's Table 4 fitted file;
+the iML1515 pFBA model still differs from MINN's reduced iAF1260 model.
+
 This requirement applies to every MINN evaluation of sample spaces A, B,
 A-union-B, C, D and E, including the standalone MINN notebook and shared
 MINN/AMN trial. It supersedes historical instructions below that preserve
@@ -47,7 +64,7 @@ The standalone biomass diagnostic now selects
 `PLOT_ALL_46_FLUX_DIAGNOSTICS = False`. The removed trainer helper
 `prepare_tensors` is replaced locally by the same 80/20 split (`random_state=42`)
 and float32 tensor conversion so imports work with the current trainer.
-Stale affected outputs are cleared; the freshly recomputed baseline is saved.
+Stale affected outputs are cleared; the baseline was recomputed separately.
 Two targeted tests cover regression versus correlation (including negative
 scores), constant predictions and experiment-aligned cached rescoring.
 
@@ -63,7 +80,7 @@ scores), constant predictions and experiment-aligned cached rescoring.
   - zeros for other channels
 - Run transformer forward with full vocab output.
 - For FluxTransformer->pFBA, keep glucose/oxygen as measured inputs. Downstream extra constraints are selected by `MINN_PFBA_EXTRA_CONSTRAINT_MODE`; the reservoir training/FluxTransformer input context still includes CO2 regardless of mode.
-- `etoh_ac_cap` means CO2 remains a predicted FluxTransformer context/input channel, but its pFBA upper cap is not applied. Only ethanol and acetate are constrained downstream.
+- The standalone notebook comparison uses all three predicted CO2, ethanol, and acetate secretion caps.
 
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_MINN_data.py`.
@@ -96,9 +113,75 @@ scores), constant predictions and experiment-aligned cached rescoring.
   - `R_EX_ac_e`
 - The first two channels are measured/copied by default; only CO2, ethanol, and acetate are predicted by the front MLP unless `MINN_GLC_O2_CONTEXT_MODE="predicted"`.
 - Transformer-output training targets exclude these 5 context columns by default (`MINN_FLUX_TARGET_EXCLUDE_CONTEXT=True`) so context/cap outputs are latent controls, not exact exchange-flux regressions.
-- Downstream pFBA extra-constraint modes:
-  - `etoh_ac_cap`: predicted `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps; CO2 remains in the reservoir input but is unconstrained in pFBA
-  - `co2_etoh_ac_cap`: predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, `R_EX_ac_e` as secretion upper caps
+- Downstream pFBA extra-constraint mode: `co2_etoh_ac_cap` applies predicted `R_EX_co2_e_fwd`, `R_EX_etoh_e`, and `R_EX_ac_e` as secretion upper caps.
+
+## Standalone dual-fit pFBA comparison (2026-09-27)
+
+`ecoli_iML1515_MINN_model_testing.ipynb` now keeps the original MINN-fitted
+file as the main target/input file. Its final table contains pFBA, measured
+context FT+pFBA with three caps, and predicted context FT+pFBA with three
+caps. The ethanol/acetate-only runs are removed. Each row reports mean and
+population SD across successful conditions for regression R2 and squared
+Pearson r, with distinct labels and successful-condition coverage.
+
+A separate iML1515-fitted sensitivity test uses
+`fluxomics_iML1515_minn_like_fit.csv` for both measured uptake inputs and
+47-flux targets. It recomputes pFBA and retrains the measured-context front
+MLP with the same HPO/LOO protocol before its three-cap FT+pFBA evaluation.
+The final five-row table is the last cell. A direct run of the notebook's
+baseline helper solved all 29 conditions for each fitted file. On the
+iML1515 fit, mean regression R2 is 0.916927 +/- 0.067616 and mean squared
+Pearson r is 0.925047 +/- 0.060296. On the original MINN fit, the same
+check reproduces 0.658478 +/- 1.189478 and 0.892825 +/- 0.132254.
+The expensive front-MLP runs have not been rerun, so no new FT+pFBA scores
+are claimed. The iML1515-fit scores measure agreement with different fitted
+targets and are not a direct Table 4 reproduction.
+
+### Why the two fitted-file baselines differ (checked 2026-09-27)
+
+The raw split file and both fitted files have the same 29 experiments and 47
+flux columns in the same order. The original fitted CSV is byte-identical to
+`MINN/data/ishii_data/fluxomics_iAF1260_reduced_split_fit.csv`; no local copy
+or row-alignment error was found. Re-solving `WT_0.1h-1` with the local
+iML1515 fitter reproduces its saved row within 1.8e-6. Tazza Section 2.1
+(`docs/tazza-minn.pdf`, PDF p. 2) describes its FBA-fit data as a minimum
+Euclidean-distance projection. The original fitting implementation is absent
+here. `scripts/fit_minn_fluxomics_minn_like.py` instead minimizes **weighted
+absolute deviation** (L1), with biomass fixed and glucose/O2, other exchange,
+and internal weights 1000, 100, and 1. The two fits therefore do not use the
+same known objective or GEM.
+
+`WT_0.1h-1` explains 87.8% of the 0.258449 gap between mean per-condition
+regression R2 values. Its original-fit R2 is -5.608750 (SSE 550.994 versus
+SST 83.373); its iML1515-fit R2 is 0.970738. Omitting this condition gives
+0.882308 for the original fit and 0.915005 for the iML1515 fit. The next
+weakest original-fit condition is `fbaB` at R2 0.430072; its iML1515-fit R2
+is 0.973802. All 29 conditions solve in both baseline runs.
+
+For `WT_0.1h-1`, raw glucose/O2 uptake magnitudes are 1.34/2.20. The
+original fit moves them to 5.8620/6.8486, whereas the iML1515 fit moves
+them to 2.0280/3.1644; both fitted biomass targets remain 0.1000. The
+notebook treats uptake values as *caps* and maximizes iML1515 biomass before
+pFBA. It consequently predicts biomass 0.320904 and substantially excessive
+glycolysis/acetate fluxes against the original fit, but biomass 0.100000 and
+closely matched fluxes against the iML1515 fit. On this condition, fixing
+biomass to 0.1000 while retaining original fitted uptake caps improves R2 to
+0.4173; also fixing uptake fluxes gives 0.5698. Thus the mismatch includes
+the biomass objective and remaining flux-solution differences. The included
+reduced iAF1260 model also scores poorly (-5.3490) under the same simplified
+uptake-cap/biomass-maximization setup, so switching GEM alone does not resolve
+this example. That counterfactual is not a reproduction of MINN's full
+published evaluation protocol.
+
+The higher iML1515-fit R2 does **not** mean that fit is closer to the raw
+measurements: across all 29 x 47 entries its mean absolute raw-to-fit change
+is 0.4623, versus 0.2134 for the original MINN fit. The comparison changes
+both pFBA uptake inputs and evaluation targets, while fitting and evaluation
+use the same iML1515 GEM. The original file is an authentic upstream result;
+the local evidence does not identify a typo or explain why its source fitting
+procedure selected the high `WT_0.1h-1` glucose uptake. This is a protocol
+and target-compatibility issue, not evidence that 0.916927 reproduces Tazza's
+original benchmark.
 
 ## 3) Mapping/sign conventions (critical)
 - Keep explicit source->token mapping and signs consistent with generation scripts.
@@ -195,7 +278,7 @@ per-flux normalized-loss pipeline is retained only in Git history.
   - `pfba_cap_binding_diagnostics_df`
   - `pfba_cap_binding_sample_summary_df`
   - `pfba_cap_binding_result_summary_df`
-  - final comparison aggregates `MINN_CAP_BINDING_DIAGNOSTICS_DF`, `MINN_CAP_BINDING_SAMPLE_SUMMARY_DF`, and `MINN_CAP_BINDING_RESULT_SUMMARY_DF`
+  - the diagnostic section aggregates `MINN_CAP_BINDING_DIAGNOSTICS_DF`, `MINN_CAP_BINDING_SAMPLE_SUMMARY_DF`, and `MINN_CAP_BINDING_RESULT_SUMMARY_DF`
 - Epoch diagnostics:
   - per-LOO `epochs_trained`
   - summary of mean/min/max trained epochs
@@ -212,8 +295,8 @@ per-flux normalized-loss pipeline is retained only in Git history.
 - `MINN_PFBA_EXTRA_CONSTRAINT_MODE="co2_etoh_ac_cap"` applies predicted CO2, ethanol, and acetate as nonnegative secretion upper caps. This is the only active cap set in the AMN-trial notebook.
 - Predicted nonnegative secretion caps use `lower_bound=max(0, min(current_lower_bound, prediction))` and `upper_bound=max(0, prediction)`.
 - Do not include cap-calibration trials in the final comparison by default; direct cap-MAE calibration can over-shrink upper caps, and the pFBA-tuned safety calibration selected identity scales in testing.
-- The final comparison cell should report baseline pFBA plus measured-context and predicted-context FluxTransformer-to-pFBA results using the same `co2_etoh_ac_cap` cap set.
-- Keep the per-sample cap-binding diagnostic cell after the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
+- The final comparison cell reports the three original MINN-fitted rows plus iML1515-fitted pFBA and measured-context FT+pFBA, all with the `co2_etoh_ac_cap` cap set where applicable.
+- Keep the per-sample cap-binding diagnostic cell before the final comparison. It separates bad cap prediction from pFBA overconstraint by checking whether each predicted secretion cap binds, whether it is below the fitted target (`binding_low_cap`), and whether the cap improves or worsens the fitted-target error versus baseline pFBA.
 - Verify feasibility counts and print failed samples for debugging.
 ## 8.1) Table 2 benchmark notebook
 - Table 2-style benchmarks are now in the separate notebook: `ecoli_iML1515_MINN_Table2.ipynb`.

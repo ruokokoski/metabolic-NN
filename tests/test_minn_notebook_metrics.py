@@ -18,14 +18,15 @@ class MinnNotebookMetricsTest(unittest.TestCase):
         for cell in cells:
             source = "".join(cell["source"])
             if not any(f"def {name}(" in source for name in
-                       ("_metric_row", "metric_row_fn", "_refresh_pfba_r2")):
+                       ("_pearson_r2", "_metric_row", "metric_row_fn", "_refresh_pfba_r2")):
                 continue
             for node in ast.walk(ast.parse(source)):
                 if isinstance(node, ast.FunctionDef) and node.name in (
-                    "_metric_row", "metric_row_fn", "_refresh_pfba_r2"
+                    "_pearson_r2", "_metric_row", "metric_row_fn", "_refresh_pfba_r2"
                 ):
                     namespace = dict(np=np, pd=pd, r2_score=r2_score,
-                                     mapped_metrics=[(c, c, 1) for c in ("a", "b", "c")])
+                                     mapped_metrics=[(c, c, 1) for c in ("a", "b", "c")],
+                                     _pearson_r2=cls.functions.get("_pearson_r2"))
                     exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), "exec"), namespace)
                     cls.functions[node.name] = namespace[node.name]
 
@@ -36,6 +37,8 @@ class MinnNotebookMetricsTest(unittest.TestCase):
                 self.assertEqual(self.functions[name](truth, prediction)[0],
                                  r2_score(truth, prediction, force_finite=False))
             self.assertLess(self.functions[name](truth, 2 * truth + 5)[0], 0)
+            self.assertAlmostEqual(self.functions[name](truth, 2 * truth + 5)[1], 1.0)
+            self.assertTrue(np.isnan(self.functions[name](truth, np.full(3, truth.mean()))[1]))
 
     def test_cached_rescoring_aligns_experiments_and_preserves_other_metrics(self):
         truth = pd.DataFrame({"experiment": ["x", "y"], "a": [1., 2.],
@@ -48,6 +51,8 @@ class MinnNotebookMetricsTest(unittest.TestCase):
         np.testing.assert_allclose(metrics.R2, [-0.5, 0.625])
         self.assertEqual(summary.loc["R2", "avg"], 0.0625)
         self.assertEqual(summary.loc["R2", "std"], 0.5625)
+        np.testing.assert_allclose(metrics.Pearson_r2, [1., 1.])
+        self.assertEqual(summary.loc["Pearson_r2", "avg"], 1.)
         np.testing.assert_array_equal(metrics.MAE, [1., 1.])
         np.testing.assert_array_equal(summary.loc["MAE"], [1., 0.])
 

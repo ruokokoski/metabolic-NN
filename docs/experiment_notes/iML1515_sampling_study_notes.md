@@ -243,12 +243,44 @@ and must be labelled separately. Squared Pearson correlation is not Table 4
 regression R2 and must not be labelled R2 in these comparisons. Undefined
 scores and failed conditions require explicit coverage reporting.
 
+This metric contract follows Goncalves Section 2.5, Equation 4 and Tazza's
+Section 2.4 statement that it uses the same metrics. Their released
+`omics2flux` and `MINN` code instead computes squared Pearson correlation
+with `linregress(...).r**2`; the papers do not state that definition. See
+`MINN_training_notes.md` for the source pages, fitted-file verification, and
+the 0.658478 regression versus 0.892825 squared-Pearson baseline comparison.
+
 This supersedes the historical Pearson-based Table 4 conventions recorded
 later in this note. The standalone `ecoli_iML1515_MINN_model_testing.ipynb`
 is corrected first; the shared evaluator and AB/C/D/E/shared-trial legacy
 summaries remain pending, not corrected by this documentation change.
 See `MINN_training_notes.md` for the verified regression baseline and exact
 implementation scope. The user will rerun the standalone reservoir variants.
+
+**Standalone B evaluation update, 2026-09-27:**
+`ecoli_iML1515_MINN_model_testing.ipynb` now prepares a five-row pFBA
+comparison. The original MINN-fitted file supplies targets and measured
+glucose/oxygen inputs for pFBA and measured/predicted-context FT+pFBA with
+CO2, ethanol, and acetate caps. A separate iML1515-fitted file supplies
+targets and inputs for pFBA and a newly trained measured-context FT+pFBA
+run with the same three caps. The final table reports per-condition mean
+and population SD for regression R2 and squared Pearson r under separate
+labels, plus solver coverage. Ethanol/acetate-only evaluations are removed.
+The new front-MLP training and full comparison have not been executed; no
+new reservoir scores are available.
+
+The baseline fitted-file gap is dominated by `WT_0.1h-1`: original MINN-fit
+R2 -5.608750 versus iML1515-fit R2 0.970738. It accounts for 87.8% of the
+0.258449 mean R2 difference; excluding it leaves means 0.882308 and
+0.915005. The original fitted file matches the upstream MINN copy exactly,
+while the iML1515 row reproduces from the local fitter. Tazza describes a
+Euclidean FBA fit, whereas the local iML1515 fitter uses weighted L1 deviation.
+The original fit gives this low-growth condition glucose uptake 5.862 versus
+1.34 raw and 2.028 iML1515-fitted; pFBA with uptake caps then maximizes
+biomass to 0.320904 against a 0.1000 target. This is a target/constraint
+compatibility sensitivity, not evidence of a CSV copy error or a corrected
+Tazza score. See `MINN_training_notes.md` for the per-sample and counterfactual
+solver checks.
 
 ## Required Comparisons
 
