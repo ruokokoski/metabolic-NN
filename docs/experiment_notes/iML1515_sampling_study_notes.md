@@ -282,6 +282,24 @@ compatibility sensitivity, not evidence of a CSV copy error or a corrected
 Tazza score. See `MINN_training_notes.md` for the per-sample and counterfactual
 solver checks.
 
+### Full-output checkpoint metrics in combined notebooks (2026-09-28)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` and the C, D, and E model-testing
+notebooks now compute overall regression R2, MAE, and RMSE on their own
+independent 50,000-row simulated test CSVs, immediately after the biomass
+diagnostic plots. Each metric pools all rows and all 2,712 output fluxes, as
+in the standalone AMN notebook. The new cells stream batches, verify exact
+checkpoint input/output order and training/test separation, use full-output
+inference, and restore the original device after any CPU fallback. These
+metrics describe simulated surrogate fidelity; they are separate from the
+experimental AMN/MINN results and from optional `RUN_SIMULATED` A/B
+domain-specific fidelity analysis, whose test paths remain unset.
+
+The four real checkpoints and corresponding CSV schemas were checked. A
+two-row smoke test for each model matched scikit-learn's flattened R2, MAE,
+and RMSE. The complete 50,000-row metric cells have not been executed, so no
+new full-test scores are claimed.
+
 ## Required Comparisons
 
 The final result matrix should contain every available model on both tasks:
