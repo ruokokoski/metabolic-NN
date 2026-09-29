@@ -555,8 +555,8 @@ AMN now uses checkpoint-order features, outer-fold best-checkpoint selection,
 no inner refit, no clipping, and training/validation batches 1/2, matching C.
 MINN uses the original-protocol trainer, CUDA AMP (CPU FP32), batches 2/5,
 one seed before measured-mode HPO, continued RNG state through predicted-mode
-HPO/LOO, and fresh pFBA model copies per condition. The final table includes
-the original per-condition Pearson-r-squared/MAE/RMSE/NE mean and population SD;
+HPO/LOO, and fresh pFBA model copies per condition. At this stage the final
+table included the original per-condition Pearson-r-squared/MAE/RMSE/NE mean and population SD;
 pooled regression diagnostics remain separately labelled as in C.
 
 Both glycolysis post-layer t-SNE plots are present: reaction colors and
@@ -574,6 +574,30 @@ schema and syntax pass. A clean-scope smoke execution loads the real AB
 checkpoint and CSV, verifies both media loaders, runs all three front-model
 forward paths, and renders both t-SNE PNGs with 16 contexts. Full HPO/LOO and
 the default 4,000-context t-SNE runs were not executed. C is unchanged.
+
+AB-union pFBA comparison update (2026-09-28): the notebook's last cell now
+reports five rows: original MINN fit pFBA, measured and predicted three-cap
+FT+pFBA; and iML1515 fit pFBA and measured three-cap FT+pFBA. The iML1515
+branch loads `fluxomics_iML1515_minn_like_fit.csv` as both uptake input and
+47-flux target, checks experiment and mapping order against the original file,
+and retrains its measured-context front MLP with the same HPO/LOO settings.
+The original file remains the primary target. For each method, regression R2,
+Pearson r2, MAE, RMSE and NE are computed across the 47 fluxes per successful
+condition, then summarized as mean and population SD (`ddof=0`). Negative
+regression R2 is retained; undefined R2/correlation and solver coverage are
+shown. The old Pearson-as-R2 per-condition table is removed; the separate
+pooled regression diagnostics remain. Both 29-condition pFBA baselines were
+recomputed and match the standalone MINN notebook's metric values. The full
+AB-union HPO/LOO run and new FT+pFBA scores remain unexecuted.
+
+The same dual-fit pFBA branch and five-row final table were added to the C,
+D and E evaluation notebooks on 2026-09-28. Each keeps its own checkpoint,
+model-family input contract and artifact directory; all use the original MINN
+fit for the three primary methods and retrain measured context on the
+iML1515 fit for the two sensitivity rows. Both fitted files align on 29
+experiments and 47 mapped pFBA fluxes for C's legacy 40-input checkpoint and
+the 55-input D/E checkpoints. Notebook schema and code syntax were checked;
+the expensive C/D/E HPO/LOO evaluations were left for future runs.
 
 ## Model D notebook identity correction (2026-09-21)
 

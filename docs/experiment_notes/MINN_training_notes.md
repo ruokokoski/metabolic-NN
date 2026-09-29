@@ -44,13 +44,15 @@ MINN/AMN trial. It supersedes historical instructions below that preserve
 Pearson r squared as Table 4 R2. Old Pearson-labelled-as-R2 results are
 historical correlation results and must not be interpreted as regression R2.
 
-Implementation scope in this change: only
-`ecoli_iML1515_MINN_model_testing.ipynb` is corrected. Both pFBA metric
-implementations now use `r2_score(..., force_finite=False)`. Its context-mode
+The initial 2026-09-23 correction covered only
+`ecoli_iML1515_MINN_model_testing.ipynb`. Both of that notebook's pFBA metric
+implementations use `r2_score(..., force_finite=False)`. Its context-mode
 comparison cell can re-score cached pFBA predictions without retraining.
-The shared evaluator and AB/C/D/E/shared-trial notebooks still need their
-legacy summary corrected in a subsequent change; their old tables do not
-yet satisfy this contract.
+The shared evaluator's `metrics` and `compare_pfba` paths calculate both
+metrics distinctly. The AB-union notebook's final pFBA table now uses those
+per-condition results and removes its legacy Pearson-as-R2 table. C/D/E now
+use the same corrected final table. Shared-trial notebooks still need their
+legacy summary corrected; their old tables do not yet satisfy this contract.
 
 The baseline was recomputed on all 29 conditions and 47 fluxes:
 regression R2 **0.658478 +/- 1.189478**, MAE 0.495038 +/- 0.365933,
@@ -136,6 +138,32 @@ check reproduces 0.658478 +/- 1.189478 and 0.892825 +/- 0.132254.
 The expensive front-MLP runs have not been rerun, so no new FT+pFBA scores
 are claimed. The iML1515-fit scores measure agreement with different fitted
 targets and are not a direct Table 4 reproduction.
+
+## AB-union/C/D/E dual-fit pFBA comparison (2026-09-28)
+
+`ecoli_iML1515_AB_union_model_testing.ipynb` now ends with the same five
+comparison methods as the standalone notebook: original-fit baseline,
+measured and predicted three-cap FT+pFBA; iML1515-fit baseline and measured
+three-cap FT+pFBA. The original target mode is required. The separate
+iML1515-fit branch checks experiment, feature, target, and mapping order,
+then retrains measured context using that file and the existing 50-trial HPO
+and 29-fold LOO protocol. The existing `ev.run_pfba` per-condition metrics
+provide regression R2, squared Pearson r, MAE, RMSE and NE over all 47 mapped
+fluxes; the final table reports mean and population SD over successful
+conditions plus defined R2/correlation counts. It verifies fitted-file truth
+and sample alignment before reporting. The old AB-union Pearson-as-R2
+summary is removed, while its separate pooled regression table remains.
+The full AB-union notebook has not been rerun; no new FT+pFBA scores are
+recorded here.
+
+The C, D and E evaluation notebooks now use the same five-row comparison,
+separate iML1515-fitted measured-context retraining, fitted-file provenance
+checks, per-condition metric aggregation and defined-score coverage as
+AB-union. They retain their own checkpoint and input schemas: the configured
+C checkpoint has 40 inputs, while D and E each have 55. Their original and
+iML1515-fitted files align on all 29 experiment IDs and 47 source mappings.
+Notebook structure and Python syntax pass; no C/D/E HPO, leave-one-out fit or
+new FT+pFBA score has been run for this change.
 
 ### Why the two fitted-file baselines differ (checked 2026-09-27)
 
