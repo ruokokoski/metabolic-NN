@@ -315,10 +315,67 @@ including cobalamin for A; B supplies its own cobalamin value. Full-output
 inference and all 50,000 rows per file preserve the in-distribution metric
 aggregation; the standalone notebooks' later 80/20 diagnostic split is not
 applied. Results and the missing-input lists are exported separately.
-This probes performance on the exact saved source datasets; differing
-generator solver or target policies can contribute to the observed shift.
-The full 50,000-row evaluations were not run. One real-checkpoint row from
-each of E, A and B passed source-to-token mapping and finite-metric checks.
+This probes performance on the exact saved source datasets. The completed
+50,000-row run in
+`pics/E_1M_d256_h8_l4_ff1024/E_evaluation/20261001T052716734294Z/overall_distribution_shift_metrics.csv`
+reports pooled regression R2 of `0.554681` for A and `0.665759` for B
+(MAE `0.135508`/`0.087076`, RMSE `0.697911`/`0.898517`). E's own test
+set reports R2 `0.998954`, MAE `0.003638`, RMSE `0.025395` in the saved
+notebook. An independent two-row check per dataset matched the notebook's
+input tensor against exchange-name mapping and its R2, MAE and RMSE against
+scikit-learn on the same full-output predictions. The saved A/B CSVs contain
+all 2,712 outputs in E's checkpoint order.
+
+E's larger input vocabulary does not make its general training distribution
+a superset of A and B media. A's 17 absent E inputs are closed by the A
+generator; zero-filling them preserves the source medium, including absent
+cobalamin. A fixes basal bounds at `10` (E uses `50`), uses CO2 as an uptake
+bound of `10` (E uses a secretion cap of `50`), and has fixed glycerol and
+four amino-acid uptake bounds of `2.2`. The first saved A target row matches
+ordinary FBA, whereas E's generator uses pFBA at `0.999` of optimum. B
+already supplies cobalamin at `50`; its 28 absent E organic inputs have no
+uptake under the iML1515 SBML defaults, so zero-filling is appropriate.
+Across all 50,000 B rows, `50.1%` of oxygen bounds exceed E's `10` maximum
+and `66.8%` of glucose bounds exceed E's `5` maximum. B samples CO2
+secretion caps from `0` to `15` (E fixes `50`), while positive ethanol and
+acetate values denote secretion caps in B but uptake bounds in E. These
+constraint and solver differences confound attribution of the score gap to
+nutrient coverage alone; the checks found no metric or input-order bug.
+
+### Planned distribution alignment for new models
+
+- Expand the next E general-distribution generator and training set so glucose
+  uptake covers B's `1`-to-`15` range and oxygen uptake covers B's `1`-to-`20`
+  range (current E maxima are `5` and `10`). Record the new sampling law and
+  generate a fresh independent test set before training and evaluating a new
+  E checkpoint. Extending these ranges alone will not reproduce B's CO2,
+  ethanol and acetate secretion-cap semantics.
+- Generate future AMN-style simulated data with pFBA at the shared `0.999`
+  fraction of optimum and harmonize fixed basal uptake bounds to `50`, as in
+  the B and E general regimes, instead of the current AMN defaults of FBA and
+  `10`. Specify CO2's bound direction separately when doing this: current A
+  permits CO2 uptake, whereas E's general regime caps CO2 secretion. Keep
+  today's A data and checkpoint labeled with their original policy; regenerate
+  data and retrain before reporting results under the aligned policy.
+
+The standalone AMN notebook now also tests its 38-input checkpoint against
+the complete B and E test CSVs with full-output pooled R2, MAE and RMSE.
+Input names and target order are checked against the source generators and
+checkpoint. All 27 B and 55 E source inputs map to reaction tokens in AMN's
+full 2,712-token vocabulary and are injected in full-output inference. Three
+B inputs (glucose, ethanol and cobalamin) and 17 E inputs fall outside AMN's
+38 declared training-input tokens. The notebook records these additional
+inputs, their activity, and trained inputs zero-filled when absent from the
+source. Scores will test extrapolation to unseen context positions as well as
+the source distributions' bound and solver shifts; results await the full run.
+
+The standalone AMN notebook also has a Faure Figure S9-style downstream test:
+retain validation-fold front-network `Vin`, feed those positive uptake caps to
+ordinary iML1515 FBA, and compare the resulting growth predictions with the
+frozen FluxTransformer's predictions on the same CV splits. The front model
+must be rerun to produce fold-level `Vin`; no full FBA result is reported yet.
+The existing three-repeat outer-fold epoch selection remains the comparison
+protocol and limits strict held-out interpretation.
 
 ## Required Comparisons
 
@@ -702,3 +759,18 @@ settings, E fixed rates, selected reactions and source paths are recorded
 in the run directory. The full grid input validation and checkpoint mapping
 passed; a 16-context real-checkpoint smoke run completed both pathways and
 both plot paths. Full 10,000-context t-SNE fits were left for the notebook run.
+
+## Standalone MINN A/E distribution-shift evaluation (2026-10-02)
+
+The MINN notebook now adds pooled overall regression R2, MAE and RMSE for the
+complete independent A and E test CSVs immediately after its in-distribution
+overall metrics. It validates the source headers and shared 2,712-output
+checkpoint order, then injects every source nutrient at the matching full
+reaction-vocabulary token. A has 38 source inputs (14 outside MINN's 27
+declared training inputs); E has 55 (28 outside). A omits MINN-trained
+glucose, ethanol and cobalamin, so those context slots are zero. The saved
+protocol records injected and additional inputs and their activity. These
+scores test cross-distribution full-context inference, including unseen
+input-token positions and distinct A/E FBA or pFBA target policies; they
+should not be interpreted as a controlled nutrient-range-only shift. The
+full 50,000-row runs are pending notebook execution.

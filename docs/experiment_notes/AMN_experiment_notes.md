@@ -506,3 +506,60 @@ plotting paths with mocked inference/t-SNE. Full fits were not run.
 Joint sweep legend axes use Fructose and Oxygen (units retained), with
 17-point labels and 19-point legend titles in sweep-only and combined plots.
 The fixed-oxygen combined legend uses Fructose uptake with a 17-point label.
+
+## Full-flux distribution-shift diagnostics
+
+`ecoli_iML1515_AMN_model_testing.ipynb` now scores the full independent
+50,000-row B (MINN Tazza) and E (general) test CSVs immediately after its
+in-distribution overall-metrics cell. It reports pooled regression R2, MAE
+and RMSE over all 2,712 checkpoint flux outputs, checks source generator
+input order and exact checkpoint output order, and saves the scores and input
+mapping protocol under `pic_dir`. No full test scores were computed during
+implementation.
+
+The AMN checkpoint has 38 declared training inputs, but all 27 B and 55 E
+source inputs have matching reaction tokens in its 2,712-token vocabulary.
+Under full-output inference, the model reads context values at every token,
+so the notebook injects every source value at its matching `*_flux` token.
+Three B inputs (glucose, ethanol and cobalamin) and 17 E inputs lie outside
+the declared training-input set. B omits 14 of AMN's trained inputs; their
+context values are zero. `input_token_indices` only guarantees that declared
+inputs remain present under subset inference. The additional tokens were
+never nonzero input features during AMN training, so their responses remain
+extrapolations. The protocol records per-input active-row counts. All 50,000
+B rows have positive glucose and cobalamin; all 50,000 E rows have positive
+cobalamin and 5,594 E rows have positive glucose. One-row real-checkpoint
+smoke tests for B and E verified every injected context position and matched
+independent scikit-learn R2, MAE and RMSE. On the B row, removing the three
+additional inputs changed the predictions, confirming that the former
+projection had discarded readable context. Full 50,000-row scores remain
+uncomputed.
+
+## Validation-fold Vin passed to ordinary FBA
+
+The AMN notebook now includes a Faure Supplementary Figure S9-style test just
+before its TabPFN section. The existing prior-network CV cell saves the full
+38-exchange `Vin` vector predicted by each selected fold model on its own
+validation rows, with the medium row and split seed. It retains the current
+three repeated stratified 10-fold splits; the full-data prior ensemble is not
+used for this comparison. Capturing `Vin` requires rerunning that CV training
+cell because earlier notebook executions retained growth predictions only.
+
+The new test loads `models/iML1515.xml`, maximizes
+`BIOMASS_Ec_iML1515_core_75p37M` with ordinary FBA, closes unselected uptake
+as the AMN generator does, and sets each predicted positive uptake cap as a
+negative exchange lower bound. It solves each of the 330 validation-fold
+contexts separately before averaging the three FBA growth predictions for
+each of 110 media. Pooled regression R2, MAE and RMSE and per-split variation
+are reported beside the frozen FluxTransformer's existing OOF scores. A
+row-linked CSV with `Vin`, FBA status and growth is saved under `pic_dir`; the
+measured-versus-FBA-predicted figure follows the existing growth-plot style
+and is saved under `insights/thesis`.
+
+Faure's Figure S9 used one 10-fold CV, whereas this notebook retains its
+three-repeat protocol. The current front-network procedure also selects its
+epoch on the outer validation fold. This comparison preserves the notebook's
+existing protocol but is not an untouched-test estimate. A small mock CV
+verified that captured `Vin` comes from the selected fold model; six FBA
+smoke solves on real media verified row aggregation, metrics, CSV and plot
+generation. Full experimental CV/FBA results have not been run.

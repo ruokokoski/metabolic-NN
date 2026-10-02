@@ -499,3 +499,30 @@ schema and syntax pass. A clean-scope smoke execution loads the real AB
 checkpoint and CSV, verifies both media loaders, runs all three front-model
 forward paths, and renders both t-SNE PNGs with 16 contexts. Full HPO/LOO and
 the default 4,000-context t-SNE runs were not executed. C is unchanged.
+
+## Standalone MINN distribution-shift overall metrics (2026-10-02)
+
+`ecoli_iML1515_MINN_model_testing.ipynb` now places an A/E distribution-shift
+test immediately after its existing in-distribution overall-metrics cell. It
+scores all 50,000 rows of the independent AMN A and general E test CSVs against
+the 2,712 flux outputs in the MINN checkpoint's exact order. Each source
+nutrient bound is placed at its matching `*_flux` context token, including
+tokens outside MINN's 27 declared training inputs; remaining context slots
+are zero. Full-output inference uses `output_subset=None`. This mapping is
+possible because the checkpoint carries a shared 2,712-token reaction
+vocabulary; declaring only 27 training inputs does not mask other context
+positions in a full-output forward pass.
+
+A contributes 38 source inputs: 24 shared with MINN, 14 additional, while
+MINN-trained glucose, ethanol and cobalamin inputs are absent and zero-filled.
+E contributes 55 inputs: all 27 MINN inputs plus 28 additional channels. The
+cell reports pooled regression R2, MAE and RMSE over every row and flux,
+and records source-input activity, zero-filled inputs and the token mapping
+in its protocol JSON. The current MINN diagnostic overall metrics instead
+use the 20% split of its Tazza test CSV. A uses the AMN FBA target policy and
+E uses its broader pFBA sampling policy, so the shift scores mix context
+generalization with different target generation. The full A/E score runs
+are left for notebook execution. Notebook schema and code syntax passed;
+one real-checkpoint row from each source verified token placement and finite
+metrics. A two-row A check matched pooled R2, MAE and RMSE against scikit-learn
+on the same predictions.
