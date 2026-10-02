@@ -300,6 +300,26 @@ two-row smoke test for each model matched scikit-learn's flattened R2, MAE,
 and RMSE. The complete 50,000-row metric cells have not been executed, so no
 new full-test scores are claimed.
 
+### E full-output distribution-shift tests (2026-10-01)
+
+Immediately after E's in-distribution overall-metrics cell,
+`ecoli_iML1515_E_model_testing.ipynb` now evaluates the same pooled regression
+R2, MAE and RMSE on the complete independent A and B test CSVs selected by
+the standalone AMN and MINN notebooks. A uses
+`data/iML1515_AMN_test_data_50000_samples.csv` (38 nutrient inputs); B uses
+`data/iML1515_MINN_tazza_test_data_50000_samples.csv` (27 inputs). Both have
+the E checkpoint's 2,712 flux targets in the same order. The source generator
+input order is checked, and each nutrient bound is mapped by exchange name
+into E's 55-input vocabulary. E inputs absent from the source file are zero,
+including cobalamin for A; B supplies its own cobalamin value. Full-output
+inference and all 50,000 rows per file preserve the in-distribution metric
+aggregation; the standalone notebooks' later 80/20 diagnostic split is not
+applied. Results and the missing-input lists are exported separately.
+This probes performance on the exact saved source datasets; differing
+generator solver or target policies can contribute to the observed shift.
+The full 50,000-row evaluations were not run. One real-checkpoint row from
+each of E, A and B passed source-to-token mapping and finite-metric checks.
+
 ## Required Comparisons
 
 The final result matrix should contain every available model on both tasks:
@@ -662,3 +682,23 @@ The standalone AMN notebook also adds a fructose-only diagnostic slice:
 100 sweep conditions at oxygen uptake 10 plus the same 10,000 random test
 conditions, separately for glycolysis and PPP. These are additional
 qualitative plots; no pretraining or predictive metrics change.
+
+## Model E fructose/oxygen sweep visualization (2026-10-01)
+
+`ecoli_iML1515_E_model_testing.ipynb` now uses the AMN sweep's validated
+100 x 100 fructose/oxygen grid for qualitative post-layer token t-SNE. Its
+checkpoint needs 55 inputs, so the 38 saved AMN sweep inputs are mapped by
+name into E's vocabulary. The E AMN evaluation medium supplies fixed basal
+inputs at 50, including cobalamin; glycerol and the four amino acids stay
+at 2.2, and other E-only inputs are zero. Thus the variable grid and row
+order match AMN, while the full fixed medium matches E's evaluation contract.
+The saved AMN sweep flux targets are not used to score E.
+
+An editable reaction-set dictionary and selector default to glycolysis and
+PPP. For each set, one seeded openTSNE fit over all 10,000 contexts feeds
+the side-by-side fructose/oxygen panels followed by the same four-color
+joint plot as AMN. There are no sweep-plus-random figures in E. The plot
+settings, E fixed rates, selected reactions and source paths are recorded
+in the run directory. The full grid input validation and checkpoint mapping
+passed; a 16-context real-checkpoint smoke run completed both pathways and
+both plot paths. Full 10,000-context t-SNE fits were left for the notebook run.
