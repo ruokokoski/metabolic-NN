@@ -2,7 +2,8 @@ venv
 .venv
 .env
 pics
-data
+data/*
+!data/iML1515_growth_carbon_sources.csv
 __pycache__
 puhti.txt
 roihu.txt

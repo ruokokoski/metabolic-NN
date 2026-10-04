@@ -1,0 +1,186 @@
+exchange_id,metabolite_name,biomass_flux
+EX_acgam_e,N-Acetyl-D-glucosamine,1.1313
+EX_cellb_e,Cellobiose,1.7798
+EX_hxan_e,Hypoxanthine,0.2887
+EX_chol_e,Choline C5H14NO,0.0614
+EX_lac__L_e,L-Lactate,0.3506
+EX_glcn_e,D-Gluconate,0.7971
+EX_orn_e,Ornithine,0.7029
+EX_gln__L_e,L-Glutamine,0.6164
+EX_pro__L_e,L-Proline,0.7138
+EX_glyc_e,Glycerol,0.4947
+EX_man_e,D-Mannose,0.877
+EX_ade_e,Adenine,0.2892
+EX_4abut_e,4-Aminobutanoate,0.5669
+EX_ac_e,Acetate,0.2101
+EX_akg_e,2-Oxoglutarate,0.5474
+EX_ala__L_e,L-Alanine,0.38
+EX_arg__L_e,L-Arginine,0.7268
+EX_asp__L_e,L-Aspartate,0.4112
+EX_pyr_e,Pyruvate,0.3139
+EX_succ_e,Succinate,0.4501
+EX_thymd_e,Thymidine C10H14N2O5,0.7905
+EX_rib__D_e,D-Ribose,0.6889
+EX_cytd_e,Cytidine,0.7785
+EX_dcyt_e,Deoxycytidine,0.8214
+EX_fum_e,Fumarate,0.4112
+EX_sbt__D_e,D-Sorbitol,0.9428
+EX_glu__L_e,L-Glutamate,0.6155
+EX_gua_e,Guanine,0.2336
+EX_ptrc_e,Putrescine,0.6906
+EX_xtsn_e,Xanthosine,1.0233
+EX_glc__D_e,D-Glucose,0.877
+EX_alltn_e,Allantoin,0.1434
+EX_xan_e,Xanthine,0.2232
+EX_dgsn_e,Deoxyguanosine,1.0814
+EX_arab__L_e,L-Arabinose,0.7171
+EX_fru_e,D-Fructose,0.877
+EX_gal_e,D-Galactose,0.8676
+EX_xyl__D_e,D-Xylose,0.7171
+EX_duri_e,Deoxyuridine,0.812
+EX_gly_e,Glycine,0.1882
+EX_ser__L_e,L-Serine,0.3181
+EX_trp__L_e,L-Tryptophan,0.3266
+EX_din_e,Deoxyinosine,1.1363
+EX_acald_e,Acetaldehyde,0.3104
+EX_melib_e,Melibiose C12H22O11,1.7704
+EX_tre_e,Trehalose,1.7798
+EX_hdcea_e,Hexadecenoate (n-C16:1),2.3593
+EX_lac__D_e,D-Lactate,0.3774
+EX_ttdcea_e,Tetradecenoate (n-C14:1),2.0534
+EX_gthrd_e,Reduced glutathione,1.1767
+EX_acnam_e,N-Acetylneuraminate,1.4794
+EX_amp_e,AMP C10H12N5O7P,1.1058
+EX_dha_e,Dihydroxyacetone,0.4256
+EX_fuc__L_e,L-Fucose,0.8621
+EX_tartr__L_e,L-tartrate,0.3431
+EX_maltpt_e,Maltopentaose,4.5258
+EX_glyald_e,D-Glyceraldehyde,0.4272
+EX_glcur_e,D-Glucuronate,0.7047
+EX_f6p_e,D-Fructose 6-phosphate,0.9052
+EX_rmn_e,L-Rhamnose,0.8621
+EX_ttdca_e,Tetradecanoate (n-C14:0),2.0174
+EX_glyclt_e,Glycolate C2H3O3,0.1531
+EX_g6p_e,D-Glucose 6-phosphate,0.9052
+EX_2ddglcn_e,2-Dehydro-3-deoxy-D-gluconate,0.7703
+EX_galct__D_e,D-Galactarate,0.6085
+EX_idon__L_e,L-Idonate,0.7971
+EX_3hcinnm_e,3-hydroxycinnamic acid,1.0242
+EX_acac_e,Acetoacetate,0.4839
+EX_acmana_e,N-Acetyl-D-mannosamine,1.1313
+EX_galur_e,D-Galacturonate,0.7047
+EX_adn_e,Adenosine,1.1058
+EX_ins_e,Inosine,1.0946
+EX_glyc3p_e,Glycerol 3-phosphate,0.5315
+EX_but_e,Butyrate (n-C4:0),0.5241
+EX_lcts_e,Lactose C12H22O11,1.7704
+EX_ocdca_e,Octadecanoate (n-C18:0),2.6291
+EX_dad_2_e,Deoxyadenosine,1.1476
+EX_ser__D_e,D-Serine,0.3181
+EX_gam6p_e,D-Glucosamine 6-phosphate,0.9055
+EX_ocdcea_e,Octadecenoate (n-C18:1),2.6651
+EX_galctn__D_e,D-Galactonate,0.7703
+EX_ascb__L_e,L-Ascorbate,0.7265
+EX_agm_e,Agmatine,0.6906
+EX_minohp_e,Myo-Inositol hexakisphosphate,0.6951
+EX_hxa_e,Hexanoate (n-C6:0),0.8299
+EX_lyx__L_e,L-Lyxose,0.7171
+EX_acmum_e,N-Acetylmuramate,1.5514
+EX_dca_e,Decanoate (n-C10:0),1.4057
+EX_all__D_e,D-Allose,0.8394
+EX_octa_e,Octanoate (n-C8:0),1.0998
+EX_xylu__L_e,L-Xylulose,0.7171
+EX_fruur_e,D-Fructuronate,0.7047
+EX_malttr_e,Maltotriose C18H32O16,2.6826
+EX_ppa_e,Propionate (n-C3:0),0.3774
+EX_fe3dcit_e,Fe(III)dicitrate,1.1945
+EX_3amp_e,3  AMP C10H12N5O7P,1.1058
+EX_3gmp_e,Guanosine 3  phosphate C10H12N5O8P,1.0383
+EX_3ump_e,3  UMP C9H11N2O9P,0.768
+EX_glyc__R_e,(R)-Glycerate,0.3199
+EX_mal__D_e,D-Malate,0.3774
+EX_23camp_e,"2',3'-Cyclic AMP",1.1058
+EX_23cgmp_e,"2',3'-Cyclic GMP",1.0383
+EX_23cump_e,"2',3'-Cyclic UMP",0.768
+EX_butso3_e,Butanesulfonate,0.2571
+EX_imp_e,IMP C10H11N4O8P,1.0946
+EX_23dappa_e,"2,3-diaminopropionate",0.3139
+EX_cgly_e,Cys Gly C5H10N2O3S,0.5102
+EX_gmp_e,GMP C10H12N5O8P,1.0383
+EX_ump_e,UMP C9H11N2O9P,0.768
+EX_frulys_e,Fructoselysine,0.8928
+EX_etha_e,Ethanolamine,0.3016
+EX_hdca_e,Hexadecanoate (n-C16:0),2.3233
+EX_glcr_e,D-Glucarate,0.6085
+EX_ala__D_e,D-Alanine,0.38
+EX_mnl_e,D-Mannitol,0.9428
+EX_malt_e,Maltose C12H22O11,1.7798
+EX_asn__L_e,L-Asparagine,0.4118
+EX_cit_e,Citrate,0.635
+EX_mal__L_e,L-Malate,0.4112
+EX_gam_e,D-Glucosamine,0.8773
+EX_inost_e,Myo-Inositol,0.6951
+EX_thr__L_e,L-Threonine,0.5268
+EX_uri_e,Uridine,0.768
+EX_ddca_e,Dodecanoate (n-C12:0),1.7115
+EX_r5p_e,Alpha-D-Ribose 5-phosphate,0.6889
+EX_glyc2p_e,Glycerol 2-phosphate,0.4947
+EX_cmp_e,CMP C9H12N3O8P,0.7785
+EX_malthx_e,Maltohexaose,5.4662
+EX_etoh_e,Ethanol,0.3721
+EX_g3pe_e,Sn-Glycero-3-phosphoethanolamine,0.8682
+EX_pacald_e,Phenylacetaldehyde,1.0826
+EX_12ppd__S_e,"(S)-Propane-1,2-diol",0.4756
+EX_pppn_e,Phenylpropanoate,1.1312
+EX_acgam1p_e,N-Acetyl-D-glucosamine 1-phosphate,1.1313
+EX_galt_e,Galactitol,0.9356
+EX_glcur1p_e,D-Glucuronate 1-phosphate,0.7047
+EX_thrp_e,L-Threonine O-3-phosphate,0.5268
+EX_fald_e,Formaldehyde,0.0627
+EX_uacgam_e,UDP-N-acetyl-D-glucosamine,1.9456
+EX_udpacgal_e,UDP-N-acetyl-D-galactosamine,0.768
+EX_udpg_e,UDPglucose,1.6866
+EX_udpgal_e,UDPgalactose,1.677
+EX_udpglcur_e,UDP-D-glucuronate,1.5143
+EX_14glucan_e,"1,4-alpha-D-glucan",5.4662
+EX_pser__L_e,O-Phospho-L-serine,0.3181
+EX_xmp_e,Xanthosine 5'-phosphate,1.0233
+EX_damp_e,DAMP C10H12N5O6P,1.1476
+EX_dimp_e,DIMP C10H12N4O7P,1.1363
+EX_g3pc_e,Sn-Glycero-3-phosphocholine,0.6373
+EX_g3pg_e,Glycerophosphoglycerol,1.0545
+EX_g3pi_e,Sn-Glycero-3-phospho-1-inositol,1.253
+EX_g3ps_e,Glycerophosphoserine,0.8837
+EX_peamn_e,Phenethylamine,1.0826
+EX_cys__L_e,L-Cysteine,0.2893
+EX_gsn_e,Guanosine,1.0383
+EX_manglyc_e,2(alpha-D-Mannosyl)-D-glycerate,1.2344
+EX_dgmp_e,DGMP C10H12N5O7P,1.0814
+EX_3hpppn_e,3-(3-hydroxy-phenyl)propionate,1.0631
+EX_man6p_e,D-Mannose 6-phosphate,0.9052
+EX_maltttr_e,Maltotetraose,3.5854
+EX_alaala_e,D-Alanyl-D-alanine,0.8048
+EX_dtmp_e,DTMP C10H13N2O8P,0.7905
+EX_g1p_e,D-Glucose 1-phosphate,0.877
+EX_progly_e,L-Prolinylglycine,0.91
+EX_gal_bD_e,Beta D-Galactose,0.8676
+EX_dump_e,DUMP C9H11N2O8P,0.812
+EX_gal1p_e,Alpha-D-Galactose 1-phosphate,0.8676
+EX_dcmp_e,DCMP C9H12N3O7P,0.8214
+EX_23ccmp_e,"2',3'-Cyclic CMP",0.7785
+EX_3cmp_e,3  CMP C9H12N3O8P,0.7785
+EX_urate_e,Urate C5H4N4O3,0.1434
+EX_cys__D_e,D-Cysteine,0.2885
+EX_tartr__D_e,D-tartrate,0.3431
+EX_galctn__L_e,L-Galactonate,0.7703
+EX_LalaDgluMdapDala_e,"L-alanine-D-glutamate-meso-2,6-diaminoheptanedioate-D-alanine",1.4974
+EX_5dglcn_e,5-Dehydro-D-gluconate,0.7296
+EX_LalaDgluMdap_e,"L-alanine-D-glutamate-meso-2,6-diaminoheptanedioate",1.0566
+EX_psclys_e,Psicoselysine,0.8928
+EX_anhgm_e,N-Acetyl-D-glucosamine(anhydrous)N-Acetylmuramic acid,2.7024
+EX_ppal_e,Propanal,0.4461
+EX_LalaDglu_e,L-alanine-D-glutamate,1.0436
+EX_LalaLglu_e,L-alanine-L-glutamate,1.0436
+EX_dxylnt_e,D-Xylonate,0.5995
+EX_sq_e,Sulphoquinovose,0.3584
+EX_metglcur_e,1-O-methyl-Beta-D-glucuronate,0.7047
