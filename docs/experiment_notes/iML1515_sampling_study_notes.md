@@ -774,3 +774,24 @@ scores test cross-distribution full-context inference, including unseen
 input-token positions and distinct A/E FBA or pFBA target policies; they
 should not be interpreted as a controlled nutrient-range-only shift. The
 full 50,000-row runs are pending notebook execution.
+
+## MINN checkpoint as a Faure-style growth reservoir (2026-10-03)
+
+The MINN notebook now adds a 110-point AMN front-MLP experiment immediately
+after t-SNE. It preserves the standalone AMN notebook's repeated stratified
+10-fold training and medium bounds while replacing only the frozen reservoir
+with `MINN_1M_d256_h8_l4_ff1024`. Full-vocabulary injection carries all 38
+AMN source exchanges into the MINN checkpoint, including 14 outside its
+declared 27-input training schema. Glucose, ethanol and cobalamin remain zero.
+Per-medium OOF predictions are averaged across split seeds 10/11/12 before
+pooled regression R2, MAE and RMSE; one matching scatter shows measured and
+prediction uncertainty bars. The scored fold still selects the best epoch,
+matching AMN's legacy protocol, so this is a cross-task control rather than
+a strict held-out estimate. The full front-MLP CV run is pending.
+
+The standalone MINN notebook's separate iML1515-fitted measured-context
+sensitivity can now be rerun after a kernel restart without first recreating
+the original fitted-file measured/predicted FT+pFBA results. It restores the
+pre-run notebook state when those original results are absent. The final
+comparison table still depends on both original results; fitted-file HPO/LOO
+settings and metrics are unchanged.

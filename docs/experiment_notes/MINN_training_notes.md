@@ -526,3 +526,48 @@ are left for notebook execution. Notebook schema and code syntax passed;
 one real-checkpoint row from each source verified token placement and finite
 metrics. A two-row A check matched pooled R2, MAE and RMSE against scikit-learn
 on the same predictions.
+
+## MINN reservoir on the 110-point AMN growth task (2026-10-03)
+
+The standalone MINN notebook now includes a cross-task growth-transfer control
+after its t-SNE plots, before MINN's own front-MLP experiment. It uses the same
+110 `AMN_data/iML1515_EXP.csv` media, `GR_AVG` targets, aligned `GR_STD` from
+`AMN_data/EXP110.csv`, front-network architecture, 10-fold carbon-count
+stratification, split seeds 10/11/12, training seed 10, Huber delta 0.03,
+batch sizes 1/2, 100-epoch limit and patience 15 as the standalone AMN
+notebook. The only intended model change is the frozen
+`MINN_1M_d256_h8_l4_ff1024` reservoir. The MLP learns ten carbon uptake
+caps at most 2.2 plus oxygen at most 10; AMN fixed basal bounds are 10 and
+glycerol/amino-acid bounds 2.2.
+
+All 38 AMN medium inputs are injected at their matching tokens in the full
+2,712-token MINN vocabulary. Fourteen AMN sources lie outside MINN's 27
+declared training inputs; glucose, ethanol and cobalamin are absent from the
+AMN medium and remain zero. The code averages one held-out-fold prediction
+per sample across the three split seeds, prints pooled regression R2, MAE and
+RMSE over 110 samples, and saves one true-versus-predicted plot with measured
+horizontal and split-seed vertical standard-deviation bars. The validation
+fold also chooses the epoch, following the reference AMN notebook; the
+result is a legacy out-of-fold comparison, not a strict untouched-test score.
+The comparison includes input-coverage and bound-policy shifts: in particular,
+AMN uses acetate as an uptake cap, while MINN trained it as a secretion cap.
+
+The notebook's original 63 cells and outputs were preserved. Schema and code
+syntax passed; a real-checkpoint one-step front-MLP smoke run verified input
+mapping and finite growth output. Mocked 30-fold aggregation populated all
+110 OOF rows and rendered the two-error-bar plot. The full 30-fold training
+run and final metrics remain pending notebook execution.
+
+## Fitted sensitivity restart dependency (2026-10-04)
+
+The iML1515-fitted measured-context sensitivity cell no longer requires the
+original measured/predicted FT+pFBA comparison to have run in the current
+kernel. After a restart, run the MINN setup and reusable training/evaluator
+definition cells, the original baseline pFBA cell (which defines `flux_df`,
+the 47-flux mapping and `evaluate_pfba_baseline`), and the iML1515-fitted
+baseline cell before the sensitivity cell. The sensitivity cell still performs
+its own fresh HPO, LOO training and downstream pFBA as configured; it restores
+the pre-run dataset and context state whether or not an original comparison
+result is available. The final cross-file comparison table still requires the
+original measured and predicted FT+pFBA results. This change avoids rerunning
+those expensive original fits merely to reach the fitted sensitivity test.

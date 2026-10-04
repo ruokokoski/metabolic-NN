@@ -563,3 +563,19 @@ existing protocol but is not an untouched-test estimate. A small mock CV
 verified that captured `Vin` comes from the selected fold model; six FBA
 smoke solves on real media verified row aggregation, metrics, CSV and plot
 generation. Full experimental CV/FBA results have not been run.
+
+## Cross-task MINN reservoir growth control (2026-10-03)
+
+`ecoli_iML1515_MINN_model_testing.ipynb` now evaluates the 110-point Faure-style
+growth task using its frozen MINN checkpoint and a new AMN-style front MLP.
+It keeps the standalone AMN notebook's medium conversion, 512-hidden-unit
+network, Huber/AdamW settings, 10-fold carbon-count stratification repeated
+with split seeds 10/11/12, training seed 10, 100-epoch limit and validation-fold
+early stopping. All 38 AMN exchanges are mapped into the MINN checkpoint's
+full reaction-token vocabulary, including 14 inputs outside its declared
+training-input set. The printed pooled R2, MAE and RMSE average the three
+validation predictions per medium; the single saved scatter includes
+experimental horizontal and split-seed vertical standard-deviation bars.
+This control tests transfer of a task-mismatched reservoir, with the same
+legacy validation limitation as the reference AMN notebook. A real-checkpoint
+one-step training smoke passed; the full CV result is pending.
