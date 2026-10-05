@@ -1,0 +1,45 @@
+exchange_id,metabolite_name
+EX_acgam_e,N-Acetyl-D-glucosamine
+EX_lac__L_e,L-Lactate
+EX_glcn_e,D-Gluconate
+EX_gln__L_e,L-Glutamine
+EX_pro__L_e,L-Proline
+EX_glyc_e,Glycerol
+EX_man_e,D-Mannose
+EX_ac_e,Acetate
+EX_akg_e,2-Oxoglutarate
+EX_ala__L_e,L-Alanine
+EX_arg__L_e,L-Arginine
+EX_asp__L_e,L-Aspartate
+EX_pyr_e,Pyruvate
+EX_succ_e,Succinate
+EX_rib__D_e,D-Ribose
+EX_fum_e,Fumarate
+EX_sbt__D_e,D-Sorbitol
+EX_glu__L_e,L-Glutamate
+EX_glc__D_e,D-Glucose
+EX_arab__L_e,L-Arabinose
+EX_fru_e,D-Fructose
+EX_gal_e,D-Galactose
+EX_xyl__D_e,D-Xylose
+EX_gly_e,Glycine
+EX_ser__L_e,L-Serine
+EX_trp__L_e,L-Tryptophan
+EX_melib_e,Melibiose C12H22O11
+EX_tre_e,Trehalose
+EX_lac__D_e,D-Lactate
+EX_fuc__L_e,L-Fucose
+EX_maltpt_e,Maltopentaose
+EX_rmn_e,L-Rhamnose
+EX_glyclt_e,Glycolate C2H3O3
+EX_galur_e,D-Galacturonate
+EX_lcts_e,Lactose C12H22O11
+EX_malttr_e,Maltotriose C18H32O16
+EX_ppa_e,Propionate (n-C3:0)
+EX_mnl_e,D-Mannitol
+EX_malt_e,Maltose C12H22O11
+EX_asn__L_e,L-Asparagine
+EX_mal__L_e,L-Malate
+EX_gam_e,D-Glucosamine
+EX_thr__L_e,L-Threonine
+EX_maltttr_e,Maltotetraose

@@ -3,7 +3,7 @@ venv
 .env
 pics
 data/*
-!data/iML1515_growth_carbon_sources.csv
+!data/reference
 __pycache__
 puhti.txt
 roihu.txt
