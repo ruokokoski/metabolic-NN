@@ -1,14 +1,14 @@
 # iML1515 broad organic-source pool: primary source record
 
-Search cutoff: 2026-10-05. Target: unmodified E. coli K-12 MG1655, oxygen supplied but potentially limiting. This record supports the [review](../../docs/working_notes/iML1515_broad_pool_literature_review.md) and [44-exchange pool](iML1515_broad_organic_source_pool.csv).
+Search cutoff: 2026-10-05. **56 primary-paper records; citation keys match the first-author/year BibTeX entries.** Target: unmodified E. coli K-12 MG1655, oxygen supplied but potentially limiting. This record supports the [review](../../docs/working_notes/iML1515_broad_pool_literature_review.md) and [48-exchange pool](iML1515_broad_organic_source_pool.csv).
 
-Every entry below is primary research. Review articles were useful only for tracing original experiments and are not sole evidence for a decision. Bibliographic fields were checked against publisher/PubMed/primary-paper records and DOI registry metadata. Access limitations are stated per source: verification of an abstract or indexed passage is not represented as inspection of the full paper or all supplements. S12 has no DOI supplied by the verified publisher record. S15's archival DOI was verified with DataCite. S08/S18/S40/S46 use the journal-issue year rather than their earlier online-publication year; S41 records its 2023 issue and 2022 online publication.
+Every entry below is primary research. Review articles were useful only for tracing original experiments and are not sole evidence for a decision. Bibliographic fields were checked against publisher/PubMed/primary-paper records and DOI registry metadata. Access limitations are stated per source: verification of an abstract or indexed passage is not represented as inspection of the full paper or all supplements. Gibinski2008 has no DOI supplied by the verified publisher record. Larcher2009's archival DOI was verified with DataCite; its 2015 deposit-year field does not replace the 2009 year on the primary paper and institutional author record. Benvenutti2022/Abe2017/GrafvonArmansperg2021/Simonte2017 use the journal-issue year rather than their earlier online-publication year; vanDongen2023 records its 2023 issue and 2022 online publication.
 
 Evidence locators identify the relevant table, figure, supplement, Methods or Results passage. The biological claim supported and its limits are stated separately. The final section contains one copy-ready BibTeX entry for every source in this record; no separate bibliography file is created.
 
-<a id="s01"></a>
+<a id="schwalbach2012"></a>
 
-## S01
+## Schwalbach2012
 
 Schwalbach, Michael S.; Keating, David H.; Tremaine, Mary; Marner, Wesley D.; Zhang, Yaoping; Bothfeld, William; Higbee, Alan; Grass, Jeffrey A.; Cotten, Cameron; Reed, Jennifer L.; da Costa Sousa, Leonardo; Jin, Mingjie; Balan, Venkatesh; Ellinger, James; Dale, Bruce; Kiley, Patricia J.; Landick, Robert (2012). Complex Physiology and Compound Stress Responses during Fermentation of Alkali-Pretreated Corn Stover Hydrolysate by an Escherichia coli Ethanologen. Applied and Environmental Microbiology, 78(9), 3442-3457.
 
@@ -24,9 +24,11 @@ Decision support and limits: Measured hydrolysate and engineered MG1655-derived 
 
 Verification: Primary supplement PDF inspected; main-paper Results verified through primary indexed passages.
 
-<a id="s02"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/22389370/) (checked 2026-10-05).
 
-## S02
+<a id="keating2014"></a>
+
+## Keating2014
 
 Keating, David H.; Zhang, Yaoping; Ong, Irene M.; McIlwain, Sean; Morales, Eduardo H.; Grass, Jeffrey A.; Tremaine, Mary; Bothfeld, William; Higbee, Alan; Ulbrich, Arne; Balloon, Allison J.; Westphall, Michael S.; Aldrich, Josh; Lipton, Mary S.; Kim, Joonhoon; Moskvin, Oleg V.; Bukhman, Yury V.; Coon, Joshua J.; Kiley, Patricia J.; Bates, Donna M.; Landick, Robert (2014). Aromatic inhibitors derived from ammonia-pretreated lignocellulose hinder bacterial ethanologenesis by activating regulatory circuits controlling inhibitor efflux and detoxification. Frontiers in Microbiology, 5, 402.
 
@@ -38,13 +40,15 @@ Relevant compounds or feedstock: ACSH nutrient panel; stereochemistry, inhibitor
 
 Evidence locator: Table 1, ACSH column and footnotes a–g; Table 2; Results on inhibitor effects.
 
-Decision support and limits: The ACSH nutrient values reuse S01 and are not a second independent stream sample. Pyruvate/citrate and nucleobases have no ACSH determination; synthetic additions cannot be counted as natural constituents. Synthetic D-arabinose replaces natural L-arabinose. Aromatic positional isomers must be matched exactly.
+Decision support and limits: The ACSH nutrient values reuse Schwalbach2012 and are not a second independent stream sample. Pyruvate/citrate and nucleobases have no ACSH determination; synthetic additions cannot be counted as natural constituents. Synthetic D-arabinose replaces natural L-arabinose. Aromatic positional isomers must be matched exactly.
 
 Verification: Full primary XML and table inspected.
 
-<a id="s03"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/25177315/) (checked 2026-10-05).
 
-## S03
+<a id="palmonari2020"></a>
+
+## Palmonari2020
 
 Palmonari, A.; Cavallini, D.; Sniffen, C.J.; Fernandes, L.; Holder, P.; Fagioli, L.; Fusaro, I.; Biagi, G.; Formigoni, A.; Mammi, L. (2020). Short communication: Characterization of molasses chemical composition. Journal of Dairy Science, 103(7), 6244-6249.
 
@@ -60,9 +64,11 @@ Decision support and limits: Composition study without cultivation. Tables give 
 
 Verification: Publisher-indexed tables and author-manuscript record verified; direct PDF retrieval restricted.
 
-<a id="s04"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/32331893/) (checked 2026-10-05).
 
-## S04
+<a id="jin2022"></a>
+
+## Jin2022
 
 Jin, Zhao; Lan, Yang; Ohm, Jae-Bom; Gillespie, James; Schwarz, Paul; Chen, Bingcan (2022). Physicochemical composition, fermentable sugars, free amino acids, phenolics, and minerals in brewers' spent grains obtained from craft brewing operations. Journal of Cereal Science, 104, 103413.
 
@@ -78,9 +84,11 @@ Decision support and limits: Primary measured composition names glucose, fructos
 
 Verification: Publisher abstract and DOI metadata verified; no full-table access claimed.
 
-<a id="s05"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://doi.org/10.1016/j.jcs.2022.103413) (checked 2026-10-05).
 
-## S05
+<a id="qin2023"></a>
+
+## Qin2023
 
 Qin, Zehua; Guo, Wei; Liu, Jun; Zhao, Guoqin; Liu, Mingxin; Song, Xin (2023). Reduced-Cost Production of Sophorolipids by Starmerella bombicola CGMCC1576 Grown on Cottonseed Molasses and Cottonseed Oil-Based Medium. International Journal of Molecular Sciences, 24(6), 5759.
 
@@ -96,9 +104,11 @@ Decision support and limits: Industrial raffinose-production byproduct has resol
 
 Verification: Full primary XML inspected; supplementary figure identified, not separately re-integrated.
 
-<a id="s06"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/36982832/) (checked 2026-10-05).
 
-## S06
+<a id="greetham2020"></a>
+
+## Greetham2020
 
 Greetham, Darren; Adams, Jessica M.; Du, Chenyu (2020). The utilization of seawater for the hydrolysis of macroalgae and subsequent bioethanol fermentation. Scientific Reports, 10(1), 9728.
 
@@ -114,9 +124,11 @@ Decision support and limits: Use the soluble hydrolysate panel rather than total
 
 Verification: Full primary XML and publisher text inspected.
 
-<a id="s07"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/32546695/) (checked 2026-10-05).
 
-## S07
+<a id="gama2015"></a>
+
+## Gama2015
 
 Gama, Repson; Van Dyk, J. Susan; Pletschke, Brett I. (2015). Optimisation of enzymatic hydrolysis of apple pomace for production of biofuel and biorefinery chemicals using commercial enzymes. 3 Biotech, 5(6), 1075-1087.
 
@@ -132,9 +144,11 @@ Decision support and limits: Commercial-enzyme processing releases galacturonic 
 
 Verification: Full primary XML inspected.
 
-<a id="s08"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/28324415/) (checked 2026-10-05).
 
-## S08
+<a id="benvenutti2022"></a>
+
+## Benvenutti2022
 
 Benvenutti, Laís; Bortolini, Débora Gonçalves; Fischer, Thaís Estéfane; Zardo, Danianni Marinho; Nogueira, Alessandro; Zielinski, Acácio Antonio Ferreira; Alberti, Aline (2022). Bioactive compounds recovered from apple pomace as ingredient in cider processing: monitoring of compounds during fermentation. Journal of Food Science and Technology, 59(9), 3349-3358.
 
@@ -150,9 +164,11 @@ Decision support and limits: Control must has glucose, fructose, sucrose and sor
 
 Verification: Primary indexed full table and PubMed/DOI record verified.
 
-<a id="s09"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/35875229/) (checked 2026-10-05).
 
-## S09
+<a id="viitanen2003"></a>
+
+## Viitanen2003
 
 Viitanen, Mikko I; Vasala, Antti; Neubauer, Peter; Alatossava, Tapani (2003). Cheese whey-induced high-cell-density production of recombinant proteins in Escherichia coli. Microbial Cell Factories, 2(1), 2.
 
@@ -168,9 +184,11 @@ Decision support and limits: RB791/BL21 recombinant-protein cultures consume lac
 
 Verification: Full primary XML inspected.
 
-<a id="s10"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/12740045/) (checked 2026-10-05).
 
-## S10
+<a id="chen2014"></a>
+
+## Chen2014
 
 Chen, Xian-zhong; Tian, Kang-ming; Niu, Dan-dan; Shen, Wei; Algasan, Govender; Singh, Suren; Wang, Zheng-xiang (2014). Efficient bioconversion of crude glycerol from biodiesel to optically pure d-lactate by metabolically engineered Escherichia coli. Green Chem., 16(1), 342-350.
 
@@ -186,9 +204,9 @@ Decision support and limits: WT B0013 consumes glycerol in crude-glycerol medium
 
 Verification: Full publisher primary HTML inspected.
 
-<a id="s11"></a>
+<a id="cheah2019"></a>
 
-## S11
+## Cheah2019
 
 Cheah, Yen-Keong; Vidal-Antich, Carme; Dosta, Joan; Mata-Álvarez, Joan (2019). Volatile fatty acid production from mesophilic acidogenic fermentation of organic fraction of municipal solid waste and food waste under acidic and alkaline pH. Environmental Science and Pollution Research, 26(35), 35509-35522.
 
@@ -200,13 +218,15 @@ Relevant compounds or feedstock: Resolved VFA mixtures in food-waste acidogenesi
 
 Evidence locator: Tables 4 and 5 (individual effluent periods, VFA amounts and distributions); Methods and fermentation Results.
 
-Decision support and limits: Anaerobic consortia produce measured acids upstream. This verifies feedstock availability after fermentation, not E. coli consumption. Acetate/propionate qualify separately; butyrate needs S21 physiology. Unresolved "other" acids cannot be counted individually.
+Decision support and limits: Anaerobic consortia produce measured acids upstream. This verifies feedstock availability after fermentation, not E. coli consumption. Acetate/propionate qualify separately; butyrate needs Katz2023 physiology. Unresolved "other" acids cannot be counted individually.
 
 Verification: Full primary XML and tables inspected.
 
-<a id="s12"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/31111388/) (checked 2026-10-05).
 
-## S12
+<a id="gibinski2008"></a>
+
+## Gibinski2008
 
 Gibiński, Marek (2008). Production of oat hydrolysates with a low degree of starch saccharification. Polish Journal of Food and Nutrition Sciences, 58(3), 295-300.
 
@@ -222,9 +242,9 @@ Decision support and limits: Named oligomer peaks establish accessible products 
 
 Verification: Publisher record and primary PDF/table inspected.
 
-<a id="s13"></a>
+<a id="pan2011"></a>
 
-## S13
+## Pan2011
 
 Pan, Sai-kun; Wu, Sheng-jun; Kim, Jin-moon (2011). Preparation of glucosamine by hydrolysis of chitosan with commercial α-amylase and glucoamylase. Journal of Zhejiang University SCIENCE B, 12(11), 931-934.
 
@@ -236,13 +256,15 @@ Relevant compounds or feedstock: Chitosan processing to glucosamine.
 
 Evidence locator: Sec. 3.4, Fig. 6 (HPLC), and Sec. 2.4 (analytical methods).
 
-Decision support and limits: Released product contains 91.3% glucosamine, 7.2% N-acetylglucosamine and 1.5% chitooligomers by mass. Enzymatic processing is established; E. coli uptake is provided separately by S17.
+Decision support and limits: Released product contains 91.3% glucosamine, 7.2% N-acetylglucosamine and 1.5% chitooligomers by mass. Enzymatic processing is established; E. coli uptake is provided separately by Angles2017.
 
 Verification: Primary full-text passages/table locator and PubMed/DOI record verified.
 
-<a id="s14"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/22042658/) (checked 2026-10-05).
 
-## S14
+<a id="li2021"></a>
+
+## Li2021
 
 Li, Congna; Jiang, Shun; Du, Chao; Lu, Zhenghui; He, Nisha; Zhou, Yuling; Jiang, Sijing; Zhang, Guimin (2021). High-Level Extracellular Expression of a New β-N-Acetylglucosaminidase in Escherichia coli for Producing GlcNAc. Frontiers in Microbiology, 12, 648373.
 
@@ -258,9 +280,11 @@ Decision support and limits: Purified extracellular recombinant enzymes generate
 
 Verification: Full primary XML, DOI metadata and publisher PDF byline verified.
 
-<a id="s15"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/33776979/) (checked 2026-10-05).
 
-## S15
+<a id="larcher2009"></a>
+
+## Larcher2009
 
 Larcher, R.; Nicolini, G.; Roman Villegas, T.; Bertoldi, D.; Puecher, C. (2009). Determination of gluconic acid in wine using high pressure liquid chromatography with pulsed amperometric detection. Vitis, 48(4), 201-204.
 
@@ -276,9 +300,9 @@ Decision support and limits: HPLC-PAD assay with standards has a stated quantifi
 
 Verification: Primary PDF indexed text and author-repository record verified; DOI/title/author metadata independently verified with DataCite. Direct PDF retrieval restricted.
 
-<a id="s16"></a>
+<a id="shin2026"></a>
 
-## S16
+## Shin2026
 
 Shin, Jongoh; Patel, Arjun; Lou, Xuwen A.; Catoiu, Edward Alexander; Krishnan, Jayanth; Hefner, Ying; Szubin, Richard; Sung, Jaemin; Son, Hyeoncheol Francis; Zielinski, Daniel C.; Palsson, Bernhard Ørn (2026). A systems-level atlas of carbon-response transcriptional states in Escherichia coli. Proceedings of the National Academy of Sciences, 123(27), e2531884123.
 
@@ -290,13 +314,15 @@ Relevant compounds or feedstock: Native MG1655 individual-substrate growth; phys
 
 Evidence locator: "Bacterial Strains and Growth Conditions", "Growth Phenotyping", and carbon-source panel/associated supplementary growth data.
 
-Decision support and limits: Wild-type MG1655 grown at 37°C in M9 with individual substrates. This supports capacities, not feedstock composition or simultaneous utilization. DL-malate does not establish D-malate uptake; meso-tartrate does not validate L-/D-tartrate. It names L-glucosamine, so the D-glucosamine selection relies on S17 instead.
+Decision support and limits: Wild-type MG1655 grown at 37°C in M9 with individual substrates. This supports capacities, not feedstock composition or simultaneous utilization. DL-malate does not establish D-malate uptake; meso-tartrate does not validate L-/D-tartrate. Its Methods name D-glucosamine; this agrees with Angles2017. Fig. 2A and the growth-phenotyping Methods distinguish measured growth from Fig. 2D/E model predictions. Uridine, cytidine, inosine and adenosine are individually supplied carbon substrates; nitrogen-only assays are not used as their carbon-growth proof.
 
 Verification: Full publisher primary text inspected; DOI metadata verified. Published July 2026, within the search cutoff.
 
-<a id="s17"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/42384677/) (checked 2026-10-05).
 
-## S17
+<a id="angles2017"></a>
+
+## Angles2017
 
 Anglès, Fréderic; Castanié-Cornet, Marie-Pierre; Slama, Nawel; Dinclaux, Mickael; Cirinesi, Anne-Marie; Portais, Jean-Charles; Létisse, Fabien; Genevaux, Pierre (2017). Multilevel interaction of the DnaK/DnaJ(HSP70/HSP40) stress-responsive chaperone machine with the central metabolism. Scientific Reports, 7(1), 41341.
 
@@ -312,9 +338,11 @@ Decision support and limits: WT MG1655 is compared with chaperone mutants across
 
 Verification: Full primary XML, figures/captions and Results inspected; supplementary table cited through primary Results, not independently recalculated.
 
-<a id="s18"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/28128357/) (checked 2026-10-05).
 
-## S18
+<a id="abe2017"></a>
+
+## Abe2017
 
 Abe, Kenji; Kuroda, Akio; Takeshita, Ryo (2017). Engineering of Escherichia coli to facilitate efficient utilization of isomaltose and panose in industrial glucose feedstock. Applied Microbiology and Biotechnology, 101(5), 2057-2066.
 
@@ -330,9 +358,11 @@ Decision support and limits: Controls show clear growth on selected native sugar
 
 Verification: Full primary XML and all relevant tables inspected.
 
-<a id="s19"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/27933453/) (checked 2026-10-05).
 
-## S19
+<a id="davies1999"></a>
+
+## Davies1999
 
 Davies, Suzanne J.; Golby, Paul; Omrani, Davood; Broad, Susan A.; Harrington, Vikki L.; Guest, John R.; Kelly, David J.; Andrews, Simon C. (1999). Inactivation and Regulation of the Aerobic C4-Dicarboxylate Transport (dctA) Gene of Escherichia coli. Journal of Bacteriology, 181(18), 5624-5635.
 
@@ -348,9 +378,11 @@ Decision support and limits: Native aerobic transport physiology supports fumara
 
 Verification: Primary indexed Results and PubMed/DOI bibliographic record verified.
 
-<a id="s20"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/10482502/) (checked 2026-10-05).
 
-## S20
+<a id="brutinel2012"></a>
+
+## Brutinel2012
 
 Brutinel, Evan D.; Gralnick, Jeffrey A. (2012). Preferential Utilization of d-Lactate by Shewanella oneidensis. Applied and Environmental Microbiology, 78(23), 8474-8476.
 
@@ -366,9 +398,11 @@ Decision support and limits: Despite the Shewanella-focused title, Table 1 inclu
 
 Verification: Publisher-indexed primary table and Methods verified.
 
-<a id="s21"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/23001660/) (checked 2026-10-05).
 
-## S21
+<a id="katz2023"></a>
+
+## Katz2023
 
 Katz, Sophia; Grajeda-Iglesias, Claudia; Agranovich, Bella; Ghrayeb, Alia; Abramovich, Ifat; Hilau, Sabrin; Gottlieb, Eyal; Hershberg, Ruth (2023). Metabolic adaptation to consume butyrate under prolonged resource exhaustion. PLOS Genetics, 19(6), e1010812.
 
@@ -384,9 +418,11 @@ Decision support and limits: Ancestral MG1655 consumes selected amino acids, tre
 
 Verification: Full primary XML plus original S1/S2 XLSX supplements inspected with standard-library XML extraction.
 
-<a id="s22"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/37347785/) (checked 2026-10-05).
 
-## S22
+<a id="sezonov2007"></a>
+
+## Sezonov2007
 
 Sezonov, Guennadi; Joseleau-Petit, Danièle; D'Ari, Richard (2007). Escherichia coli Physiology in Luria-Bertani Broth. Journal of Bacteriology, 189(23), 8746-8749.
 
@@ -398,13 +434,15 @@ Relevant compounds or feedstock: Complex-medium carbon nutrition and peptide ava
 
 Evidence locator: Table 1 and Results on LB growth, amino-acid availability and alkalinization.
 
-Decision support and limits: MG1655 complex-medium physiology supports amino-acid carbon nutrition, but recoverable amino acids in a bioassay are not automatically free monomers. Use S21 for directly detected/depleted extracellular compounds. Total peptide/protein content is not an independent free-carbon-source count.
+Decision support and limits: MG1655 complex-medium physiology supports amino-acid carbon nutrition, but recoverable amino acids in a bioassay are not automatically free monomers. Use Katz2023 for directly detected/depleted extracellular compounds. Total peptide/protein content is not an independent free-carbon-source count.
 
 Verification: Primary indexed Results/table and DOI record verified.
 
-<a id="s23"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/17905994/) (checked 2026-10-05).
 
-## S23
+<a id="maser2020"></a>
+
+## Maser2020
 
 Maser, Andres; Peebo, Karl; Vilu, Raivo; Nahku, Ranno (2020). Amino acids are key substrates to Escherichia coli BW25113 for achieving high specific growth rate. Research in Microbiology, 171(5-6), 185-193.
 
@@ -416,13 +454,15 @@ Relevant compounds or feedstock: Amino-acid carbon contribution in a mixed defin
 
 Evidence locator: Abstract/Results summary: glucose plus 20 amino acids, biomass-carbon contribution and serine-omission experiment.
 
-Decision support and limits: BW25113 study supports aggregate amino-acid carbon contribution and a substantial serine role. It does not validate all amino acids as sole carbon substrates or establish MG1655 uptake of every member. Individual selections rely on S21.
+Decision support and limits: BW25113 study supports aggregate amino-acid carbon contribution and a substantial serine role. It does not validate all amino acids as sole carbon substrates or establish MG1655 uptake of every member. Individual selections rely on Katz2023.
 
 Verification: Publisher abstract and DOI record verified; full individual uptake table unavailable.
 
-<a id="s24"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/32057959/) (checked 2026-10-05).
 
-## S24
+<a id="hohmann2024"></a>
+
+## Hohmann2024
 
 Höhmann, Sonja; Briol, Tim Arik; Ihle, Nadine; Frick, Oliver; Schmid, Andreas; Bühler, Bruno (2024). Glycolate as alternative carbon source for Escherichia coli. Journal of Biotechnology, 381, 76-85.
 
@@ -438,9 +478,11 @@ Decision support and limits: Native E. coli strains differ in initial growth and
 
 Verification: Publisher primary abstract/record verified; no unpublished MG1655 phenotype inferred.
 
-<a id="s25"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/38190849/) (checked 2026-10-05).
 
-## S25
+<a id="orsi2025"></a>
+
+## Orsi2025
 
 Orsi, Enrico; Schulz-Mirbach, Helena; Cotton, Charles A. R.; Satanowski, Ari; Petri, Henrik M.; Arnold, Susanne L.; Grabarczyk, Natalia; Verbakel, Rutger; Jensen, Karsten S.; Donati, Stefano; Paczia, Nicole; Glatter, Timo; Küffner, Andreas M.; Chotel, Tanguy; Schillmüller, Farah; De Maria, Alberto; He, Hai; Lindner, Steffen N.; Noor, Elad; Bar-Even, Arren; Erb, Tobias J.; Nikel, Pablo I. (2025). Computation-aided designs enable developing auxotrophic metabolic sensors for wide-range glyoxylate and glycolate detection. Nature Communications, 16, 2168.
 
@@ -456,9 +498,11 @@ Decision support and limits: Control growth and engineered sensors demonstrate g
 
 Verification: Full primary XML and Methods inspected.
 
-<a id="s26"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/40038270/) (checked 2026-10-05).
 
-## S26
+<a id="vanhofwegen2016"></a>
+
+## VanHofwegen2016
 
 Van Hofwegen, Dustin J.; Hovde, Carolyn J.; Minnich, Scott A. (2016). Rapid Evolution of Citrate Utilization by Escherichia coli by Direct Selection Requires citT and dctA. Journal of Bacteriology, 198(7), 1022-1034.
 
@@ -474,9 +518,11 @@ Decision support and limits: Unmodified E. coli lacks ordinary aerobic citrate-c
 
 Verification: Primary indexed full Results, PubMed and DOI record verified.
 
-<a id="s27"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/26833416/) (checked 2026-10-05).
 
-## S27
+<a id="cao2020"></a>
+
+## Cao2020
 
 Cao, Yujin; Mu, Hui; Guo, Jing; Liu, Hui; Zhang, Rubing; Liu, Wei; Xian, Mo; Liu, Huizhou (2020). Metabolic engineering of Escherichia coli for the utilization of ethanol. Journal of Biological Research-Thessaloniki, 27(1), 1.
 
@@ -492,9 +538,11 @@ Decision support and limits: Wild tested strains do not grow with ethanol as sol
 
 Verification: Full primary XML inspected.
 
-<a id="s28"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/31993378/) (checked 2026-10-05).
 
-## S28
+<a id="neelakanta2009"></a>
+
+## Neelakanta2009
 
 Neelakanta, Girish; Sankar, T. Sabari; Schnetz, Karin (2009). Characterization of a β-Glucoside Operon (bgc) Prevalent in Septicemic and Uropathogenic Escherichia coli Strains. Applied and Environmental Microbiology, 75(8), 2284-2293.
 
@@ -506,13 +554,15 @@ Relevant compounds or feedstock: Cellobiose cryptic operons and strain dependenc
 
 Evidence locator: Abstract; Results on bgc-positive mutants, low-temperature tests and strain distribution.
 
-Decision support and limits: The bgc examples concern septicemic/uropathogenic isolates and activated cryptic systems, not constitutive MG1655 use. Interpret alongside the slight MG1655 control growth in S18; the exclusion concerns robust baseline performance, not an assertion that no E. coli can ever use cellobiose.
+Decision support and limits: The bgc examples concern septicemic/uropathogenic isolates and activated cryptic systems, not constitutive MG1655 use. Interpret alongside the slight MG1655 control growth in Abe2017; the exclusion concerns robust baseline performance, not an assertion that no E. coli can ever use cellobiose.
 
 Verification: PubMed primary abstract and DOI record verified.
 
-<a id="s29"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/19233952/) (checked 2026-10-05).
 
-## S29
+<a id="lee2010"></a>
+
+## Lee2010
 
 Lee, Dae-Hee; Palsson, Bernhard Ø. (2010). Adaptive Evolution of Escherichia coli K-12 MG1655 during Growth on a Nonnative Carbon Source, l-1,2-Propanediol. Applied and Environmental Microbiology, 76(13), 4158-4168.
 
@@ -528,9 +578,11 @@ Decision support and limits: MG1655 initially does not grow on L-1,2-propanediol
 
 Verification: PubMed primary abstract and DOI record verified.
 
-<a id="s30"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/20435762/) (checked 2026-10-05).
 
-## S30
+<a id="schneider2012"></a>
+
+## Schneider2012
 
 Schneider, Barbara L.; Reitzer, Larry (2012). Pathway and Enzyme Redundancy in Putrescine Catabolism in Escherichia coli. Journal of Bacteriology, 194(15), 4080-4088.
 
@@ -546,9 +598,11 @@ Decision support and limits: Native K-12 putrescine carbon use at 20°C differs 
 
 Verification: Primary indexed full Results and DOI record verified.
 
-<a id="s31"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/22636776/) (checked 2026-10-05).
 
-## S31
+<a id="dover1972"></a>
+
+## Dover1972
 
 Dover, Shabtay; Halpern, Yeheskel S. (1972). Utilization of γ-Aminobutyric Acid as the Sole Carbon and Nitrogen Source by Escherichia coli K-12 Mutants. Journal of Bacteriology, 109(2), 835-843.
 
@@ -564,9 +618,11 @@ Decision support and limits: Carbon/nitrogen growth in selected K-12 mutants is 
 
 Verification: PubMed/publisher primary record and DOI verified.
 
-<a id="s32"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/4550821/) (checked 2026-10-05).
 
-## S32
+<a id="herring2018"></a>
+
+## Herring2018
 
 Herring, Taylor I.; Harris, Tiffany N.; Chowdhury, Chiranjit; Mohanty, Sujit Kumar; Bobik, Thomas A. (2018). A Bacterial Microcompartment Is Used for Choline Fermentation by Escherichia coli 536. Journal of Bacteriology, 200(10), e00764-17.
 
@@ -582,9 +638,11 @@ Decision support and limits: E. coli 536 can ferment choline with appropriate co
 
 Verification: PubMed plus primary indexed Results verified.
 
-<a id="s33"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/29507086/) (checked 2026-10-05).
 
-## S33
+<a id="switzer2020"></a>
+
+## Switzer2020
 
 Switzer, Amy; Burchell, Lynn; McQuail, Josh; Wigneshweraraj, Sivaramesh (2020). The Adaptive Response to Long-Term Nitrogen Starvation in Escherichia coli Requires the Breakdown of Allantoin. Journal of Bacteriology, 202(17), e00172-20.
 
@@ -600,11 +658,13 @@ Decision support and limits: Breakdown associated with starvation and nitrogen p
 
 Verification: Full primary XML inspected.
 
-<a id="s34"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/32571968/) (checked 2026-10-05).
 
-## S34
+<a id="zhang2003"></a>
 
-Zhang, Zhongge; Aboulwafa, Mohammad; Smith, Meghan H.; Saier,, Milton H. (2003). The Ascorbate Transporter of Escherichia coli. Journal of Bacteriology, 185(7), 2243-2250.
+## Zhang2003
+
+Zhang, Zhongge; Aboulwafa, Mohammad; Smith, Meghan H.; Saier, Jr., Milton H. (2003). The Ascorbate Transporter of Escherichia coli. Journal of Bacteriology, 185(7), 2243-2250.
 
 DOI: [10.1128/jb.185.7.2243-2250.2003](https://doi.org/10.1128/jb.185.7.2243-2250.2003).
 
@@ -614,13 +674,15 @@ Relevant compounds or feedstock: Anaerobic ascorbate uptake and regulation.
 
 Evidence locator: Figs. 2/3/5; growth and transport Methods.
 
-Decision support and limits: WT strains utilize ascorbate anaerobically; regulatory mutants alter microaerophilic growth. This supports an oxygen qualification, not a claim of universal inability. S35 checks the aerobic mixed-medium exception.
+Decision support and limits: WT strains utilize ascorbate anaerobically; regulatory mutants alter microaerophilic growth. This supports an oxygen qualification, not a claim of universal inability. Campos2007 checks the aerobic mixed-medium exception.
 
 Verification: Primary indexed full Results and DOI record verified.
 
-<a id="s35"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/12644495/) (checked 2026-10-05).
 
-## S35
+<a id="campos2007"></a>
+
+## Campos2007
 
 Campos, Evangelina; Montella, Cristina; Garces, Fernando; Baldoma, Laura; Aguilar, Juan; Badia, Josefa (2007). Aerobic l-ascorbate metabolism and associated oxidative stress in Escherichia coli. Microbiology, 153(10), 3399-3408.
 
@@ -636,9 +698,11 @@ Decision support and limits: Aerobic E. coli ascorbate use can occur with specif
 
 Verification: Full publisher primary abstract and primary PDF indexed passage verified.
 
-<a id="s36"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/17906139/) (checked 2026-10-05).
 
-## S36
+<a id="li2022"></a>
+
+## Li2022
 
 Li, Hongmei; Lin, Xiaoyang; Yu, Lujun; Li, Jianjun; Miao, Zongyu; Wei, Yuanzheng; Zeng, Jin; Zhang, Qi; Sun, Yongxue; Huang, Ren (2022). Comprehensive characterization of the bacterial community structure and metabolite composition of food waste fermentation products via microbiome and metabolome analyses. PLOS ONE, 17(3), e0264234.
 
@@ -654,9 +718,11 @@ Decision support and limits: Post-fermentation library features and relative abu
 
 Verification: Full primary XML inspected.
 
-<a id="s37"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/35290990/) (checked 2026-10-05).
 
-## S37
+<a id="tachibana2021"></a>
+
+## Tachibana2021
 
 Tachibana, Seiga; Chiou, Tai‐Ying; Konishi, Masaaki (2021). Machine learning modeling of the effects of media formulated with various yeast extracts on heterologous protein production in Escherichia coli. MicrobiologyOpen, 10(3), e1214.
 
@@ -672,9 +738,11 @@ Decision support and limits: A large feature panel includes sugars, amino-acid d
 
 Verification: Full primary XML inspected.
 
-<a id="s38"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/34180605/) (checked 2026-10-05).
 
-## S38
+<a id="denger2014"></a>
+
+## Denger2014
 
 Denger, Karin; Weiss, Michael; Felux, Ann-Katrin; Schneider, Alexander; Mayer, Christoph; Spiteller, Dieter; Huhn, Thomas; Cook, Alasdair M.; Schleheck, David (2014). Sulphoglycolysis in Escherichia coli K-12 closes a gap in the biogeochemical sulphur cycle. Nature, 507(7490), 114-117.
 
@@ -690,9 +758,11 @@ Decision support and limits: Growth/catabolism on SQ is supported. Its plant sul
 
 Verification: Publisher primary abstract, figures and DOI record verified.
 
-<a id="s39"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/24463506/) (checked 2026-10-05).
 
-## S39
+<a id="speciale2016"></a>
+
+## Speciale2016
 
 Speciale, Gaetano; Jin, Yi; Davies, Gideon J; Williams, Spencer J; Goddard-Borger, Ethan D (2016). YihQ is a sulfoquinovosidase that cleaves sulfoquinovosyl diacylglyceride sulfolipids. Nature Chemical Biology, 12(4), 215-217.
 
@@ -708,9 +778,11 @@ Decision support and limits: E. coli YihQ hydrolyzes sulfoquinovosyl lipids. An 
 
 Verification: Publisher primary abstract/figure and DOI record verified.
 
-<a id="s40"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/26878550/) (checked 2026-10-05).
 
-## S40
+<a id="grafvonarmansperg2021"></a>
+
+## GrafvonArmansperg2021
 
 Graf von Armansperg, Benedikt; Koller, Franziska; Gericke, Nicola; Hellwig, Michael; Jagtap, Pravin Kumar Ankush; Heermann, Ralf; Hennig, Janosch; Henle, Thomas; Lassak, Jürgen (2021). Transcriptional regulation of the N ε ‐fructoselysine metabolism in Escherichia coli by global and substrate‐specific cues. Molecular Microbiology, 115(2), 175-190.
 
@@ -726,9 +798,11 @@ Decision support and limits: Wild BW25113 consumes epsilon-fructoselysine, where
 
 Verification: Primary publisher-indexed Fig. 4 and Results plus DOI record verified.
 
-<a id="s41"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/32979851/) (checked 2026-10-05).
 
-## S41
+<a id="vandongen2023"></a>
+
+## vanDongen2023
 
 van Dongen, Katja C W; Ioannou, Athanasia; Wesseling, Sebastiaan; Beekmann, Karsten; Belzer, Clara (2023). Differences in gut microbial fructoselysine degradation activity between breast-fed and formula-fed infants. FEMS Microbiology Ecology, 99(1), fiac145.
 
@@ -744,9 +818,11 @@ Decision support and limits: Free fructoselysine is measured separately from enz
 
 Verification: Full primary XML inspected. Online 2022; volume 99 issue 1 is the 2023 issue.
 
-<a id="s42"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/36442156/) (checked 2026-10-05).
 
-## S42
+<a id="wylie2018"></a>
+
+## Wylie2018
 
 Wylie, Aaron D.; Zandberg, Wesley F. (2018). Quantitation of Sialic Acids in Infant Formulas by Liquid Chromatography–Mass Spectrometry: An Assessment of Different Protein Sources and Discovery of New Analogues. Journal of Agricultural and Food Chemistry, 66(30), 8114-8123.
 
@@ -758,13 +834,15 @@ Relevant compounds or feedstock: Free and bound Neu5Ac in infant formula.
 
 Evidence locator: Primary abstract and LC-MS analytical study of eight formulas.
 
-Decision support and limits: Free and glycosidically bound sialic acids are distinguished. Native capability is supported separately by S16/S17; the formula study is not E. coli cultivation. Exact free-Neu5Ac concentration table was not retrieved, so bulk feedstock inclusion remains deferred rather than inferred from total sialic acid.
+Decision support and limits: Free and glycosidically bound sialic acids are distinguished. Native capability is supported separately by Shin2026/Angles2017; the formula study is not E. coli cultivation. Exact free-Neu5Ac concentration table was not retrieved, so bulk feedstock inclusion remains deferred rather than inferred from total sialic acid.
 
 Verification: PubMed primary abstract, full citation and DOI verified; no full numerical free-fraction table access claimed.
 
-<a id="s43"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/29730930/) (checked 2026-10-05).
 
-## S43
+<a id="xie2016"></a>
+
+## Xie2016
 
 Xie, Baogang; Liu, Yalan; Zou, Huiqin; Son, Yong; Wang, Huiyun; Wang, Haipeng; Shao, Jianghua (2016). Determination of d-glucaric acid and/or d-glucaro-1,4-lacton in different apple varieties through hydrophilic interaction chromatography. Food Chemistry, 203, 1-7.
 
@@ -776,13 +854,15 @@ Relevant compounds or feedstock: Apple glucarate versus glucarolactone.
 
 Evidence locator: Primary abstract; HILIC-UV/MS differentiation of GA and 1,4-GL.
 
-Decision support and limits: The prominent numerical apple result concerns glucarolactone, not a directly assignable free-glucarate feed amount. Native MG1655 glucarate growth is supported by S16, but the acid/lactone quantitative table was unavailable. Do not equate their concentrations or infer uptake of a food extract.
+Decision support and limits: The prominent numerical apple result concerns glucarolactone, not a directly assignable free-glucarate feed amount. Native MG1655 glucarate growth is supported by Shin2026, but the acid/lactone quantitative table was unavailable. Do not equate their concentrations or infer uptake of a food extract.
 
 Verification: PubMed primary abstract and DOI metadata verified; full numerical acid/lactone table unavailable.
 
-<a id="s44"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/26948581/) (checked 2026-10-05).
 
-## S44
+<a id="martau2021"></a>
+
+## Martau2021
 
 Martău, Gheorghe Adrian; Teleky, Bernadette-Emőke; Ranga, Floricuţa; Pop, Ioana Delia; Vodnar, Dan Cristian (2021). Apple Pomace as a Sustainable Substrate in Sourdough Fermentation. Frontiers in Microbiology, 12, 742020.
 
@@ -798,9 +878,11 @@ Decision support and limits: Chromatography uses acid standards and confirms fum
 
 Verification: Full primary XML and publisher PDF table inspected.
 
-<a id="s45"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/34975780/) (checked 2026-10-05).
 
-## S45
+<a id="garciavinola2024"></a>
+
+## GarciaVinola2024
 
 Garcia-Viñola, Violeta; Ruiz-de-Villa, Candela; Gombau, Jordi; Poblet, Montse; Bordons, Albert; Reguant, Cristina; Rozès, Nicolas (2024). Simultaneous Analysis of Organic Acids, Glycerol and Phenolic Acids in Wines Using Gas Chromatography-Mass Spectrometry. Foods, 13(2), 186.
 
@@ -816,9 +898,11 @@ Decision support and limits: Use endogenous concentration estimates, not amounts
 
 Verification: Full primary XML and Tables 2/4 inspected.
 
-<a id="s46"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/38254487/) (checked 2026-10-05).
 
-## S46
+<a id="simonte2017"></a>
+
+## Simonte2017
 
 Simonte, Francesca M.; Dötsch, Andreas; Galego, Lisete; Arraiano, Cecilia; Gescher, Johannes (2017). Investigation on the anaerobic propionate degradation by Escherichia coli K12. Molecular Microbiology, 103(1), 55-66.
 
@@ -834,9 +918,11 @@ Decision support and limits: Aerobic growth on propionate is slow; anaerobic pro
 
 Verification: Primary publisher-indexed Results and PubMed/DOI record verified; full PDF not independently downloaded.
 
-<a id="s47"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/27671713/) (checked 2026-10-05).
 
-## S47
+<a id="soupene2003"></a>
+
+## Soupene2003
 
 Soupene, Eric; van Heeswijk, Wally C.; Plumbridge, Jacqueline; Stewart, Valley; Bertenthal, Daniel; Lee, Haidy; Prasad, Gyaneshwar; Paliy, Oleg; Charernnoppakul, Parinya; Kustu, Sydney (2003). Physiological Studies of Escherichia coli Strain MG1655: Growth Defects and Apparent Cross-Regulation of Gene Expression. Journal of Bacteriology, 185(18), 5611-5626.
 
@@ -852,9 +938,11 @@ Decision support and limits: A cryptic prophage interrupts the eut region in ref
 
 Verification: Primary publisher-indexed full Results and DOI metadata verified.
 
-<a id="s48"></a>
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/12949114/) (checked 2026-10-05).
 
-## S48
+<a id="yang2019"></a>
+
+## Yang2019
 
 Yang, Laurence; Mih, Nathan; Anand, Amitesh; Park, Joon Ho; Tan, Justin; Yurkovich, James T.; Monk, Jonathan M.; Lloyd, Colton J.; Sandberg, Troy E.; Seo, Sang Woo; Kim, Donghyuk; Sastry, Anand V.; Phaneuf, Patrick; Gao, Ye; Broddrick, Jared T.; Chen, Ke; Heckmann, David; Szubin, Richard; Hefner, Ying; Feist, Adam M.; Palsson, Bernhard O. (2019). Cellular responses to reactive oxygen species are predicted from molecular mechanisms. Proceedings of the National Academy of Sciences, 116(28), 14368-14373.
 
@@ -866,16 +954,179 @@ Relevant compounds or feedstock: Native MG1655 glycolate growth; resolves a phys
 
 Evidence locator: Fig. 2E, zero-paraquat/zero-shikimate control; "Computing and Explaining the Environment Dependency of ROS Tolerance" Results.
 
-Decision support and limits: MG1655 growth on glycolate is measured experimentally; use the untreated native control, not the ROS-evolved PQ3 strain or simulations. Beet-molasses presence is established separately by S03. The control provides positive native-growth evidence without claiming the same rate at every oxygen uptake cap or in inhibitory molasses.
+Decision support and limits: MG1655 growth on glycolate is measured experimentally; use the untreated native control, not the ROS-evolved PQ3 strain or simulations. Beet-molasses presence is established separately by Palmonari2020. The control provides positive native-growth evidence without claiming the same rate at every oxygen uptake cap or in inhibitory molasses.
 
 Verification: Primary article PDF text inspected through the author repository; Fig. 2 caption and Results verified against primary indexed text; DOI metadata verified. Supplementary growth protocol not independently retrieved.
+
+Metadata cross-check: [primary-paper bibliographic record](https://pubmed.ncbi.nlm.nih.gov/31270234/) (checked 2026-10-05).
+
+<a id="zhao2005"></a>
+
+## Zhao2005
+
+Zhao, Jian; Fleet, Graham H (2005). Degradation of RNA during the autolysis of Saccharomyces cerevisiae produces predominantly ribonucleotides. Journal of Industrial Microbiology & Biotechnology, 32(9), 415-423.
+
+DOI: [10.1007/s10295-005-0008-9](https://doi.org/10.1007/s10295-005-0008-9).
+
+Primary source: [paper / publisher record](https://academic.oup.com/jimb/article-pdf/32/9/415/34739259/jimb0415.pdf).
+
+Relevant compounds or feedstock: Yeast autolysate; free nucleosides and phosphate-position-resolved nucleotides.
+
+Evidence locator: Results, pp. 419–420, paragraph beginning with the ribonucleoside determinations; HPLC Methods; Tables 2–5.
+
+Decision support and limits: Washed yeast is deliberately autolyzed before analysis. Uridine, adenosine, cytidine and guanosine are separately identified extracellular products. Individual nucleoside concentration data are not tabulated; grouped percentages cannot establish a threshold-based richness count. This is presence evidence, not E. coli cultivation.
+
+Verification: Full primary publisher PDF inspected; PubMed metadata checked.
+
+Metadata cross-check: [PubMed](https://pubmed.ncbi.nlm.nih.gov/16091942/) (checked 2026-10-05).
+
+
+<a id="koizumi1996"></a>
+
+## Koizumi1996
+
+Koizumi, Yukimichi; Mura, Kiyoshi; Tanaka, Hideo; Okamoto, Akiko; Yanagida, Fujiharu (1996). Chemical Analysis of Fish Sauce and Salted Shrimp Paste Preserve Made in Viet Nam. Journal of the Brewing Society of Japan, 91(11), 828-833.
+
+DOI: [10.6013/jbrewsocjapan1988.91.828](https://doi.org/10.6013/jbrewsocjapan1988.91.828).
+
+Primary source: [paper / publisher record](https://www.jstage.jst.go.jp/article/jbrewsocjapan1988/91/11/91_11_828/_article/-char/en).
+
+Relevant compounds or feedstock: Fermented fish sauce and salted shrimp paste; inosine, free amino acids and nucleobases.
+
+Evidence locator: English abstract on p. 828; Table 1 identifies samples; HPLC Methods on p. 829 and free-amino-acid Table 2.
+
+Decision support and limits: Inosine is explicitly identified in finished fermented products; guanine and hypoxanthine are also present. Those bases are not automatically bulk carbon sources. No MG1655 cultivation is reported. Salt and processing affect suitability. No mM richness is inferred from grouped weight-percent totals.
+
+Verification: Primary publisher page and English primary-paper abstract/Methods inspected; full Japanese numerical panels are not used for K.
+
+
+<a id="rumbold2009"></a>
+
+## Rumbold2009
+
+Rumbold, Karl; van Buijsen, Hugo J J; Overkamp, Karin M; van Groenestijn, Johan W; Punt, Peter J; van der Werf, Mariët J (2009). Microbial production host selection for converting second-generation feedstocks into bioproducts. Microbial Cell Factories, 8, 64.
+
+DOI: [10.1186/1475-2859-8-64](https://doi.org/10.1186/1475-2859-8-64).
+
+Primary source: [paper / publisher record](https://pmc.ncbi.nlm.nih.gov/articles/PMC2795742/).
+
+Relevant compounds or feedstock: Bagasse, wheat, corn and willow hydrolysates; crude biodiesel glycerol; actual MG1655.
+
+Evidence locator: Methods: strain MG1655 (ATCC 47076), cultivation medium and hydrolysate dilution; Table 5 composition; Table 6 growth and glucose/glycerol consumption.
+
+Decision support and limits: Unmodified MG1655 is tested alongside five other hosts. Hydrolysates are diluted to 15 g/L glucose and supplied in mineral medium; these are prepared cultivation feeds. MG1655 growth/glucose consumption does not prove uptake of every minor sugar. Failure on the particular willow/crude-glycerol feeds despite capacity on pure glycerol demonstrates matrix dependence.
+
+Verification: Full primary XML, Tables 5/6 and strain Methods inspected; PubMed metadata checked.
+
+Metadata cross-check: [PubMed](https://pubmed.ncbi.nlm.nih.gov/19958560/) (checked 2026-10-05).
+
+
+<a id="mackie2014"></a>
+
+## Mackie2014
+
+Mackie, Amanda; Paley, Suzanne; Keseler, Ingrid M; Shearer, Alexander; Paulsen, Ian T; Karp, Peter D (2014). Addition of Escherichia coli K-12 growth observation and gene essentiality data to the EcoCyc database. Journal of Bacteriology, 196(5), 982-988.
+
+DOI: [10.1128/jb.01209-13](https://doi.org/10.1128/jb.01209-13).
+
+Primary source: [paper / publisher record](https://pmc.ncbi.nlm.nih.gov/articles/PMC3957686/).
+
+Relevant compounds or feedstock: MG1655 growth observations, assay disagreement and guanosine nitrogen use.
+
+Evidence locator: Methods for Biolog versus low-throughput growth; Table 5, guanosine nitrogen-source row; Table 6 carbon-source tests.
+
+Decision support and limits: Actual MG1655 grows with guanosine as nitrogen source on minimal salts agar; corresponding liquid M9 test is not performed. Carbon substrate is supplied separately. This does not establish guanosine sole-carbon growth. Biolog respiration and low-throughput growth can disagree.
+
+Verification: Primary publisher reprint PDF inspected; PubMed metadata checked.
+
+Metadata cross-check: [PubMed](https://pubmed.ncbi.nlm.nih.gov/24363340/) (checked 2026-10-05).
+
+
+<a id="rodionova2021"></a>
+
+## Rodionova2021
+
+Rodionova, Irina A; Gao, Ye; Sastry, Anand; Hefner, Ying; Lim, Hyun Gyu; Rodionov, Dmitry A; Saier, Milton H; Palsson, Bernhard O (2021). Identification of a transcription factor, PunR, that regulates the purine and purine nucleoside transporter punC in E. coli. Communications Biology, 4(1), 991.
+
+DOI: [10.1038/s42003-021-02516-0](https://doi.org/10.1038/s42003-021-02516-0).
+
+Primary source: [paper / publisher record](https://pmc.ncbi.nlm.nih.gov/articles/PMC8376909/).
+
+Relevant compounds or feedstock: Purine nucleoside uptake and carbon-versus-nitrogen physiology.
+
+Evidence locator: Fig. 5C: MG1655 WT and punR mutant, adenosine nitrogen source; Fig. 6B/C: BW25113 with inosine/guanosine; strain/cultivation Methods.
+
+Decision support and limits: Native MG1655 adenosine nitrogen use is demonstrated. Inosine/guanosine nitrogen tests use BW25113 and glycerol as carbon source; do not transfer their strain or nutrient role to an MG1655 sole-carbon claim. Transport regulation under nitrogen starvation qualifies random-medium assumptions.
+
+Verification: Full primary XML inspected; PubMed metadata checked.
+
+Metadata cross-check: [PubMed](https://pubmed.ncbi.nlm.nih.gov/34413462/) (checked 2026-10-05).
+
+
+<a id="yamaguchi1993"></a>
+
+## Yamaguchi1993
+
+Yamaguchi, Fumihide; Hatanaka, Chitoshi (1993). HPLC Measurement of the Uronate and Neutral Sugar Contents in Corn Hemicellulose. Bioscience, Biotechnology, and Biochemistry, 57(7), 1191-1192.
+
+DOI: [10.1271/bbb.57.1191](https://doi.org/10.1271/bbb.57.1191).
+
+Primary source: [paper / publisher record](https://pubmed.ncbi.nlm.nih.gov/27281004/).
+
+Relevant compounds or feedstock: Corn-hemicellulose uronate analysis; unresolved free-feed qualification.
+
+Evidence locator: Primary title and bibliographic record, pp. 1191–1192.
+
+Decision support and limits: Targeted glucuronate follow-up identified a structural uronate/neutral-sugar analytical paper. Accessible primary records did not establish a concentration of free D-glucuronate in an actual cultivation feed; no free-feed or growth claim is inferred from the title.
+
+Verification: Publisher-indexed citation and PubMed record verified; numerical full text inaccessible. This is a documented search/access gap, not negative biological evidence.
+
+Metadata cross-check: [PubMed](https://pubmed.ncbi.nlm.nih.gov/27281004/) (checked 2026-10-05).
+
+
+<a id="berlowska2017"></a>
+
+## Berlowska2017
+
+Berlowska, Joanna; Pielech-Przybylska, Katarzyna; Balcerek, Maria; Cieciura, Weronika; Borowski, Sebastian; Kregiel, Dorota (2017). Integrated Bioethanol Fermentation/Anaerobic Digestion for Valorization of Sugar Beet Pulp. Energies, 10(9), 1255.
+
+DOI: [10.3390/en10091255](https://doi.org/10.3390/en10091255).
+
+Primary source: [paper / publisher record](https://www.mdpi.com/1996-1073/10/9/1255).
+
+Relevant compounds or feedstock: Enzymatically hydrolyzed sugar-beet pulp, three preparations and yeast cultivation.
+
+Evidence locator: Table 2: briquetted and wet-pulp seasons 1/2; Tables 3/4 cultivation and compound utilization; Methods for preparation.
+
+Decision support and limits: Each panel resolves eight selected monomers plus raffinose. Counts use released hydrolysate rather than structural carbohydrate totals. Fermenters include Saccharomyces cerevisiae Ethanol Red and Scheffersomyces stipitis LOCK0047; no MG1655 use is inferred.
+
+Verification: Full primary publisher PDF inspected; publisher/Crossref citation checked.
+
+
+<a id="kumar2026"></a>
+
+## Kumar2026
+
+Kumar, Sarvesh; Nousiainen, Paula; Kamravamanesh, Donya; Mangayil, Rahul (2026). Integrated multi-analytical framework for comprehensive characterization of lignocellulosic hydrolysates for biorefinary applications. Biomass and Bioenergy, 207, 108754.
+
+DOI: [10.1016/j.biombioe.2025.108754](https://doi.org/10.1016/j.biombioe.2025.108754).
+
+Primary source: [paper / publisher record](https://aaltodoc.aalto.fi/server/api/core/bitstreams/3d2fbf1b-c49d-471b-8d36-03972e2bff96/content).
+
+Relevant compounds or feedstock: Concentrated pressurized-hot-water spruce-sawdust hydrolysate.
+
+Evidence locator: Table 2 monomeric versus oligomeric sugars; section 3.2 and Table 3, own-study final column; Methods 2.1.
+
+Decision support and limits: Six resolved free sugars plus acetate give seven eligible identities. Oligomeric sugar equivalents measured after additional analytical hydrolysis are excluded. No cultivation experiment in this study establishes MG1655 uptake; aggregate aromatics and GC-MS features are not extra available source identities.
+
+Verification: Full primary version-of-record PDF inspected; Aalto/publisher records verified. Issue year 2026; first online 5 December 2025.
 
 ## Copy-ready BibTeX
 
 UTF-8 bibliography text with TeX escapes for names and Greek characters; complete author lists are retained. Article numbers are supplied in the standard `pages` field for compatibility with ordinary BibTeX styles.
 
 ```bibtex
-@article{iml1515_s01,
+@article{Schwalbach2012,
   author = {Schwalbach, Michael S. and Keating, David H. and Tremaine, Mary and Marner, Wesley D. and Zhang, Yaoping and Bothfeld, William and Higbee, Alan and Grass, Jeffrey A. and Cotten, Cameron and Reed, Jennifer L. and da Costa Sousa, Leonardo and Jin, Mingjie and Balan, Venkatesh and Ellinger, James and Dale, Bruce and Kiley, Patricia J. and Landick, Robert},
   title = {{Complex Physiology and Compound Stress Responses during Fermentation of Alkali-Pretreated Corn Stover Hydrolysate by an Escherichia coli Ethanologen}},
   journal = {Applied and Environmental Microbiology},
@@ -887,7 +1138,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.glbrc.org/sites/default/files/data-and-tools-files/AEM-AEM07329-11-s01.pdf}
 }
 
-@article{iml1515_s02,
+@article{Keating2014,
   author = {Keating, David H. and Zhang, Yaoping and Ong, Irene M. and McIlwain, Sean and Morales, Eduardo H. and Grass, Jeffrey A. and Tremaine, Mary and Bothfeld, William and Higbee, Alan and Ulbrich, Arne and Balloon, Allison J. and Westphall, Michael S. and Aldrich, Josh and Lipton, Mary S. and Kim, Joonhoon and Moskvin, Oleg V. and Bukhman, Yury V. and Coon, Joshua J. and Kiley, Patricia J. and Bates, Donna M. and Landick, Robert},
   title = {{Aromatic inhibitors derived from ammonia-pretreated lignocellulose hinder bacterial ethanologenesis by activating regulatory circuits controlling inhibitor efflux and detoxification}},
   journal = {Frontiers in Microbiology},
@@ -898,7 +1149,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2014.00402/full}
 }
 
-@article{iml1515_s03,
+@article{Palmonari2020,
   author = {Palmonari, A. and Cavallini, D. and Sniffen, C.J. and Fernandes, L. and Holder, P. and Fagioli, L. and Fusaro, I. and Biagi, G. and Formigoni, A. and Mammi, L.},
   title = {{Short communication: Characterization of molasses chemical composition}},
   journal = {Journal of Dairy Science},
@@ -910,7 +1161,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.sciencedirect.com/science/article/pii/S0022030220303076}
 }
 
-@article{iml1515_s04,
+@article{Jin2022,
   author = {Jin, Zhao and Lan, Yang and Ohm, Jae-Bom and Gillespie, James and Schwarz, Paul and Chen, Bingcan},
   title = {{Physicochemical composition, fermentable sugars, free amino acids, phenolics, and minerals in brewers' spent grains obtained from craft brewing operations}},
   journal = {Journal of Cereal Science},
@@ -921,7 +1172,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.sciencedirect.com/science/article/pii/S0733521022000029}
 }
 
-@article{iml1515_s05,
+@article{Qin2023,
   author = {Qin, Zehua and Guo, Wei and Liu, Jun and Zhao, Guoqin and Liu, Mingxin and Song, Xin},
   title = {{Reduced-Cost Production of Sophorolipids by Starmerella bombicola CGMCC1576 Grown on Cottonseed Molasses and Cottonseed Oil-Based Medium}},
   journal = {International Journal of Molecular Sciences},
@@ -933,7 +1184,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.mdpi.com/1422-0067/24/6/5759}
 }
 
-@article{iml1515_s06,
+@article{Greetham2020,
   author = {Greetham, Darren and Adams, Jessica M. and Du, Chenyu},
   title = {{The utilization of seawater for the hydrolysis of macroalgae and subsequent bioethanol fermentation}},
   journal = {Scientific Reports},
@@ -945,7 +1196,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.nature.com/articles/s41598-020-66610-9}
 }
 
-@article{iml1515_s07,
+@article{Gama2015,
   author = {Gama, Repson and Van Dyk, J. Susan and Pletschke, Brett I.},
   title = {{Optimisation of enzymatic hydrolysis of apple pomace for production of biofuel and biorefinery chemicals using commercial enzymes}},
   journal = {3 Biotech},
@@ -957,7 +1208,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC4624128/}
 }
 
-@article{iml1515_s08,
+@article{Benvenutti2022,
   author = {Benvenutti, La{\'{i}}s and Bortolini, D{\'{e}}bora Gon{\c{c}}alves and Fischer, Tha{\'{i}}s Est{\'{e}}fane and Zardo, Danianni Marinho and Nogueira, Alessandro and Zielinski, Ac{\'{a}}cio Antonio Ferreira and Alberti, Aline},
   title = {{Bioactive compounds recovered from apple pomace as ingredient in cider processing: monitoring of compounds during fermentation}},
   journal = {Journal of Food Science and Technology},
@@ -969,7 +1220,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC9304537/}
 }
 
-@article{iml1515_s09,
+@article{Viitanen2003,
   author = {Viitanen, Mikko I and Vasala, Antti and Neubauer, Peter and Alatossava, Tapani},
   title = {{Cheese whey-induced high-cell-density production of recombinant proteins in Escherichia coli}},
   journal = {Microbial Cell Factories},
@@ -981,7 +1232,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC155635/}
 }
 
-@article{iml1515_s10,
+@article{Chen2014,
   author = {Chen, Xian-zhong and Tian, Kang-ming and Niu, Dan-dan and Shen, Wei and Algasan, Govender and Singh, Suren and Wang, Zheng-xiang},
   title = {{Efficient bioconversion of crude glycerol from biodiesel to optically pure d-lactate by metabolically engineered Escherichia coli}},
   journal = {Green Chem.},
@@ -993,7 +1244,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pubs.rsc.org/en/content/articlehtml/2014/gc/c3gc41769g}
 }
 
-@article{iml1515_s11,
+@article{Cheah2019,
   author = {Cheah, Yen-Keong and Vidal-Antich, Carme and Dosta, Joan and Mata-{\'{A}}lvarez, Joan},
   title = {{Volatile fatty acid production from mesophilic acidogenic fermentation of organic fraction of municipal solid waste and food waste under acidic and alkaline pH}},
   journal = {Environmental Science and Pollution Research},
@@ -1005,7 +1256,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC6923264/}
 }
 
-@article{iml1515_s12,
+@article{Gibinski2008,
   author = {Gibi{\'{n}}ski, Marek},
   title = {{Production of oat hydrolysates with a low degree of starch saccharification}},
   journal = {Polish Journal of Food and Nutrition Sciences},
@@ -1016,7 +1267,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://journal.pan.olsztyn.pl/pdf-98139-30853?filename=PRODUCTION-OF-OAT-HYDROLY.pdf}
 }
 
-@article{iml1515_s13,
+@article{Pan2011,
   author = {Pan, Sai-kun and Wu, Sheng-jun and Kim, Jin-moon},
   title = {{Preparation of glucosamine by hydrolysis of chitosan with commercial \ensuremath{\alpha}-amylase and glucoamylase}},
   journal = {Journal of Zhejiang University SCIENCE B},
@@ -1028,7 +1279,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC3208173/}
 }
 
-@article{iml1515_s14,
+@article{Li2021,
   author = {Li, Congna and Jiang, Shun and Du, Chao and Lu, Zhenghui and He, Nisha and Zhou, Yuling and Jiang, Sijing and Zhang, Guimin},
   title = {{High-Level Extracellular Expression of a New \ensuremath{\beta}-N-Acetylglucosaminidase in Escherichia coli for Producing GlcNAc}},
   journal = {Frontiers in Microbiology},
@@ -1039,7 +1290,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2021.648373/full}
 }
 
-@article{iml1515_s15,
+@article{Larcher2009,
   author = {Larcher, R. and Nicolini, G. and Roman Villegas, T. and Bertoldi, D. and Puecher, C.},
   title = {{Determination of gluconic acid in wine using high pressure liquid chromatography with pulsed amperometric detection}},
   journal = {Vitis},
@@ -1051,7 +1302,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://ojs.openagrar.de/index.php/VITIS/article/view/4167}
 }
 
-@article{iml1515_s16,
+@article{Shin2026,
   author = {Shin, Jongoh and Patel, Arjun and Lou, Xuwen A. and Catoiu, Edward Alexander and Krishnan, Jayanth and Hefner, Ying and Szubin, Richard and Sung, Jaemin and Son, Hyeoncheol Francis and Zielinski, Daniel C. and Palsson, Bernhard {\O}rn},
   title = {{A systems-level atlas of carbon-response transcriptional states in Escherichia coli}},
   journal = {Proceedings of the National Academy of Sciences},
@@ -1063,7 +1314,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.pnas.org/doi/10.1073/pnas.2531884123}
 }
 
-@article{iml1515_s17,
+@article{Angles2017,
   author = {Angl{\`{e}}s, Fr{\'{e}}deric and Castani{\'{e}}-Cornet, Marie-Pierre and Slama, Nawel and Dinclaux, Mickael and Cirinesi, Anne-Marie and Portais, Jean-Charles and L{\'{e}}tisse, Fabien and Genevaux, Pierre},
   title = {{Multilevel interaction of the DnaK/DnaJ(HSP70/HSP40) stress-responsive chaperone machine with the central metabolism}},
   journal = {Scientific Reports},
@@ -1075,7 +1326,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.nature.com/articles/srep41341}
 }
 
-@article{iml1515_s18,
+@article{Abe2017,
   author = {Abe, Kenji and Kuroda, Akio and Takeshita, Ryo},
   title = {{Engineering of Escherichia coli to facilitate efficient utilization of isomaltose and panose in industrial glucose feedstock}},
   journal = {Applied Microbiology and Biotechnology},
@@ -1087,7 +1338,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC5309279/}
 }
 
-@article{iml1515_s19,
+@article{Davies1999,
   author = {Davies, Suzanne J. and Golby, Paul and Omrani, Davood and Broad, Susan A. and Harrington, Vikki L. and Guest, John R. and Kelly, David J. and Andrews, Simon C.},
   title = {{Inactivation and Regulation of the Aerobic C4-Dicarboxylate Transport (dctA) Gene of Escherichia coli}},
   journal = {Journal of Bacteriology},
@@ -1099,7 +1350,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC94081/}
 }
 
-@article{iml1515_s20,
+@article{Brutinel2012,
   author = {Brutinel, Evan D. and Gralnick, Jeffrey A.},
   title = {{Preferential Utilization of d-Lactate by Shewanella oneidensis}},
   journal = {Applied and Environmental Microbiology},
@@ -1111,7 +1362,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://journals.asm.org/doi/10.1128/AEM.02183-12}
 }
 
-@article{iml1515_s21,
+@article{Katz2023,
   author = {Katz, Sophia and Grajeda-Iglesias, Claudia and Agranovich, Bella and Ghrayeb, Alia and Abramovich, Ifat and Hilau, Sabrin and Gottlieb, Eyal and Hershberg, Ruth},
   title = {{Metabolic adaptation to consume butyrate under prolonged resource exhaustion}},
   journal = {PLOS Genetics},
@@ -1123,7 +1374,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010812}
 }
 
-@article{iml1515_s22,
+@article{Sezonov2007,
   author = {Sezonov, Guennadi and Joseleau-Petit, Danièle and D'Ari, Richard},
   title = {{Escherichia coli Physiology in Luria-Bertani Broth}},
   journal = {Journal of Bacteriology},
@@ -1135,7 +1386,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC2168924/}
 }
 
-@article{iml1515_s23,
+@article{Maser2020,
   author = {Maser, Andres and Peebo, Karl and Vilu, Raivo and Nahku, Ranno},
   title = {{Amino acids are key substrates to Escherichia coli BW25113 for achieving high specific growth rate}},
   journal = {Research in Microbiology},
@@ -1147,7 +1398,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.sciencedirect.com/science/article/pii/S0923250820300176}
 }
 
-@article{iml1515_s24,
+@article{Hohmann2024,
   author = {H{\"{o}}hmann, Sonja and Briol, Tim Arik and Ihle, Nadine and Frick, Oliver and Schmid, Andreas and B{\"{u}}hler, Bruno},
   title = {{Glycolate as alternative carbon source for Escherichia coli}},
   journal = {Journal of Biotechnology},
@@ -1158,7 +1409,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://doi.org/10.1016/j.jbiotec.2024.01.001}
 }
 
-@article{iml1515_s25,
+@article{Orsi2025,
   author = {Orsi, Enrico and Schulz-Mirbach, Helena and Cotton, Charles A. R. and Satanowski, Ari and Petri, Henrik M. and Arnold, Susanne L. and Grabarczyk, Natalia and Verbakel, Rutger and Jensen, Karsten S. and Donati, Stefano and Paczia, Nicole and Glatter, Timo and K{\"{u}}ffner, Andreas M. and Chotel, Tanguy and Schillm{\"{u}}ller, Farah and De Maria, Alberto and He, Hai and Lindner, Steffen N. and Noor, Elad and Bar-Even, Arren and Erb, Tobias J. and Nikel, Pablo I.},
   title = {{Computation-aided designs enable developing auxotrophic metabolic sensors for wide-range glyoxylate and glycolate detection}},
   journal = {Nature Communications},
@@ -1169,7 +1420,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.nature.com/articles/s41467-025-57407-3}
 }
 
-@article{iml1515_s26,
+@article{VanHofwegen2016,
   author = {Van Hofwegen, Dustin J. and Hovde, Carolyn J. and Minnich, Scott A.},
   title = {{Rapid Evolution of Citrate Utilization by Escherichia coli by Direct Selection Requires citT and dctA}},
   journal = {Journal of Bacteriology},
@@ -1181,7 +1432,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC4800869/}
 }
 
-@article{iml1515_s27,
+@article{Cao2020,
   author = {Cao, Yujin and Mu, Hui and Guo, Jing and Liu, Hui and Zhang, Rubing and Liu, Wei and Xian, Mo and Liu, Huizhou},
   title = {{Metabolic engineering of Escherichia coli for the utilization of ethanol}},
   journal = {Journal of Biological Research-Thessaloniki},
@@ -1193,7 +1444,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC6975068/}
 }
 
-@article{iml1515_s28,
+@article{Neelakanta2009,
   author = {Neelakanta, Girish and Sankar, T. Sabari and Schnetz, Karin},
   title = {{Characterization of a \ensuremath{\beta}-Glucoside Operon (bgc) Prevalent in Septicemic and Uropathogenic Escherichia coli Strains}},
   journal = {Applied and Environmental Microbiology},
@@ -1205,7 +1456,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pubmed.ncbi.nlm.nih.gov/19233952/}
 }
 
-@article{iml1515_s29,
+@article{Lee2010,
   author = {Lee, Dae-Hee and Palsson, Bernhard {\O}.},
   title = {{Adaptive Evolution of Escherichia coli K-12 MG1655 during Growth on a Nonnative Carbon Source, l-1,2-Propanediol}},
   journal = {Applied and Environmental Microbiology},
@@ -1217,7 +1468,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pubmed.ncbi.nlm.nih.gov/20435762/}
 }
 
-@article{iml1515_s30,
+@article{Schneider2012,
   author = {Schneider, Barbara L. and Reitzer, Larry},
   title = {{Pathway and Enzyme Redundancy in Putrescine Catabolism in Escherichia coli}},
   journal = {Journal of Bacteriology},
@@ -1229,7 +1480,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC3416515/}
 }
 
-@article{iml1515_s31,
+@article{Dover1972,
   author = {Dover, Shabtay and Halpern, Yeheskel S.},
   title = {{Utilization of \ensuremath{\gamma}-Aminobutyric Acid as the Sole Carbon and Nitrogen Source by Escherichia coli K-12 Mutants}},
   journal = {Journal of Bacteriology},
@@ -1241,7 +1492,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://doi.org/10.1128/JB.109.2.835-843.1972}
 }
 
-@article{iml1515_s32,
+@article{Herring2018,
   author = {Herring, Taylor I. and Harris, Tiffany N. and Chowdhury, Chiranjit and Mohanty, Sujit Kumar and Bobik, Thomas A.},
   title = {{A Bacterial Microcompartment Is Used for Choline Fermentation by Escherichia coli 536}},
   journal = {Journal of Bacteriology},
@@ -1253,7 +1504,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC5915781/}
 }
 
-@article{iml1515_s33,
+@article{Switzer2020,
   author = {Switzer, Amy and Burchell, Lynn and McQuail, Josh and Wigneshweraraj, Sivaramesh},
   title = {{The Adaptive Response to Long-Term Nitrogen Starvation in Escherichia coli Requires the Breakdown of Allantoin}},
   journal = {Journal of Bacteriology},
@@ -1265,8 +1516,8 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC7417836/}
 }
 
-@article{iml1515_s34,
-  author = {Zhang, Zhongge and Aboulwafa, Mohammad and Smith, Meghan H. and Saier,, Milton H.},
+@article{Zhang2003,
+  author = {Zhang, Zhongge and Aboulwafa, Mohammad and Smith, Meghan H. and Saier, Jr., Milton H.},
   title = {{The Ascorbate Transporter of Escherichia coli}},
   journal = {Journal of Bacteriology},
   year = {2003},
@@ -1277,7 +1528,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC151508/}
 }
 
-@article{iml1515_s35,
+@article{Campos2007,
   author = {Campos, Evangelina and Montella, Cristina and Garces, Fernando and Baldoma, Laura and Aguilar, Juan and Badia, Josefa},
   title = {{Aerobic l-ascorbate metabolism and associated oxidative stress in Escherichia coli}},
   journal = {Microbiology},
@@ -1289,7 +1540,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.microbiologyresearch.org/content/journal/micro/10.1099/mic.0.2007/009613-0}
 }
 
-@article{iml1515_s36,
+@article{Li2022,
   author = {Li, Hongmei and Lin, Xiaoyang and Yu, Lujun and Li, Jianjun and Miao, Zongyu and Wei, Yuanzheng and Zeng, Jin and Zhang, Qi and Sun, Yongxue and Huang, Ren},
   title = {{Comprehensive characterization of the bacterial community structure and metabolite composition of food waste fermentation products via microbiome and metabolome analyses}},
   journal = {PLOS ONE},
@@ -1301,7 +1552,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0264234}
 }
 
-@article{iml1515_s37,
+@article{Tachibana2021,
   author = {Tachibana, Seiga and Chiou, Tai-Ying and Konishi, Masaaki},
   title = {{Machine learning modeling of the effects of media formulated with various yeast extracts on heterologous protein production in Escherichia coli}},
   journal = {MicrobiologyOpen},
@@ -1313,7 +1564,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC8236903/}
 }
 
-@article{iml1515_s38,
+@article{Denger2014,
   author = {Denger, Karin and Weiss, Michael and Felux, Ann-Katrin and Schneider, Alexander and Mayer, Christoph and Spiteller, Dieter and Huhn, Thomas and Cook, Alasdair M. and Schleheck, David},
   title = {{Sulphoglycolysis in Escherichia coli K-12 closes a gap in the biogeochemical sulphur cycle}},
   journal = {Nature},
@@ -1325,7 +1576,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.nature.com/articles/nature12947}
 }
 
-@article{iml1515_s39,
+@article{Speciale2016,
   author = {Speciale, Gaetano and Jin, Yi and Davies, Gideon J and Williams, Spencer J and Goddard-Borger, Ethan D},
   title = {{YihQ is a sulfoquinovosidase that cleaves sulfoquinovosyl diacylglyceride sulfolipids}},
   journal = {Nature Chemical Biology},
@@ -1337,7 +1588,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.nature.com/articles/nchembio.2023}
 }
 
-@article{iml1515_s40,
+@article{GrafvonArmansperg2021,
   author = {Graf von Armansperg, Benedikt and Koller, Franziska and Gericke, Nicola and Hellwig, Michael and Jagtap, Pravin Kumar Ankush and Heermann, Ralf and Hennig, Janosch and Henle, Thomas and Lassak, J{\"{u}}rgen},
   title = {{Transcriptional regulation of the N \ensuremath{\epsilon} -fructoselysine metabolism in Escherichia coli by global and substrate-specific cues}},
   journal = {Molecular Microbiology},
@@ -1349,7 +1600,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://onlinelibrary.wiley.com/doi/full/10.1111/mmi.14608}
 }
 
-@article{iml1515_s41,
+@article{vanDongen2023,
   author = {van Dongen, Katja C W and Ioannou, Athanasia and Wesseling, Sebastiaan and Beekmann, Karsten and Belzer, Clara},
   title = {{Differences in gut microbial fructoselysine degradation activity between breast-fed and formula-fed infants}},
   journal = {FEMS Microbiology Ecology},
@@ -1361,7 +1612,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC9749803/}
 }
 
-@article{iml1515_s42,
+@article{Wylie2018,
   author = {Wylie, Aaron D. and Zandberg, Wesley F.},
   title = {{Quantitation of Sialic Acids in Infant Formulas by Liquid Chromatography--Mass Spectrometry: An Assessment of Different Protein Sources and Discovery of New Analogues}},
   journal = {Journal of Agricultural and Food Chemistry},
@@ -1373,7 +1624,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pubmed.ncbi.nlm.nih.gov/29730930/}
 }
 
-@article{iml1515_s43,
+@article{Xie2016,
   author = {Xie, Baogang and Liu, Yalan and Zou, Huiqin and Son, Yong and Wang, Huiyun and Wang, Haipeng and Shao, Jianghua},
   title = {{Determination of d-glucaric acid and/or d-glucaro-1,4-lacton in different apple varieties through hydrophilic interaction chromatography}},
   journal = {Food Chemistry},
@@ -1384,7 +1635,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pubmed.ncbi.nlm.nih.gov/26948581/}
 }
 
-@article{iml1515_s44,
+@article{Martau2021,
   author = {Mart{\u{a}}u, Gheorghe Adrian and Teleky, Bernadette-Emőke and Ranga, Floricu{\c{t}}a and Pop, Ioana Delia and Vodnar, Dan Cristian},
   title = {{Apple Pomace as a Sustainable Substrate in Sourdough Fermentation}},
   journal = {Frontiers in Microbiology},
@@ -1395,7 +1646,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2021.742020/full}
 }
 
-@article{iml1515_s45,
+@article{GarciaVinola2024,
   author = {Garcia-Vi{\~{n}}ola, Violeta and Ruiz-de-Villa, Candela and Gombau, Jordi and Poblet, Montse and Bordons, Albert and Reguant, Cristina and Roz{\`{e}}s, Nicolas},
   title = {{Simultaneous Analysis of Organic Acids, Glycerol and Phenolic Acids in Wines Using Gas Chromatography-Mass Spectrometry}},
   journal = {Foods},
@@ -1407,7 +1658,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC10814861/}
 }
 
-@article{iml1515_s46,
+@article{Simonte2017,
   author = {Simonte, Francesca M. and D{\"{o}}tsch, Andreas and Galego, Lisete and Arraiano, Cecilia and Gescher, Johannes},
   title = {{Investigation on the anaerobic propionate degradation by Escherichia coli K12}},
   journal = {Molecular Microbiology},
@@ -1419,7 +1670,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://onlinelibrary.wiley.com/doi/10.1111/mmi.13541}
 }
 
-@article{iml1515_s47,
+@article{Soupene2003,
   author = {Soupene, Eric and van Heeswijk, Wally C. and Plumbridge, Jacqueline and Stewart, Valley and Bertenthal, Daniel and Lee, Haidy and Prasad, Gyaneshwar and Paliy, Oleg and Charernnoppakul, Parinya and Kustu, Sydney},
   title = {{Physiological Studies of Escherichia coli Strain MG1655: Growth Defects and Apparent Cross-Regulation of Gene Expression}},
   journal = {Journal of Bacteriology},
@@ -1431,7 +1682,7 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC193769/}
 }
 
-@article{iml1515_s48,
+@article{Yang2019,
   author = {Yang, Laurence and Mih, Nathan and Anand, Amitesh and Park, Joon Ho and Tan, Justin and Yurkovich, James T. and Monk, Jonathan M. and Lloyd, Colton J. and Sandberg, Troy E. and Seo, Sang Woo and Kim, Donghyuk and Sastry, Anand V. and Phaneuf, Patrick and Gao, Ye and Broddrick, Jared T. and Chen, Ke and Heckmann, David and Szubin, Richard and Hefner, Ying and Feist, Adam M. and Palsson, Bernhard O.},
   title = {{Cellular responses to reactive oxygen species are predicted from molecular mechanisms}},
   journal = {Proceedings of the National Academy of Sciences},
@@ -1441,5 +1692,100 @@ UTF-8 bibliography text with TeX escapes for names and Greek characters; complet
   pages = {14368--14373},
   doi = {10.1073/pnas.1905039116},
   url = {https://www.pnas.org/doi/10.1073/pnas.1905039116}
+}
+
+
+@article{Zhao2005,
+  author = {Zhao, Jian and Fleet, Graham H},
+  title = {{Degradation of RNA during the autolysis of Saccharomyces cerevisiae produces predominantly ribonucleotides}},
+  journal = {Journal of Industrial Microbiology \& Biotechnology},
+  year = {2005},
+  volume = {32},
+  number = {9},
+  pages = {415--423},
+  doi = {10.1007/s10295-005-0008-9},
+  url = {https://academic.oup.com/jimb/article-pdf/32/9/415/34739259/jimb0415.pdf}
+}
+
+@article{Koizumi1996,
+  author = {Koizumi, Yukimichi and Mura, Kiyoshi and Tanaka, Hideo and Okamoto, Akiko and Yanagida, Fujiharu},
+  title = {{Chemical Analysis of Fish Sauce and Salted Shrimp Paste Preserve Made in Viet Nam}},
+  journal = {Journal of the Brewing Society of Japan},
+  year = {1996},
+  volume = {91},
+  number = {11},
+  pages = {828--833},
+  doi = {10.6013/jbrewsocjapan1988.91.828},
+  url = {https://www.jstage.jst.go.jp/article/jbrewsocjapan1988/91/11/91_11_828/_article/-char/en}
+}
+
+@article{Rumbold2009,
+  author = {Rumbold, Karl and van Buijsen, Hugo J J and Overkamp, Karin M and van Groenestijn, Johan W and Punt, Peter J and van der Werf, Mariët J},
+  title = {{Microbial production host selection for converting second-generation feedstocks into bioproducts}},
+  journal = {Microbial Cell Factories},
+  year = {2009},
+  volume = {8},
+  pages = {64},
+  doi = {10.1186/1475-2859-8-64},
+  url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC2795742/}
+}
+
+@article{Mackie2014,
+  author = {Mackie, Amanda and Paley, Suzanne and Keseler, Ingrid M and Shearer, Alexander and Paulsen, Ian T and Karp, Peter D},
+  title = {{Addition of Escherichia coli K-12 growth observation and gene essentiality data to the EcoCyc database}},
+  journal = {Journal of Bacteriology},
+  year = {2014},
+  volume = {196},
+  number = {5},
+  pages = {982--988},
+  doi = {10.1128/jb.01209-13},
+  url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC3957686/}
+}
+
+@article{Rodionova2021,
+  author = {Rodionova, Irina A and Gao, Ye and Sastry, Anand and Hefner, Ying and Lim, Hyun Gyu and Rodionov, Dmitry A and Saier, Milton H and Palsson, Bernhard O},
+  title = {{Identification of a transcription factor, PunR, that regulates the purine and purine nucleoside transporter punC in E. coli}},
+  journal = {Communications Biology},
+  year = {2021},
+  volume = {4},
+  number = {1},
+  pages = {991},
+  doi = {10.1038/s42003-021-02516-0},
+  url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC8376909/}
+}
+
+@article{Yamaguchi1993,
+  author = {Yamaguchi, Fumihide and Hatanaka, Chitoshi},
+  title = {{HPLC Measurement of the Uronate and Neutral Sugar Contents in Corn Hemicellulose}},
+  journal = {Bioscience, Biotechnology, and Biochemistry},
+  year = {1993},
+  volume = {57},
+  number = {7},
+  pages = {1191--1192},
+  doi = {10.1271/bbb.57.1191},
+  url = {https://pubmed.ncbi.nlm.nih.gov/27281004/}
+}
+
+@article{Berlowska2017,
+  author = {Berlowska, Joanna and Pielech-Przybylska, Katarzyna and Balcerek, Maria and Cieciura, Weronika and Borowski, Sebastian and Kregiel, Dorota},
+  title = {{Integrated Bioethanol Fermentation/Anaerobic Digestion for Valorization of Sugar Beet Pulp}},
+  journal = {Energies},
+  year = {2017},
+  volume = {10},
+  number = {9},
+  pages = {1255},
+  doi = {10.3390/en10091255},
+  url = {https://www.mdpi.com/1996-1073/10/9/1255}
+}
+
+@article{Kumar2026,
+  author = {Kumar, Sarvesh and Nousiainen, Paula and Kamravamanesh, Donya and Mangayil, Rahul},
+  title = {{Integrated multi-analytical framework for comprehensive characterization of lignocellulosic hydrolysates for biorefinary applications}},
+  journal = {Biomass and Bioenergy},
+  year = {2026},
+  volume = {207},
+  pages = {108754},
+  doi = {10.1016/j.biombioe.2025.108754},
+  url = {https://aaltodoc.aalto.fi/server/api/core/bitstreams/3d2fbf1b-c49d-471b-8d36-03972e2bff96/content}
 }
 ```

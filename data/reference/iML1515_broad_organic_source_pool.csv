@@ -14,6 +14,7 @@ EX_asp__L_e,L-Aspartate
 EX_pyr_e,Pyruvate
 EX_succ_e,Succinate
 EX_rib__D_e,D-Ribose
+EX_cytd_e,Cytidine
 EX_fum_e,Fumarate
 EX_sbt__D_e,D-Sorbitol
 EX_glu__L_e,L-Glutamate
@@ -33,6 +34,8 @@ EX_maltpt_e,Maltopentaose
 EX_rmn_e,L-Rhamnose
 EX_glyclt_e,Glycolate C2H3O3
 EX_galur_e,D-Galacturonate
+EX_adn_e,Adenosine
+EX_ins_e,Inosine
 EX_lcts_e,Lactose C12H22O11
 EX_malttr_e,Maltotriose C18H32O16
 EX_ppa_e,Propionate (n-C3:0)
@@ -42,4 +45,5 @@ EX_asn__L_e,L-Asparagine
 EX_mal__L_e,L-Malate
 EX_gam_e,D-Glucosamine
 EX_thr__L_e,L-Threonine
+EX_uri_e,Uridine
 EX_maltttr_e,Maltotetraose
