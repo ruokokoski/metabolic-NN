@@ -20,7 +20,7 @@ source /projappl/project_2013496/venvs/vflux-cpu/bin/activate
 mkdir -p "$WORKDIR/data"
 cd "$WORKDIR"
 
-srun python3 -u "$CODEDIR/generate_ecoli_iML1515_AMN_MINN_data.py" \
+srun python3 -u "$CODEDIR/generate_ecoli_iML1515_C_data.py" \
     --n-samples 1000000 \
     --output-prefix iML1515_AMN_MINN_training_data \
     --model-dir "$CODEDIR/models" \

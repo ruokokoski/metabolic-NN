@@ -26,9 +26,9 @@ it is allowed to be evaluated.
 | Model | Pretraining distribution | Generator | Generator status |
 |---|---|---|---|
 | **A** | AMN-specific | `generate_ecoli_iML1515_A_data.py` | Implemented |
-| **B** | Tazza-style MINN-specific | `generate_ecoli_iML1515_MINN_data_tazza.py` | Implemented |
+| **B** | Tazza-style MINN-specific | `generate_ecoli_iML1515_B_data.py` | Implemented |
 | **A ∪ B** | Balanced literal mixture of A and B | `generate_ecoli_iML1515_AB_union_data.py` | Implemented |
-| **C** | Task-relevant AMN/MINN distribution with a bridge regime | `generate_ecoli_iML1515_AMN_MINN_data.py` | Implemented |
+| **C** | Task-relevant AMN/MINN distribution with a bridge regime | `generate_ecoli_iML1515_C_data.py` | Implemented |
 | **D** | Broad distribution with explicit A- and B-like coverage | `generate_ecoli_iML1515_D_data.py` | Implemented |
 | **E** | Broad task-agnostic distribution | `generate_ecoli_iML1515_E_data.py` | Implemented |
 
@@ -44,11 +44,18 @@ acids stay at 2.2. It defaults to pFBA at fraction 0.999. This new sampler does
 not redefine A or alter A ∪ B/C/D/E generation. See the
 [AMN sampler contract](AMN_experiment_notes.md#experimental-pattern-amn-sampler-2026-10-06).
 
-`generate_ecoli_iML1515_MINN_data.py` belongs to the earlier MINN workflow. It
-does not define B in this study because B uses the separate Tazza-style sampler
-that independently samples glucose, oxygen, CO2, ethanol, and acetate bounds.
+As of 2026-10-06, the earlier MINN sampler was deleted and the Tazza-style
+sampler was renamed to `generate_ecoli_iML1515_B_data.py`. This file now
+defines B: independent glucose, oxygen, CO2, ethanol, and acetate cap draws.
+Its behavior, token order, and `iML1515_MINN_tazza_training_data` output prefix
+are unchanged; existing Tazza-named data paths remain valid. Historical
+checkpoints from the deleted sampler retain their original provenance.
 
 ## Current Distribution Contracts
+
+Model C's shared AMN/MINN generator is now `generate_ecoli_iML1515_C_data.py`
+(2026-10-06 filename change). Its distribution, solver defaults, and existing
+`iML1515_AMN_MINN_test_data` output prefix are unchanged.
 
 ### A — AMN-specific
 
@@ -306,14 +313,14 @@ contract is preserved, and local scores must not be labelled exact author
 reproductions merely because their averages are close.
 
 This supersedes the historical Pearson-based Table 4 conventions recorded
-later in this note. The standalone `ecoli_iML1515_MINN_model_testing.ipynb`
+later in this note. The standalone `ecoli_iML1515_B_model_testing.ipynb`
 is corrected first; the shared evaluator and AB/C/D/E/shared-trial legacy
 summaries remain pending, not corrected by this documentation change.
 See `MINN_training_notes.md` for the verified regression baseline and exact
 implementation scope. The user will rerun the standalone reservoir variants.
 
 **Standalone B evaluation update, 2026-09-27:**
-`ecoli_iML1515_MINN_model_testing.ipynb` now prepares a five-row pFBA
+`ecoli_iML1515_B_model_testing.ipynb` now prepares a five-row pFBA
 comparison. The original MINN-fitted file supplies targets and measured
 glucose/oxygen inputs for pFBA and measured/predicted-context FT+pFBA with
 CO2, ethanol, and acetate caps. A separate iML1515-fitted file supplies

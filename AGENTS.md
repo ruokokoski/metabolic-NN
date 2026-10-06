@@ -64,13 +64,13 @@ interpretation changes.
   default and optional correlation-based output-subset training.
 - `ecoli_core_model_testing.ipynb`: main E. coli core evaluation.
 - `ecoli_core_transformer.ipynb`: E. coli core architecture-size sweep.
-- `ecoli_iML1515_MINN_model_testing.ipynb`: MINN frozen-reservoir workflow.
+- `ecoli_iML1515_B_model_testing.ipynb`: MINN frozen-reservoir workflow.
 - `ecoli_iML1515_MINN_Table2.ipynb`: separate Table 2-style benchmark.
 - `ecoli_iML1515_AB_union_model_testing.ipynb`: combined literal-union AMN/MINN
   evaluation. `ecoli_iML1515_C_model_testing.ipynb` evaluates model C with the
   same workflow. `iml1515_evaluation.py` contains shared helpers for AB/C/D/E;
   `iml1515_ab_evaluation.py` remains a compatibility import.
-- `ecoli_iML1515_AMN_model_testing.ipynb`: AMN-style experimental growth-rate
+- `ecoli_iML1515_A_model_testing.ipynb`: AMN-style experimental growth-rate
   workflow.
 - `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`: AMN branch using the
   shared AMN/MINN reservoir.
@@ -89,10 +89,10 @@ biological constraints or generators.
 
 - E. coli core: `generate_ecoli_core_data.py`.
 - General iML1515: `generate_ecoli_iML1515_data.py`.
-- MINN: `generate_ecoli_iML1515_MINN_data.py`; use
-  `generate_ecoli_iML1515_MINN_data_tazza.py` only for its documented ablation.
+- MINN / sampling-study model B: `generate_ecoli_iML1515_B_data.py`, the
+  Tazza-style five-channel cap sampler. The earlier MINN sampler was removed.
 - AMN and shared AMN/MINN: `generate_ecoli_iML1515_A_data.py` and
-  `generate_ecoli_iML1515_AMN_MINN_data.py`.
+  `generate_ecoli_iML1515_C_data.py`.
 - Experimental-pattern AMN sampler: `generate_ecoli_iML1515_AMN_data.py`;
   see the AMN note for its loguniform caps and condition allocation.
 - Broad sampling-study models D and E: `generate_ecoli_iML1515_D_data.py` and

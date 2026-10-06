@@ -61,7 +61,7 @@ def input_contract(model_family="AB_union", exclude_cbl1=False):
     if model_family == "AB_union":
         return build_input_columns()
     if model_family == "C":
-        from generate_ecoli_iML1515_AMN_MINN_data import build_input_cols
+        from generate_ecoli_iML1515_C_data import build_input_cols
         return build_input_cols(exclude_cbl1=exclude_cbl1)[0]
     if model_family in ("D", "E"):
         from importlib import import_module

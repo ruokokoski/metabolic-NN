@@ -31,7 +31,7 @@ must still write an evidence-based update.
 
 ## Main Files
 
-- `generate_ecoli_iML1515_AMN_MINN_data.py`: shared simulated-data generator.
+- `generate_ecoli_iML1515_C_data.py`: shared simulated-data generator.
 - `generate_ecoli_iML1515_AB_union_data.py`: balanced literal A union B
   simulated-data generator.
 - `iML1515_sampling_study_notes.md`: broader A/B/A union B/C/D/E comparison
@@ -44,6 +44,12 @@ must still write an evidence-based update.
 - `MINN_training_notes.md`: MINN-only training, mapping, and pFBA detail.
 
 ## Shared Data Design
+
+Generator naming (2026-10-06): the shared AMN/MINN sampler is now
+`generate_ecoli_iML1515_C_data.py`, matching sampling-study Model C. This is
+a filename change only: regime logic, bounds, solver settings, token order,
+and AMN_MINN-named dataset/checkpoint paths remain unchanged. The Roihu job,
+shared evaluator, C notebook provenance, and integrity hook use the new name.
 
 The shared generator is intended to train one iML1515 FluxTransformer that can
 serve both no-glucose Faure-like AMN media and glucose/oxygen-driven MINN
@@ -98,7 +104,13 @@ prefix explicitly and record the exact command here.
 
 `generate_ecoli_iML1515_AB_union_data.py` is the separate literal-union
 baseline for the broader iML1515 sampling study. It does not contain the mixed
-bridge regime from `generate_ecoli_iML1515_AMN_MINN_data.py`.
+bridge regime from `generate_ecoli_iML1515_C_data.py`.
+
+The maintained standalone B sampler is now `generate_ecoli_iML1515_B_data.py`
+(2026-10-06 rename of the Tazza-style sampler; the legacy MINN sampler was
+deleted). Its distribution and Tazza-named output prefix are unchanged. This
+rename does not change the literal-union or shared generator's regime logic,
+datasets, checkpoints, or historical results.
 
 - Default dataset size: 1,000,000 accepted samples.
 - Accepted regime quotas: exactly 500,000 A and 500,000 Tazza-style B rows,
@@ -136,7 +148,7 @@ No full A union B dataset or checkpoint has been generated yet.
 Both shared notebooks load the 50,000-sample seed-9 test dataset and assert
 vocabulary size and input-token index compatibility with the checkpoint.
 
-Generator change (2026-09): `generate_ecoli_iML1515_AMN_MINN_data.py` now
+Generator change (2026-09): `generate_ecoli_iML1515_C_data.py` now
 includes the fixed cobalamin exchange `EX_cbl1_e` in the base medium by
 default (opt-out with `--exclude-cbl1`). Cobalamin is required by the
 wild-type iML1515 objective if that variant is used and is harmless for the

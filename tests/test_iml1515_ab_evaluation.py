@@ -471,7 +471,7 @@ def test_ab_union_matches_corrected_c_notebook_protocol():
         "AB_1M_d256_h8_l4_ff1024": "AMN_MINN_1M_d256_h8_l4_ff1024",
         "iML1515_AB_union_test_data": "iML1515_AMN_MINN_test_data",
         '"AB_union_evaluation"': '"C_evaluation"',
-        "generate_ecoli_iML1515_AB_union_data.py": "generate_ecoli_iML1515_AMN_MINN_data.py",
+        "generate_ecoli_iML1515_AB_union_data.py": "generate_ecoli_iML1515_C_data.py",
         "ecoli_iML1515_AB_union_model_testing.ipynb": "ecoli_iML1515_C_model_testing.ipynb",
         "A-union-B simulated test CSV": "model C simulated test CSV",
     }

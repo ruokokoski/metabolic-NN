@@ -19,12 +19,12 @@ The biological target is experimental growth rate.
 
 ## Main Files
 
-- `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
+- `ecoli_iML1515_A_model_testing.ipynb`: main AMN-style evaluation notebook.
 - `generate_ecoli_iML1515_A_data.py`: recommended simulated iML1515 data
   generator for future Faure-style AMN FluxTransformer training data.
 - `generate_ecoli_iML1515_AMN_data.py`: separate experimental-pattern sampler
   with loguniform carbon/oxygen caps and pFBA by default.
-- `generate_ecoli_iML1515_AMN_MINN_data.py`: shared AMN/MINN simulated-data
+- `generate_ecoli_iML1515_C_data.py`: shared AMN/MINN simulated-data
   generator for training a FluxTransformer reservoir that sees both Faure-like
   no-glucose media and MINN Table 4-style glucose/oxygen context.
 - `flux_transformer.py`: canonical FluxTransformer model definition.
@@ -37,6 +37,10 @@ The biological target is experimental growth rate.
 Generator naming (2026-10-06): `generate_ecoli_iML1515_A_data.py` now names
 the AMN-specific Model A sampler. This file rename preserves sampling, solver
 defaults, token order, and the `iML1515_AMN_training_data` output prefix.
+
+Notebook naming (2026-10-06): the standalone AMN evaluation notebook is now
+`ecoli_iML1515_A_model_testing.ipynb`. Only its filename changed; checkpoint,
+data paths, code cells, saved outputs, and experimental workflow are preserved.
 
 ## Faure Paper Context
 
@@ -218,7 +222,7 @@ Cross-task generator, checkpoint, trial, and result state is maintained in
 `AMN_MINN_shared_reservoir_notes.md`. Keep this section focused on AMN-specific
 implications and update both notes when a shared change affects AMN behavior.
 
-`generate_ecoli_iML1515_AMN_MINN_data.py` is a separate generator for training a
+`generate_ecoli_iML1515_C_data.py` is a separate generator for training a
 single iML1515 FluxTransformer reservoir that should be usable in both the
 AMN-style experimental growth notebook and the MINN Table 4-style reservoir
 workflow. Both local generators are adaptations. Reproducing the authors'
@@ -410,7 +414,7 @@ Current prior-network out-of-fold summary:
 - Pooled OOF `MAE`: about `0.0235`.
 - Pooled OOF `RMSE`: about `0.0294`.
 
-Future runs of `ecoli_iML1515_AMN_model_testing.ipynb` explicitly use
+Future runs of `ecoli_iML1515_A_model_testing.ipynb` explicitly use
 TabPFN-3.5 (`ModelVersion.V3_5`) for main CV, repeated CV, and uncertainty
 experiments. Package version and checkpoint are printed; existing features,
 splits and seeds are retained. No 3.5 evaluation has been run for this update.
@@ -628,7 +632,7 @@ The fixed-oxygen combined legend uses Fructose uptake with a 17-point label.
 
 ## Full-flux distribution-shift diagnostics
 
-`ecoli_iML1515_AMN_model_testing.ipynb` now scores the full independent
+`ecoli_iML1515_A_model_testing.ipynb` now scores the full independent
 50,000-row B (MINN Tazza) and E (general) test CSVs immediately after its
 in-distribution overall-metrics cell. It reports pooled regression R2, MAE
 and RMSE over all 2,712 checkpoint flux outputs, checks source generator
@@ -687,7 +691,7 @@ generation. Full experimental CV/FBA results have not been run.
 
 ## Cross-task MINN reservoir growth control (2026-10-03)
 
-`ecoli_iML1515_MINN_model_testing.ipynb` now evaluates the 110-point Faure-style
+`ecoli_iML1515_B_model_testing.ipynb` now evaluates the 110-point Faure-style
 growth task using its frozen MINN checkpoint and a new AMN-style front MLP.
 It keeps the standalone AMN notebook's medium conversion, 512-hidden-unit
 network, Huber/AdamW settings, 10-fold carbon-count stratification repeated

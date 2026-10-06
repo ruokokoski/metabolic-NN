@@ -13,7 +13,7 @@ from pathlib import Path
 MAX_REPORTED_ISSUES = 40
 SHARED_NOTE = Path("docs/experiment_notes/AMN_MINN_shared_reservoir_notes.md")
 SHARED_EXACT_PATHS = {
-    Path("generate_ecoli_iML1515_AMN_MINN_data.py"),
+    Path("generate_ecoli_iML1515_C_data.py"),
     Path("ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb"),
     Path("ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb"),
 }

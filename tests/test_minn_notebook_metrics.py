@@ -12,7 +12,7 @@ from sklearn.metrics import r2_score
 class MinnNotebookMetricsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        path = Path(__file__).resolve().parents[1] / "ecoli_iML1515_MINN_model_testing.ipynb"
+        path = Path(__file__).resolve().parents[1] / "ecoli_iML1515_B_model_testing.ipynb"
         cells = json.loads(path.read_text(encoding="utf-8"))["cells"]
         cls.functions = {}
         for cell in cells:
