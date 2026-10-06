@@ -93,6 +93,8 @@ biological constraints or generators.
   `generate_ecoli_iML1515_MINN_data_tazza.py` only for its documented ablation.
 - AMN and shared AMN/MINN: `generate_ecoli_iML1515_A_data.py` and
   `generate_ecoli_iML1515_AMN_MINN_data.py`.
+- Experimental-pattern AMN sampler: `generate_ecoli_iML1515_AMN_data.py`;
+  see the AMN note for its loguniform caps and condition allocation.
 - Broad sampling-study models D and E: `generate_ecoli_iML1515_D_data.py` and
   `generate_ecoli_iML1515_E_data.py`.
 - Yeast9: `generate_yeast9_data.py`.

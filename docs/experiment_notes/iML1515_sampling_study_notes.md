@@ -36,6 +36,14 @@ As of 2026-10-06, Model A's generator is named
 `generate_ecoli_iML1515_A_data.py`. The rename preserves its generation behavior
 and existing `iML1515_AMN_training_data` output prefix.
 
+The separate `generate_ecoli_iML1515_AMN_data.py` sampler restricts draws to
+the 110 experimental patterns, balancing accepted samples across conditions
+(default 11,000 = 100 each). Its selected-source caps are loguniform 0.05--10,
+oxygen is loguniform 1--25, other basal caps are 10, and glycerol/four amino
+acids stay at 2.2. It defaults to pFBA at fraction 0.999. This new sampler does
+not redefine A or alter A ∪ B/C/D/E generation. See the
+[AMN sampler contract](AMN_experiment_notes.md#experimental-pattern-amn-sampler-2026-10-06).
+
 `generate_ecoli_iML1515_MINN_data.py` belongs to the earlier MINN workflow. It
 does not define B in this study because B uses the separate Tazza-style sampler
 that independently samples glucose, oxygen, CO2, ethanol, and acetate bounds.

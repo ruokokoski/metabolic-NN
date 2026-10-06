@@ -22,6 +22,8 @@ The biological target is experimental growth rate.
 - `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
 - `generate_ecoli_iML1515_A_data.py`: recommended simulated iML1515 data
   generator for future Faure-style AMN FluxTransformer training data.
+- `generate_ecoli_iML1515_AMN_data.py`: separate experimental-pattern sampler
+  with loguniform carbon/oxygen caps and pFBA by default.
 - `generate_ecoli_iML1515_AMN_MINN_data.py`: shared AMN/MINN simulated-data
   generator for training a FluxTransformer reservoir that sees both Faure-like
   no-glucose media and MINN Table 4-style glucose/oxygen context.
@@ -108,9 +110,9 @@ or treat the two authors' media as equivalent.
 
 ## Simulated AMN Data
 
-`generate_ecoli_iML1515_A_data.py` is the recommended generator for
-new iML1515 FBA samples with media settings chosen to resemble the Faure
-experimental setup.
+`generate_ecoli_iML1515_A_data.py` defines Model A's existing sampling contract
+with media settings chosen to resemble the Faure experimental setup. The
+separate experimental-pattern sampler below does not replace Model A.
 
 Key points:
 
@@ -152,14 +154,63 @@ Key points:
   accepted sample target is reached, writes through a timestamped temporary CSV,
   reports attempts and feasible rate, has a max-attempt guard, and periodically
   reloads the model/solver.
-- The default output prefix remains `iML1515_exp_training_data`, so a default
-  500,000-sample run saves `./data/iML1515_exp_training_data_500000_samples.csv`
+- The default output prefix is `iML1515_AMN_training_data`, so a default
+  50,000-sample run saves `./data/iML1515_AMN_training_data_50000_samples.csv`
   unless that file already exists. Use `--overwrite-existing` or a different
   `--output-prefix` deliberately.
 - Outputs are all iML1515 reaction fluxes with `"_flux"` suffixes.
 
 Use this generator as the source of truth for input column order, exchange
 names, and rate conventions when checking the notebook.
+
+### Experimental-pattern AMN sampler (2026-10-06)
+
+`generate_ecoli_iML1515_AMN_data.py` is a new sampler; Model A and its existing
+consumers remain unchanged. It uses the same model, objective, 38-input order,
+full reaction-flux outputs, closed-medium reset, accepted-sample loop,
+temporary-file publishing, and solver reload handling as Model A.
+
+- Conditions come from `AMN_data/EXP110.csv` by default (`--conditions-csv`).
+  Only the ten binary carbon-source indicators are used; measured growth rates
+  do not become simulated targets. The loader checks 110 unique patterns with
+  source-count frequencies 10/20/40/40 for one/two/three/four sources.
+- Conditions are visited in shuffled cycles of all 110 patterns. Failed solves
+  retry the same pattern with new uptake caps. The default `--n-samples 11000`
+  therefore gives exactly 100 accepted rows per condition. Any positive sample
+  count is supported; condition counts differ by at most one, including zeros
+  when fewer than 110 rows are requested.
+- Each selected variable source is drawn independently loguniformly over
+  **0.05--10** (`--carbon-rate-min`, `--carbon-rate-max`). The lower bound is
+  inherited from Model A because the request specified only the new maximum.
+- Oxygen is loguniform over **1--25**; other 22 basal uptake caps stay at **10**.
+  Glycerol and alanine/proline/threonine/glycine stay at **2.2**. Loguniform
+  draws retain Model A's rounding to two decimal places. Positive cap values
+  map to negative exchange lower bounds, while secretion upper bounds remain
+  the model defaults. `--fixed-oxygen` remains an explicit optional ablation.
+- **pFBA is the default**, with `fraction_of_optimum=0.999` inherited from A;
+  `--flux-solver-mode fba` and `--pfba-fraction-of-optimum` remain selectable.
+  Default seed is 9. The output is
+  `data/iML1515_AMN_training_data_11000_samples.csv`; use a distinct
+  `--output-prefix` or data directory for A/AMN runs of equal sample count.
+
+This matches the author's experimental-pattern restriction and default
+100-draw allocation, while deliberately changing basal caps, oxygen sampling,
+variable-carbon sampling, and the optimum fraction. It is not an exact
+reproduction of the author's cardinality-scaled discrete cap grid or fixed
+2.2 basal medium. No training data or checkpoints were replaced.
+
+Example:
+
+```bash
+python generate_ecoli_iML1515_AMN_data.py --n-samples 11000 --seed 9
+```
+
+Roihu batch entry point: `scripts/roihu/samplejob_AMN.sh` runs 11,000 samples
+with seed 9 and pFBA fraction 0.999, using the sampler's default uptake caps.
+It follows the existing CPU environment and project paths, explicitly reads
+`$CODEDIR/AMN_data/EXP110.csv`, and writes into `$WORKDIR/data`. Submit with
+`sbatch scripts/roihu/samplejob_AMN.sh` after deploying the sampler, model, and
+experimental condition CSV under `$CODEDIR`.
 
 ## Shared AMN/MINN Reservoir Data
 
