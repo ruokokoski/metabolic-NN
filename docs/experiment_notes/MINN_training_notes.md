@@ -35,8 +35,10 @@ squared Pearson correlation is 0.892825 +/- 0.132254. The published Tazza
 Table 4 pFBA/MINN-reservoir values (0.892/0.910) should be treated as
 historical paper-reported R2; numerical proximity to the code's Pearson
 metric does not by itself establish how every published result was calculated.
-The active `minn_fitted` file is byte-identical to MINN's Table 4 fitted file;
-the iML1515 pFBA model still differs from MINN's reduced iAF1260 model.
+The active `minn_fitted` file is byte-identical to the fitted file selected by
+MINN's released reservoir configuration; its precise use behind the published
+Table 4 is not independently established. The iML1515 pFBA model still differs
+from MINN's reduced iAF1260 model.
 
 This requirement applies to every MINN evaluation of sample spaces A, B,
 A-union-B, C, D and E, including the standalone MINN notebook and shared
@@ -69,6 +71,53 @@ and float32 tensor conversion so imports work with the current trainer.
 Stale affected outputs are cleared; the baseline was recomputed separately.
 Two targeted tests cover regression versus correlation (including negative
 scores), constant predictions and experiment-aligned cached rescoring.
+
+## Author MINN nutrient and Table 4 audit (2026-10-06)
+
+The [MINN repository inspection](../reference/minn_repository_notes.md)
+records verified author conditions, complete exchange bounds, metric
+calculations, and publication limitations at release commit
+`c2fc1098313827529b8e3cc3679649f255f16f88`. It confirms the paper/code metric
+discrepancy and strengthens its provenance: the released `pFBA_ishii.csv` is
+byte-identical to Goncalves's pinned artifact. On its 29 conditions and 45
+original signed fluxes, Pearson r squared is **0.822702 +/- 0.156467**,
+reproducing Tazza's **Table 2** pFBA row and its MAE/RMSE/NE. Regression R2
+on the same predictions is **0.778061 +/- 0.228708**. This is not a Table 4
+reproduction; direction conversion to selected positive split magnitudes also
+changes correlation and regression R2, so encodings must match for comparisons.
+
+The exact **Table 4** values remain unverified at artifact level. The released
+reservoir notebook produces five latent controls but exports only two named
+columns (ethanol/acetate), a shape mismatch, and supplies no downstream pFBA
+calculation or matched Table 4 predictions. The paper specifies three extra
+constraints including CO2. Released metrics use Pearson r squared; applying
+that finding to the particular published Table 4 rows is a supported inference,
+not a numerical reproduction. Keep the local regression-R2 contract above.
+
+Author conditions are glucose-minimal chemostat media with five WT dilution
+rates and 24 KO conditions. The 587-reaction iAF1260-FBA model has glucose/O2
+imports, 16 basal imports, and export-only CO2/ethanol/acetate; it has no fixed
+glycerol or alanine/proline/threonine/glycine supplements. Basal XML import
+bounds are `[0,999999]`, not this repository's base-input value 50. The neural
+builder does not enforce every XML bound; with `kos_genes=False`, its only
+selected bound is CO2 export with `Vin=inf`. Do not confuse XML availability,
+learned context, and actual downstream solver constraints.
+
+The paper describes 2,000 randomized five-channel FBA conditions within
+observed Ishii ranges, but no generation script/dataset is released. Exact
+sampling distributions, raw/fitted range choice, bound assignments, and plain
+FBA versus pFBA pretraining are unknown. Our integer ranges and pFBA at 0.999
+are local adaptations. Author AMN instead has a verified 110-pattern × 100-draw
+pFBA prior with ten variable sources and fixed organic supplements.
+
+The released reservoir loader uses fitted glucose/O2 as features and only five
+fitted exchange targets. Fitting changes glucose in 28/29 conditions, O2 in
+18/29, and CO2 in all 29. Fitted maxima are O2 **26.2417** and CO2 **19.6169**,
+beyond the local B/shared caps 20 and 15. The exact original fitting code is
+unavailable. The inherited Goncalves pFBA baseline instead fixes raw glucose/O2
+to equalities and applies KOs; its `gapC`-position/b0118 (`acnB`) mapping is
+unresolved. These input/constraint differences require explicit scope when
+interpreting baseline or transfer results. All detailed evidence is in the audit.
 
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.

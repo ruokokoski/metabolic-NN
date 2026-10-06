@@ -9,7 +9,7 @@ Inspected 6 October 2026. The authors' experiment comprises **110 unique DH5-alp
 - `AMN:` paths below are relative to `../amn_release`. Notebook cell numbers are **one-based positions counting both markdown and code cells**, not execution counts. RC cell 9 exists at the same position in HEAD and the working copy; local inserted cells shift later RC positions.
 - Applicable `metabolic-NN/AGENTS.md` and AMN `README.md` were read. No sibling AMN `AGENTS.md` was found. Research Base supplied general context; all specific findings below were checked against the authors' files. No FluxTransformer settings were substituted.
 - Local AMN modifications: `Build_Dataset.ipynb` has changed execution/output and kernel metadata, with **identical cell source** to HEAD. `Build_Model_RC.ipynb` has changed outputs/metadata, an interrupted E. coli reservoir execution, and two added inspection cells (working-copy cells 10–11) that count unique compositions. Its E. coli training cell source is unchanged. Untracked additions are `Faure etal 2023.pdf`, `Faure_supplementary.pdf`, and `generate_ecoli_iML1515_experimental_data.py`. These additions are not evidence of the published workflow. The library files, experimental CSV, both relevant NPZs, QP checkpoint, and figure workbooks inspected here match committed HEAD byte-for-byte.
-- Only this findings file was written. No training, FBA regeneration, or dataset regeneration was performed. Raw growth processing was recomputed in memory to validate saved values.
+- The original audit wrote only this findings file. A follow-up on 6 October 2026 recorded the sampling and solver distinctions in the AMN, shared AMN/MINN, and iML1515 sampling-study experiment notes. No training, FBA regeneration, or dataset regeneration was performed. Raw growth processing was recomputed in memory to validate saved values.
 
 ## 1. Medium sources and uptake bounds
 
@@ -196,6 +196,12 @@ The other E. coli datasets are **separate supervised tasks**:
 - P. putida/iJN1463 assays belong to a different organism/task and do not augment this E. coli dataset.
 
 ## 3. Exact training and evaluation procedure
+
+### Solver scope across the inspected author workflows
+
+**The release does not use pFBA in every experiment.** Its E. coli core simulation uses pFBA (`Build_Dataset.ipynb` cell 11), as does the 110-pattern iML1515 simulated reservoir (cell 13). The saved core and iML1515 simulation NPZs also declare `method='pFBA'`. The actual E. coli comparator call in cell 20 uses pFBA even though that cell loads experimental inputs with `method='EXP'`. The Biolog knockout comparator likewise calls pFBA (`Build_Dataset_KO.ipynb` cell 14).
+
+In contrast, **P. putida/iJN1463 uses plain FBA**, both for its simulated dataset (`Build_Dataset.ipynb` cell 14; `Dataset_model/IJN1463_10_UB.npz`, 4,860 rows, `method='FBA'`) and its mechanistic comparator (cell 21). `Library/Build_Dataset.py` lines 441--442 dispatch to `cobra.flux_analysis.pfba(model)` only when requested, otherwise to `model.optimize()`. The pFBA call supplies no `fraction_of_optimum` override (COBRA default 1.0); the helper's default `method='FBA'` is not evidence that every caller uses FBA. Direct AMN-Wt/LP/QP predictions use their learned mechanistic layers, and experimental targets are measured labels; neither should be described as a dataset of pFBA-generated growth targets. These statements concern the inspected release paths rather than asserting the solver used in every historical run behind the publication.
 
 ### Direct experimental AMNs: effective settings
 

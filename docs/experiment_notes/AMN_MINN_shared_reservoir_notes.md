@@ -67,6 +67,28 @@ conditions. It is not a strict reproduction of Faure et al.
 - Acetate is context-dependent: it may be a carbon-source uptake cap in Faure
   rows and a secretion cap in glucose/MINN rows.
 
+Author comparison verified 2026-10-06: the shared `faure` regime independently
+selects one-to-four-source subsets; it is not restricted to the authors'
+**110 experimental presence patterns**. The author iML1515 reservoir instead
+uses 100 randomized cap draws per experimental pattern (11,000 pFBA rows),
+with fixed bounds of 2.2 and cardinality-scaled discrete variable-source caps.
+The shared generator also uses pFBA, but explicitly at
+`fraction_of_optimum=0.999`, whereas the author's call leaves COBRA's default
+1.0. This pFBA finding is specific to the inspected E. coli paths: the author
+P. putida simulation and comparator use plain FBA. See the solver table in
+[AMN experiment notes](AMN_experiment_notes.md#verified-author-sampling-and-solver-scope-2026-10-06)
+and the [source audit](../reference/amn_repository_notes.md) for evidence.
+
+The [author MINN audit](../reference/minn_repository_notes.md) establishes
+glucose-minimal conditions with no AMN glycerol/amino-acid supplements in its
+587-reaction iAF1260-FBA model. Its 16 basal imports have XML bounds
+`[0,999999]`; the neural code does not enforce them as general upper bounds.
+The paper's 2,000 randomized exchange simulations have no released generator
+or dataset, so the shared integer ranges, fixed base inputs of 50, and pFBA at
+0.999 cannot be described as verified author MINN settings. The author reservoir
+loader uses fitted glucose/O2 and five fitted exchange targets; fitted oxygen
+and CO2 maxima (26.2417 and 19.6169) exceed the shared ranges 20 and 15.
+
 As of 2026-08-13, the generator's working defaults are 50,000 accepted samples,
 seed 9, and output prefix `iML1515_AMN_MINN_test_data`. These are test-data
 defaults. For a training run, set the sample count, seed, and training-specific
@@ -167,6 +189,16 @@ The standalone MINN notebook is corrected first; shared-trial and AB/C/D/E
 legacy summaries still require implementation changes and recomputation.
 The recomputed standalone pFBA baseline regression R2 is
 0.658478 +/- 1.189478; see `MINN_training_notes.md` for validation and scope.
+
+The 2026-10-06 [source audit](../reference/minn_repository_notes.md) confirms
+Pearson reporting by reproducing the copied **Table 2** Goncalves pFBA row
+(Pearson r2 0.822702 +/- 0.156467 versus regression R2 0.778061 +/- 0.228708).
+This does not reproduce Table 4. The author reservoir notebook ends with a
+five-control/two-column export mismatch and no downstream pFBA call or final
+prediction artifact. Its actual Table 4 constraint assignments and exact
+published metric calculations remain unavailable. Our shared three-cap pFBA
+workflow follows the paper's described concept, not a verified complete author
+implementation. Historical shared scores remain scoped to our iML1515 setup.
 
 The MINN shared-reservoir notebook uses the restored `6b1e3bf` workflow: a
 one-hidden-layer width-512 ReLU front MLP, raw Huber loss, full-vocabulary frozen

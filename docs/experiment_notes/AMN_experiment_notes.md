@@ -29,6 +29,8 @@ The biological target is experimental growth rate.
 - `docs/Faure etal 2023.pdf`: main paper for AMN context.
 - `docs/Faure_supplementary.pdf`: supplementary AMN architecture and benchmark
   details.
+- [AMN repository inspection](../reference/amn_repository_notes.md): verified
+  author-code, dataset, and publication provenance for the comparisons below.
 
 ## Faure Paper Context
 
@@ -48,6 +50,57 @@ experimental growth-rate prediction?
 Also note that the local FluxTransformer uses its checkpoint's native iML1515
 reaction vocabulary. Do not assume the reduced or duplicated-reaction setup from
 the Faure AMN figures unless the generator and checkpoint were built that way.
+
+### Verified author sampling and solver scope (2026-10-06)
+
+The authors' iML1515 simulated reservoir uses **only the 110 variable-source
+presence patterns in the experimental data**, with 100 randomized uptake-cap
+draws per pattern, giving 11,000 pFBA samples. The 110 patterns comprise 10
+single-source, 20 two-source, 40 three-source, and 40 four-source conditions
+from the ten variable carbon sources. The simulation does not independently
+draw arbitrary one-to-four-source subsets from that list. It uses experimental
+composition to choose the active sources; simulated targets are pFBA fluxes,
+not experimental growth labels.
+
+For a condition with `k` variable sources, every selected source stays active
+and its cap is independently drawn as `(k+1) * j * 2.2 / 99`, with integer
+`j=1,...,99`. All 28 fixed inputs, including oxygen, glycerol, and the four
+amino acids, have cap 2.2. This gives variable-source maxima of 4.4, 6.6, 8.8,
+and 11 for `k=1,2,3,4`. Evidence: author `Build_Dataset.ipynb` cell 13,
+`Library/Build_Dataset.py` lines 509--544, and the saved
+`Dataset_model/iML1515_UB.npz`; detailed provenance is in the
+[repository inspection](../reference/amn_repository_notes.md).
+
+**pFBA is not used in every AMN experiment.** The inspected author release
+(`10db2a62e8ea17b303ce21a9a1261b7328f861e9`) uses:
+
+| Author workflow | Solver or target source | Evidence (one-based notebook cells) |
+|---|---|---|
+| E. coli core simulated datasets | pFBA | `Build_Dataset.ipynb` cell 11; saved core NPZ method fields |
+| iML1515 simulated reservoir | pFBA | `Build_Dataset.ipynb` cell 13; `iML1515_UB.npz` method field |
+| E. coli mechanistic baseline / reservoir-cap comparison | pFBA | Actual `run_cobra(method='pFBA')` call in `Build_Dataset.ipynb` cell 20 |
+| E. coli Biolog knockout mechanistic comparator | pFBA | `Build_Dataset_KO.ipynb` cell 14 |
+| P. putida/iJN1463 simulated data and mechanistic comparator | Plain FBA | `Build_Dataset.ipynb` cells 14 and 21; `IJN1463_10_UB.npz` method field |
+| Experimental growth targets / direct AMN-Wt, AMN-LP, AMN-QP | Measured labels / learned mechanistic layers | `method='EXP'` loads measurements; direct AMN training does not call COBRA pFBA |
+
+The author pFBA branch calls `cobra.flux_analysis.pfba(model)` without
+overriding `fraction_of_optimum` (COBRA default 1.0). It preserves the maximum
+growth objective and then minimizes total flux. The helper's default argument
+`method='FBA'` does not identify the solver actually requested by each notebook.
+Likewise, a notebook's `method='EXP'` setting identifies data loading, not the
+solver in its later comparator call. Publication wording such as
+"FBA-generated" alone does not distinguish plain FBA from pFBA.
+
+The [author MINN inspection](../reference/minn_repository_notes.md), completed
+2026-10-06, establishes the comparison's different nutrient support: glucose
+minimal medium with no AMN glycerol/amino-acid supplements in the 587-reaction
+iAF1260 reservoir model. Its 16 basal imports have XML caps of 999999, and
+CO2/ethanol/acetate are secretion channels rather than additional supplied
+carbon sources. The MINN paper describes 2,000 randomized five-channel
+simulations, but no original generator/dataset establishes their exact bounds
+or FBA variant. This contrasts with AMN's verified 110-pattern, 11,000-row
+pFBA prior; do not extend the AMN pFBA finding to undocumented MINN pretraining
+or treat the two authors' media as equivalent.
 
 ## Simulated AMN Data
 
@@ -75,11 +128,19 @@ Key points:
   carbon-containing supplements: selected variable carbon sources, glycerol, and
   amino-acid exchanges default to `2.2`, while non-carbon base nutrients default
   to `10.0`.
-- The Faure AMN sampling policy is retained, including the `2.2` caps for fixed
-  glycerol and the four amino acids. The only deliberate difference in which
-  AMN medium variables are sampled is oxygen: Faure keeps oxygen fixed, whereas
-  the FluxTransformer generator samples it between `1.0` and `10.0` by default.
-  Use `--fixed-oxygen` only for an explicit ablation.
+- Each sample independently selects one to four of the ten variable carbon
+  sources, without restricting the subset to the authors' 110 experimental
+  patterns. Selected-source caps are continuous draws from `0.05` to `2.2`,
+  rather than the authors' cardinality-scaled discrete grid. The fixed `2.2`
+  glycerol/amino-acid caps match the author simulation, but non-carbon base
+  caps use `10.0` rather than `2.2`, and oxygen varies from `1.0` to `10.0`.
+  Use `--fixed-oxygen` only for an explicit ablation; this alone does not
+  reproduce the author distribution.
+- The current solver default is **plain FBA** (`--flux-solver-mode fba`).
+  Optional `--flux-solver-mode pfba` defaults to
+  `--pfba-fraction-of-optimum 0.999`, distinct from the author pFBA call's
+  default 1.0. Record the actual generation arguments when interpreting a
+  checkpoint; a Faure-style medium does not establish pFBA provenance.
 - Each sample starts from a closed uptake medium while preserving the model's
   default exchange upper bounds for secretion. This avoids carrying stale solver
   bounds between samples while keeping unselected nutrients closed.
@@ -105,8 +166,9 @@ implications and update both notes when a shared change affects AMN behavior.
 `generate_ecoli_iML1515_AMN_MINN_data.py` is a separate generator for training a
 single iML1515 FluxTransformer reservoir that should be usable in both the
 AMN-style experimental growth notebook and the MINN Table 4-style reservoir
-workflow. It should not replace the strict Faure-style generator when the goal is
-to make Faure-faithful claims.
+workflow. Both local generators are adaptations. Reproducing the authors'
+simulation requires their 110-pattern restriction, cap distribution, fixed
+bounds, and solver settings described above.
 
 Key points:
 
@@ -121,8 +183,10 @@ Key points:
     glucose/oxygen are uptake caps, CO2/ethanol/acetate are secretion upper
     caps, and glycerol/amino supplements are absent.
   - `faure`: glucose is absent, oxygen is flexible, glycerol/amino acids use
-    their Faure `2.2` caps, and 1-4 Faure carbon sources are sampled. Oxygen is
-    the only additional randomized AMN medium variable relative to Faure.
+    their Faure `2.2` caps, and 1-4 Faure carbon sources are independently
+    selected without the authors' 110-pattern restriction. Its variable-carbon
+    caps, oxygen, fixed base bounds, and pFBA optimum fraction also differ
+    from the author simulation.
   - `mixed`: the same five MINN caps are sampled with optional non-acetate
     Faure carbon sources to bridge the two distributions.
 - Shared non-carbon base nutrients use `50` in all three regimes. Downstream
@@ -557,7 +621,9 @@ measured-versus-FBA-predicted figure follows the existing growth-plot style
 and is saved under `insights/thesis`.
 
 Faure's Figure S9 used one 10-fold CV, whereas this notebook retains its
-three-repeat protocol. The current front-network procedure also selects its
+three-repeat protocol. The inspected author's downstream E. coli comparator
+uses pFBA (`Build_Dataset.ipynb` cell 20); this notebook's ordinary FBA is a
+local adaptation. The current front-network procedure also selects its
 epoch on the outer validation fold. This comparison preserves the notebook's
 existing protocol but is not an untouched-test estimate. A small mock CV
 verified that captured `Vin` comes from the selected fold model; six FBA

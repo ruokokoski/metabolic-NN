@@ -45,11 +45,29 @@ that independently samples glucose, oxygen, CO2, ethanol, and acetate bounds.
 - Glycerol and alanine, proline, threonine, and glycine fixed at 2.2.
 - Oxygen sampled continuously from 1--10.
 - Current fixed base rate: 10.
-- Current generator supports FBA and pFBA; use pFBA for the new comparison.
+- Current generator defaults to plain FBA and supports optional pFBA; use
+  pFBA with `fraction_of_optimum=0.999` for the new comparison and record the
+  actual generation settings for existing data/checkpoints.
 
 Model A keeps glycerol fixed at 2.2, matching the current implemented A
 generator and Faure's simulated reservoir. A glycerol-absent A variant is not
 planned.
+
+Author comparison verified 2026-10-06: **A independently draws one-to-four
+sources from the ten-source list**, whereas the author iML1515 simulated
+reservoir uses only the 110 experimentally tested presence patterns
+(10/20/40/40 patterns with one/two/three/four variable sources), with 100 random
+cap draws per pattern. These are 11,000 simulated pFBA rows, not additional
+measured conditions. Author variable-source caps follow a cardinality-scaled
+99-level grid, all fixed caps are 2.2, and the pFBA call leaves the optimum
+fraction at COBRA's default 1.0. Consequently, A is an adaptation in subset
+selection, bounds, and solver settings; matching glycerol alone does not
+reproduce that reservoir. The same unrestricted-subset distinction applies to
+the A component of A ∪ B, the `faure` regime of C, and A-style regimes of D.
+The author's P. putida experiments use plain FBA, so "all AMN experiments
+used pFBA" is not supported. See
+[AMN experiment notes](AMN_experiment_notes.md#verified-author-sampling-and-solver-scope-2026-10-06)
+and the [repository inspection](../reference/amn_repository_notes.md).
 
 ### B — Tazza-style MINN-specific
 
@@ -60,6 +78,19 @@ planned.
 - Acetate secretion bound: integer 0--3.
 - Other base inputs fixed at 50.
 - pFBA with `fraction_of_optimum=0.999`.
+
+Author comparison verified 2026-10-06: the
+[MINN source audit](../reference/minn_repository_notes.md) finds a
+glucose-minimal 587-reaction iAF1260 reservoir model with 16 basal imports,
+no AMN glycerol/amino-acid supplements, and CO2/ethanol/acetate as exports.
+The paper describes 2,000 randomized five-channel exchange simulations, but
+the generator and pretraining data are not released. B's integer sampling,
+base rate 50, iML1515 GEM, and pFBA at 0.999 are adaptations, not established
+original sampling settings. The widened ranges cover the observed raw exchange
+values but exclude fitted O2/CO2 maxima of 26.2417/19.6169; the released author
+reservoir loader uses fitted uptake inputs and five fitted exchange targets.
+Keep this support distinction explicit when interpreting B and MINN regimes
+within A ∪ B, C, and D.
 
 ### A ∪ B — literal union
 
@@ -249,6 +280,18 @@ Section 2.4 statement that it uses the same metrics. Their released
 with `linregress(...).r**2`; the papers do not state that definition. See
 `MINN_training_notes.md` for the source pages, fitted-file verification, and
 the 0.658478 regression versus 0.892825 squared-Pearson baseline comparison.
+
+The 2026-10-06 [author audit](../reference/minn_repository_notes.md) further
+reproduces Tazza's copied **Table 2** pFBA baseline from the byte-identical
+Goncalves artifact: Pearson r2 0.822702 +/- 0.156467 versus regression R2
+0.778061 +/- 0.228708, on 45 original signed fluxes. Table 4 is a separate
+47-flux comparison; its final author pFBA code and predictions are missing.
+The released reservoir export names two columns for five latent controls,
+while the paper describes three extra constraints. Thus Pearson is the
+verified released metric and the supported inference for its Table 4 lineage;
+the exact two published Table 4 rows remain unverified. The local regression-R2
+contract is preserved, and local scores must not be labelled exact author
+reproductions merely because their averages are close.
 
 This supersedes the historical Pearson-based Table 4 conventions recorded
 later in this note. The standalone `ecoli_iML1515_MINN_model_testing.ipynb`
