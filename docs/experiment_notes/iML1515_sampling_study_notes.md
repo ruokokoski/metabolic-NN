@@ -25,12 +25,16 @@ it is allowed to be evaluated.
 
 | Model | Pretraining distribution | Generator | Generator status |
 |---|---|---|---|
-| **A** | AMN-specific | `generate_ecoli_iML1515_AMN_data.py` | Implemented |
+| **A** | AMN-specific | `generate_ecoli_iML1515_A_data.py` | Implemented |
 | **B** | Tazza-style MINN-specific | `generate_ecoli_iML1515_MINN_data_tazza.py` | Implemented |
 | **A ∪ B** | Balanced literal mixture of A and B | `generate_ecoli_iML1515_AB_union_data.py` | Implemented |
 | **C** | Task-relevant AMN/MINN distribution with a bridge regime | `generate_ecoli_iML1515_AMN_MINN_data.py` | Implemented |
 | **D** | Broad distribution with explicit A- and B-like coverage | `generate_ecoli_iML1515_D_data.py` | Implemented |
 | **E** | Broad task-agnostic distribution | `generate_ecoli_iML1515_E_data.py` | Implemented |
+
+As of 2026-10-06, Model A's generator is named
+`generate_ecoli_iML1515_A_data.py`. The rename preserves its generation behavior
+and existing `iML1515_AMN_training_data` output prefix.
 
 `generate_ecoli_iML1515_MINN_data.py` belongs to the earlier MINN workflow. It
 does not define B in this study because B uses the separate Tazza-style sampler

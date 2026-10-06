@@ -1,6 +1,6 @@
 """Deterministic AMN fructose/oxygen sweep; deploy with models/iML1515.xml.
 
-Adapted from generate_ecoli_iML1515_AMN_data.py; no local helper imports.
+Adapted from generate_ecoli_iML1515_A_data.py; no local helper imports.
 Rows are fructose-major, oxygen-minor. Metadata sample_id is the zero-based
 model CSV row number: fructose_index * oxygen_levels + oxygen_index.
 Only complete grids are promoted from .partial.csv to final filenames.

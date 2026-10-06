@@ -91,7 +91,7 @@ biological constraints or generators.
 - General iML1515: `generate_ecoli_iML1515_data.py`.
 - MINN: `generate_ecoli_iML1515_MINN_data.py`; use
   `generate_ecoli_iML1515_MINN_data_tazza.py` only for its documented ablation.
-- AMN and shared AMN/MINN: `generate_ecoli_iML1515_AMN_data.py` and
+- AMN and shared AMN/MINN: `generate_ecoli_iML1515_A_data.py` and
   `generate_ecoli_iML1515_AMN_MINN_data.py`.
 - Broad sampling-study models D and E: `generate_ecoli_iML1515_D_data.py` and
   `generate_ecoli_iML1515_E_data.py`.

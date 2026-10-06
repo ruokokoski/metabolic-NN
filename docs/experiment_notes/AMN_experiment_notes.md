@@ -20,7 +20,7 @@ The biological target is experimental growth rate.
 ## Main Files
 
 - `ecoli_iML1515_AMN_model_testing.ipynb`: main AMN-style evaluation notebook.
-- `generate_ecoli_iML1515_AMN_data.py`: recommended simulated iML1515 data
+- `generate_ecoli_iML1515_A_data.py`: recommended simulated iML1515 data
   generator for future Faure-style AMN FluxTransformer training data.
 - `generate_ecoli_iML1515_AMN_MINN_data.py`: shared AMN/MINN simulated-data
   generator for training a FluxTransformer reservoir that sees both Faure-like
@@ -31,6 +31,10 @@ The biological target is experimental growth rate.
   details.
 - [AMN repository inspection](../reference/amn_repository_notes.md): verified
   author-code, dataset, and publication provenance for the comparisons below.
+
+Generator naming (2026-10-06): `generate_ecoli_iML1515_A_data.py` now names
+the AMN-specific Model A sampler. This file rename preserves sampling, solver
+defaults, token order, and the `iML1515_AMN_training_data` output prefix.
 
 ## Faure Paper Context
 
@@ -104,7 +108,7 @@ or treat the two authors' media as equivalent.
 
 ## Simulated AMN Data
 
-`generate_ecoli_iML1515_AMN_data.py` is the recommended generator for
+`generate_ecoli_iML1515_A_data.py` is the recommended generator for
 new iML1515 FBA samples with media settings chosen to resemble the Faure
 experimental setup.
 
@@ -214,7 +218,7 @@ Key points:
 
 Important legacy note: checkpoints made with an older generator may come from a
 fixed-attempt loop that reset only exchange lower bounds. The current
-`generate_ecoli_iML1515_AMN_data.py` uses an accepted-sample loop and a fully
+`generate_ecoli_iML1515_A_data.py` uses an accepted-sample loop and a fully
 reset medium.
 
 ## Current Notebook Workflow
@@ -227,7 +231,7 @@ The notebook currently has four main parts.
    `./models/iML1515_500k_d256_h8_l3_ff1024/iML1515_500k_d256_h8_l3_ff1024_checkpoint.pth`.
 
    This checkpoint predates the current stable generation behavior in
-   `generate_ecoli_iML1515_AMN_data.py`. Do not treat its metrics as results from
+   `generate_ecoli_iML1515_A_data.py`. Do not treat its metrics as results from
    newly regenerated data unless the model is retrained and the notebook rerun.
 
    The simulated test data loaded for FluxTransformer diagnostics is currently:
@@ -394,7 +398,7 @@ notebook diagnostics, not as planned thesis figures.
 - Confirm that binary carbon-source features remain 0/1 before TabPFN or
   stratified CV.
 - Check that fixed medium rates in the notebook match
-  `generate_ecoli_iML1515_AMN_data.py` or the shared generator used to train the
+  `generate_ecoli_iML1515_A_data.py` or the shared generator used to train the
   evaluated checkpoint.
 - Print and review the variable input columns learned by the prior ANN.
 - Keep simulated-data FluxTransformer diagnostics separate from experimental

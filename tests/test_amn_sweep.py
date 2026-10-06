@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 import generate_AMN_sweep as sweep
-import generate_ecoli_iML1515_AMN_data as reference
+import generate_ecoli_iML1515_A_data as reference
 
 
 class AMNSweepTest(unittest.TestCase):
