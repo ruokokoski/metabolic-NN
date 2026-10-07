@@ -151,62 +151,82 @@ been recorded as submitted or completed.
 
 ### D and E — broad distributions
 
-D and E are implemented as standalone generator scripts for direct Roihu
-deployment. They use the same shared selectable organic-source pool and the
-same general broad distribution P_G, so
-the only difference is that D explicitly allocates probability mass to exact
-A- and B-style regimes, while E samples only from the task-agnostic broad rule.
-The D-versus-E comparison is intended to isolate the value of explicit
-task-aware density allocation versus task-agnostic sampling.
+As of 2026-10-07, E uses the literature-reviewed 48-source pool and AMN
+basal/cap settings below. D retains its original standalone implementation.
+D and current E therefore differ in source identities, cardinality sampling,
+carbon/oxygen caps, and basal medium as well as task-aware density allocation.
+Their current comparison cannot isolate task-aware allocation alone.
 
-The concrete D/E nutrient pool is recorded in
-`docs/working_notes/iML1515_sampling_plan.md` under "D/E nutrient pool --
-concrete design". In short:
+#### D — unchanged original broad distribution
 
-- Shared selectable organic-source pool: the same 31-source pool for both D
-  and E, including all ten AMN carbon sources, glucose, glycerol (variable),
-  the four AMN amino acids, common side-stream sugars/sugar alcohols, organic
-  acids and fermentation products.
-- D also injects exact A- and B-style regimes; E uses only the general broad
-  distribution P_G. The D-versus-E comparison isolates task-aware density
-  allocation from task-agnostic sampling.
-- General G/E uptake: log-uniform over 0.05--5.0 (tentative ceiling),
-  broader than the A-specific 0.05--2.2 so the broad models cover higher-flux
-  side-stream conditions.
-- Oxygen is separately variable (not counted toward the active-source count).
-- In the shared P_G, the four AMN amino acids are ordinary members of the
-  selectable pool for both D and E; D's explicit P_A component supplies dense
-  all-four-present AMN coverage.
-- The required "at least both AMN and MINN" condition is met by keeping the
-  exact A and B regime contracts as the A/B components of D.
+- Standalone generator: `generate_ecoli_iML1515_D_data.py`.
+- 31 selectable organic sources; one to eight per broad draw, with
+  truncated-geometric expected count three.
+- Broad carbon uptake caps loguniform 0.05--5; oxygen uniform 1--10.
+- 23 fixed base inputs at 50, including cobalamin. Broad CO2 is secretion-only
+  with upper cap 50.
+- Ordered 55-input vocabulary with five MINN context exchanges first.
+- Default `--task-fraction 0.2` is a configurable pilot: at 1M accepted rows,
+  exact quotas are 100k A, 100k B, and 800k broad. A/B regimes are unchanged.
 
-Implementation defaults and schema:
+#### E — curated task-agnostic distribution (2026-10-07)
 
-- D entry point: `generate_ecoli_iML1515_D_data.py`.
-- E entry point: `generate_ecoli_iML1515_E_data.py`.
-- Default output prefixes: `iML1515_D_training_data` and
-  `iML1515_E_training_data`.
-- Each generator contains its complete sampling implementation. Keep their P_G
-  constants, input order, and shared regime behavior synchronized when editing
-  either file.
-- Both default to 1,000,000 accepted samples, seed 42, and pFBA with
-  `fraction_of_optimum=0.999`.
-- Both use the same ordered 55-exchange input vocabulary: the five MINN context
-  exchanges first, followed by the remaining fixed-base and selectable-organic
-  exchanges without duplicates.
-- P_G uses a fixed-base rate of 50, continuous oxygen 1--10, and the documented
-  truncated-geometric active-source distribution with `E[K]=3`.
-- D uses `--task-fraction 0.2` as a configurable pilot default and schedules
-  exact accepted-row quotas. At 1M rows this gives 100k A, 100k B, and 800k G.
-  The final task fraction still requires the planned pilot comparison.
-- E schedules all accepted rows from P_G.
-- Roihu generation jobs: `scripts/roihu/samplejob_D.sh` and
-  `scripts/roihu/samplejob_E.sh`. Both use the `small` partition, one CPU,
-  72-hour wall time, and 16 GiB memory, matching the A union B job setup.
-- The initial thin entry points imported `iml1515_broad_sampling.py` and failed
-  on Roihu when that helper was absent from `CODEDIR`. The generators are now
-  standalone so each sampling job requires only its corresponding generator.
-- No D or E production dataset has yet been recorded as generated.
+- Active generator: `generate_ecoli_iML1515_E_data.py`. The exact previous
+  generator is preserved as `generate_ecoli_iML1515_E_data_old.py`.
+- All 48 exchanges in `data/reference/iML1515_broad_organic_source_pool.csv`
+  are selectable, including glycerol, alanine, proline, threonine and glycine.
+  The list is embedded in CSV order so a cluster job needs only the standalone
+  generator; a regression check compares it to the reference CSV.
+- Draw k=1,...,10 with P(k) proportional to (2/3)^(k-1), then select identities
+  uniformly without replacement. `--g-k-beta=log(3/2)` and
+  `--g-max-organic-sources=10` implement this design. The cap is a simulator
+  coverage choice, not a biological maximum; see
+  [the literature review](../working_notes/iML1515_broad_pool_literature_review.md#recommendation-for-k-and-the-one-million-sample-budget).
+- Selected organic uptake caps are independently loguniform 0.05--10;
+  oxygen is independently loguniform 1--25 and is outside k. Rates are rounded
+  to two decimal places, matching `generate_ecoli_iML1515_AMN_data.py`.
+- The same 22 fixed basal uptake exchanges as AMN, excluding oxygen, have caps
+  10. CO2 has lower bound -10 and retains its SBML secretion upper bound,
+  matching AMN. Cobalamin and all unselected organics have uptake closed.
+  Other exchange secretion upper bounds retain their nonnegative SBML defaults.
+- All samples use the broad rule: no fixed glycerol/amino-acid supplements and
+  no injected A/B regimes. k counts offered exchanges; realized uptake may be
+  lower. Optimal zero-growth solutions remain accepted under the existing
+  acceptance policy.
+- The vocabulary now has 72 ordered inputs: the five MINN context exchanges,
+  remaining basal inputs, and remaining CSV pool entries without duplicates.
+  Ethanol remains a zero-uptake context input for the MINN interface, outside
+  the selectable pool. Cobalamin is absent from the input vocabulary.
+- Defaults remain 1M accepted rows, seed 42, the core biomass objective, pFBA
+  fraction 0.999, and output prefix `iML1515_E_training_data`. Data/checkpoint
+  names are retained at the user's request. Existing 55-input data/checkpoints
+  require regeneration/retraining; the evaluator rejects incompatible schemas.
+
+Both active generators remain standalone. The original helper-module design
+failed on Roihu when the helper was absent from the deployed code directory.
+E's archived implementation and D preserve the old broad contract; future
+synchronization must be an explicit distribution change.
+
+Roihu jobs remain `scripts/roihu/samplejob_D.sh` and
+`scripts/roihu/samplejob_E.sh`, using one CPU, 72 hours and 16 GiB in `small`.
+E needs no reference CSV deployment because its pool snapshot is embedded.
+No production dataset or checkpoint was generated for revised E in this change.
+
+Verification: 16 focused sampler/evaluator checks passed in the repository's
+Python 3.12 environment. These cover the exact 48-source CSV snapshot and
+72-input mapping, all source identities, direct AMN basal/CO2 bound comparison,
+loguniform draw statistics, cardinality probabilities, old-checkpoint rejection,
+and MINN mapping in both protocol modes. Two identical eight-row pFBA runs
+passed finite-output, stoichiometric mass-balance, bound and token-order checks.
+The archived generator is byte-identical to the previous committed E file.
+Notebook JSON/schema, every code cell's syntax, and the full-vocabulary B-medium
+injection were checked. At the user's request, the stale AB/C cleared-output,
+fixed-cell-count and positional source/text-equality tests were removed.
+Notebook checks retain schema validity and executable-cell syntax; numerical
+media, token mapping and evaluation-behavior checks remain. The combined
+AB/C evaluator, E sampler/evaluator and AMN sampler run then passed 37 tests;
+two CUDA-only checks were skipped because CUDA was unavailable. Full
+new-checkpoint evaluation and production generation remain unrun.
 
 | Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
 |---|---|---|---|---|
@@ -214,13 +234,13 @@ Implementation defaults and schema:
 | **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN base (23, incl. cobalamin), base 50 | Glucose 1--15; O2 1--20; secretion caps CO2 0--15, ethanol 0--1, acetate 0--3 | 1 |
 | **A ∪ B** | Union: 10 AMN carbons + glucose (per regime) | A base or B base per regime | A 0.05--2.2; B integer bounds | 1--4 or 1 |
 | **C** | 10 AMN carbons + glucose + amino acids + CO2/ethanol/acetate | Shared base (41 inputs, fixed cobalamin included) | A-like and B-like ranges | mixed |
-| **D** | Shared 31-source general pool (glycerol variable) + A/B task regimes | 23 fixed base (incl. cobalamin); O2 variable 1--10 | G log-uniform 0.05--5.0; A/B task ranges | G 1--8, E[K]=3 |
-| **E** | Same shared 31-source general pool, no task regimes | Same 23 fixed base (incl. cobalamin); O2 variable | log-uniform 0.05--5.0 | 1--8, E[K]=3 |
+| **D** | Original 31-source general pool (glycerol variable) + A/B task regimes | 23 fixed base (incl. cobalamin); O2 variable 1--10 | G log-uniform 0.05--5.0; A/B task ranges | G 1--8, E[K]=3 |
+| **E** | Curated 48-source pool, including glycerol/four AMN amino acids as selectable; no task regimes | AMN basal uptake caps 10, CO2 uptake allowed, no cobalamin; O2 loguniform 1--25 | loguniform 0.05--10 | 1--10, P(k) proportional to (2/3)^(k-1) |
 
 The 181 growth-capable organic-exchange pool was computed on
 `models/iML1515.xml` for the D-like base medium, close to the 185 carbon
-sources reported in `ecoli_iML1515_exploration.ipynb`. The shared 31-source
-D/E pool is the frozen reviewed subset chosen from this larger list.
+sources reported in `ecoli_iML1515_exploration.ipynb`. D and archived E use the original
+31-source subset; current E uses the separately reviewed 48-source CSV.
 
 ## Controlled Comparison Requirements
 
@@ -489,7 +509,7 @@ interpretation changes. Continue to update `AMN_experiment_notes.md` and
 ## Combined A union B evaluation notebook (2026-09-08)
 
 `ecoli_iML1515_AB_union_model_testing.ipynb` now implements one notebook for
-both experimental tasks, backed by `iml1515_ab_evaluation.py`. It shares the
+both experimental tasks, backed by shared `iml1515_evaluation.py`. It shares the
 frozen union reservoir and trains independent AMN, MINN measured-context, and
 MINN predicted-context MLPs. No TabPFN tests are included. A-style neural inputs
 use base 10 and absent cobalamin; B-style inputs use base 50 with cobalamin.
@@ -605,9 +625,9 @@ removed. The pooled target sets and aggregation are unchanged.
 
 ## Combined model C notebook (2026-09-14)
 
-`ecoli_iML1515_C_model_testing.ipynb` uses shared `iml1515_evaluation.py`;
-`iml1515_ab_evaluation.py` remains a compatibility import. Explicit generator
-contracts support AB, C (40/41 inputs), D and E. The configured
+`ecoli_iML1515_C_model_testing.ipynb` uses shared `iml1515_evaluation.py`.
+Explicit generator contracts support AB, C (40/41 inputs), D and E. The
+configured
 `AMN_MINN_1M_d256_h8_l4_ff1024` checkpoint has 40 inputs (no cobalamin).
 `data/iML1515_AMN_MINN_test_data_50000_samples.csv` matches its ordered schema
 and supplies the default independent biomass diagnostic.
@@ -866,3 +886,21 @@ the original fitted-file measured/predicted FT+pFBA results. It restores the
 pre-run notebook state when those original results are absent. The final
 comparison table still depends on both original results; fitted-file HPO/LOO
 settings and metrics are unchanged.
+
+## Revised E evaluation mapping (2026-10-07)
+
+The shared evaluator now maps E's experimental AMN and MINN reservoir basal
+inputs to 10 without cobalamin, including when MINN uses legacy training mode.
+AMN experimental glycerol/four amino-acid supplements remain 2.2; its learned
+front-MLP scales and the maintained sweep grid are unchanged. MINN's observed
+and learned context controls and downstream mechanistic SBML/pFBA policy are
+unchanged; these task protocols do not become a reproduction of E pretraining.
+
+The E notebook sweep maps the 38 AMN source inputs into E's 72-input vocabulary
+with basal 10 and no cobalamin. A/B distribution-shift scoring injects all
+source inputs at their full output-vocabulary tokens to preserve source media:
+B's supplied cobalamin is outside E's declared training inputs and is recorded
+as such in the saved protocol. That comparison includes inference at a token
+not used as an input in revised E pretraining. Original checkpoint/data paths
+are retained. Historical saved notebook outputs describe archived E; changed
+code cells have cleared outputs. No new predictive or t-SNE results are claimed.

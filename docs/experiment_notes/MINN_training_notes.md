@@ -1,5 +1,19 @@
 # MINN Training Notes
 
+## Revised E reservoir basal mapping (2026-10-07)
+
+The curated E generator now uses 48 selectable organic sources with AMN basal
+uptake caps 10 and no cobalamin. `iml1515_evaluation.load_minn` therefore supplies
+E's declared non-context basal inputs at 10 in both ordinary and legacy modes;
+legacy mode does not inject cobalamin for this model family. Its five MINN
+context controls retain the existing task-specific observed/learned behavior.
+The downstream mechanistic SBML medium, pFBA policy, target mappings, metrics,
+and all other model families' basal mappings are unchanged. Revised E has 72
+inputs and requires regenerated data and a retrained checkpoint at the existing
+paths. Sampler and mapping checks passed; no new MINN training or evaluation
+results are reported. See the
+[E distribution contract](iML1515_sampling_study_notes.md#e--curated-task-agnostic-distribution-2026-10-07).
+
 Shared generator, checkpoint, trial, and cross-task result state is maintained
 in `AMN_MINN_shared_reservoir_notes.md`. Keep this file focused on MINN-specific
 training, mapping, and pFBA behavior, and update both notes when a shared change

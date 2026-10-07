@@ -270,7 +270,7 @@ protocol, metrics, and keep/reject decision are recorded.
 
 ## Combined literal-union evaluation implementation (2026-09-08)
 
-`ecoli_iML1515_AB_union_model_testing.ipynb` and `iml1515_ab_evaluation.py`
+`ecoli_iML1515_AB_union_model_testing.ipynb` and `iml1515_evaluation.py`
 implement a single evaluation notebook for the literal A union B reservoir.
 It shares only the frozen checkpoint: AMN and each MINN context mode train
 independent MLPs. No TabPFN tests are included. The A branch preserves base
@@ -370,9 +370,9 @@ removed. The pooled target sets and aggregation are unchanged.
 
 ## Combined model C notebook (2026-09-14)
 
-`ecoli_iML1515_C_model_testing.ipynb` uses shared `iml1515_evaluation.py`;
-`iml1515_ab_evaluation.py` remains a compatibility import. Explicit generator
-contracts support AB, C (40/41 inputs), D and E. The configured
+`ecoli_iML1515_C_model_testing.ipynb` uses shared `iml1515_evaluation.py`.
+Explicit generator contracts support AB, C (40/41 inputs), D and E. The
+configured
 `AMN_MINN_1M_d256_h8_l4_ff1024` checkpoint has 40 inputs (no cobalamin).
 `data/iML1515_AMN_MINN_test_data_50000_samples.csv` matches its ordered schema
 and supplies the default independent biomass diagnostic.

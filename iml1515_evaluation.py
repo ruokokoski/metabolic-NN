@@ -191,9 +191,9 @@ def load_amn(root, input_names=None, model_family="AB_union", feature_order="car
     for name in COMMON_BASE_EXCHANGES + ["EX_co2_e"] + FIXED_CARBON_EXCHANGES + AMINO_EXCHANGES:
         if frame[name].nunique() != 1 or frame[name].iloc[0] not in (0, 1):
             raise ValueError(f"Expected fixed AMN presence flag: {name}")
-        rate = 2.2 if name in FIXED_CARBON_EXCHANGES + AMINO_EXCHANGES else (50.0 if model_family in ("C", "E") else 10.0)
+        rate = 2.2 if name in FIXED_CARBON_EXCHANGES + AMINO_EXCHANGES else (50.0 if model_family == "C" else 10.0)
         fixed[name] = rate * float(frame[name].iloc[0])
-    if model_family in ("C", "E") and "EX_cbl1_e" in input_names:
+    if model_family == "C" and "EX_cbl1_e" in input_names:
         fixed["EX_cbl1_e"] = 50.0
     return {
         "X": frame[features].to_numpy(np.float32),
@@ -242,8 +242,9 @@ def load_minn(root, outputs, mode="minn_fitted", input_names=None, model_family=
     observed = flux[CONTEXT_SOURCES[:2]].to_numpy(np.float32)
     if (observed < 0).any():
         raise ValueError("Glucose/O2 inputs must be positive split uptake magnitudes.")
-    fixed = {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES if name in input_names}
-    if legacy_protocol:
+    base_rate = 10.0 if model_family == "E" else 50.0
+    fixed = {name: base_rate for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES if name in input_names}
+    if legacy_protocol and model_family != "E":
         # The original MINN trial injects basal cobalamin through the output token,
         # including for the historical 40-input C checkpoint.
         fixed = {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES

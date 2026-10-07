@@ -548,7 +548,7 @@ predicts the untouched outer fold. This corrects outer-fold early-stopping
 selection for this new workflow; existing notebooks are unchanged.
 
 Settings and exports are explicit in the notebook; helpers are in
-`iml1515_ab_evaluation.py`. No production union growth results are recorded yet.
+`iml1515_evaluation.py`. No production union growth results are recorded yet.
 
 ## AMN plot and metric alignment with model C (2026-09-12)
 
