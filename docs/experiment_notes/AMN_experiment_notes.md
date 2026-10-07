@@ -20,6 +20,8 @@ The biological target is experimental growth rate.
 ## Main Files
 
 - `ecoli_iML1515_A_model_testing.ipynb`: main AMN-style evaluation notebook.
+- `ecoli_iML1515_AMN_model_testing.ipynb`: separate AMN_11k evaluation,
+  retaining A's tests and plots with the experimental-pattern reservoir.
 - `generate_ecoli_iML1515_A_data.py`: recommended simulated iML1515 data
   generator for future Faure-style AMN FluxTransformer training data.
 - `generate_ecoli_iML1515_AMN_data.py`: separate experimental-pattern sampler
@@ -193,7 +195,7 @@ temporary-file publishing, and solver reload handling as Model A.
   the model defaults. `--fixed-oxygen` remains an explicit optional ablation.
 - **pFBA is the default**, with `fraction_of_optimum=0.999` inherited from A;
   `--flux-solver-mode fba` and `--pfba-fraction-of-optimum` remain selectable.
-  Default seed is 9. The output is
+  Default training seed is 42; use `--seed 9` for test data. The output is
   `data/iML1515_AMN_training_data_11000_samples.csv`; use a distinct
   `--output-prefix` or data directory for A/AMN runs of equal sample count.
 
@@ -206,15 +208,75 @@ reproduction of the author's cardinality-scaled discrete cap grid or fixed
 Example:
 
 ```bash
-python generate_ecoli_iML1515_AMN_data.py --n-samples 11000 --seed 9
+python generate_ecoli_iML1515_AMN_data.py --n-samples 11000 --seed 42
 ```
 
 Roihu batch entry point: `scripts/roihu/samplejob_AMN.sh` runs 11,000 samples
-with seed 9 and pFBA fraction 0.999, using the sampler's default uptake caps.
+with seed 42 and pFBA fraction 0.999, using the sampler's default uptake caps.
 It follows the existing CPU environment and project paths, explicitly reads
 `$CODEDIR/AMN_data/EXP110.csv`, and writes into `$WORKDIR/data`. Submit with
 `sbatch scripts/roihu/samplejob_AMN.sh` after deploying the sampler, model, and
 experimental condition CSV under `$CODEDIR`.
+
+### AMN_11k evaluation notebook (2026-10-06)
+
+`ecoli_iML1515_AMN_model_testing.ipynb` copies all 59 cells from the A
+evaluation notebook, retaining the same simulated diagnostics, B/E
+distribution-shift tests, pathway t-SNE plots, deterministic fructose/oxygen
+sweep and combined random-context plots, experimental-growth CV/repeated CV,
+FBA-with-predicted-Vin comparison, and TabPFN baselines. CV seeds, splits,
+metrics, prior-network settings, plotting functions, and sweep bounds are
+unchanged. The original A notebook is preserved.
+
+- Expected checkpoint:
+  `models/AMN_11k_d256_h8_l4_ff1024/AMN_11k_d256_h8_l4_ff1024_checkpoint.pth`.
+  This follows A's model naming; the AMN_11k checkpoint is not present locally
+  yet, so architecture, weights, and training provenance cannot be verified
+  until it is copied into this location. The notebook exposes `model_name`
+  and loads architecture dimensions from checkpoint configuration.
+- Main independent test CSV:
+  `data/iML1515_AMN_11k_test_data_11000_samples.csv`, generated with the new
+  AMN sampler with **test seed 9**; training uses **seed 42**. A complete
+  11,000-row run gives exactly **100 rows per pattern**. Presence patterns
+  are shared intentionally; independent seeds produce separate uptake-cap draws.
+  All sampler defaults remain unchanged (pFBA 0.999, carbon loguniform
+  0.05--10, oxygen loguniform 1--25, basal 10, fixed organic caps 2.2).
+- Provenance belongs in these experiment notes; no adjacent JSON file is
+  required or used by the notebook. The user requested removal of the JSON
+  provenance sidecar on 2026-10-07.
+- `N_EVAL_SAMPLES` is 11,000; the 80/20 diagnostic split remains unchanged.
+  The 10,000 random contexts for combined t-SNE come from this test CSV.
+  Input/token mapping, full output order, and separation from the checkpoint's
+  training-data path are asserted before evaluation.
+- The existing deterministic 10,000-row sweep and B/E test-data paths remain
+  identical to A. They are comparison conditions, not regenerated to match
+  AMN_11k's wider loguniform caps. These files are currently absent locally.
+- Figure/report directories are model-specific: the existing
+  `pics/{date}/{model_name}` and `insights/thesis/{model_name}`. Copied A
+  outputs and execution counts are cleared to avoid claiming new-model results.
+  The FBA comparison imports its unchanged medium-reset helper from the new
+  AMN sampler. Full notebook execution awaits the checkpoint, shared test
+  artifacts, and the notebook dependencies (including TabPFN).
+
+No new experimental-growth scores or neural model results are claimed.
+
+Seed correction (2026-10-07): training **must use 42**, and test generation
+**must use 9**. The sampler default and Roihu training job now use 42. The
+previously generated test CSV used seeds 10--13 and is **not the requested
+seed-9 test set**; its earlier numerical validation does not establish the
+correct seed provenance. Replace it before evaluating the AMN_11k model.
+Any training CSV/checkpoint produced with seed 9 likewise needs regeneration
+and retraining with seed 42. Existing checkpoints have not been verified or
+retrained. The incorrect test sidecar was removed. The user chose to run generation
+themselves; neither existing CSV was regenerated during this correction.
+
+Reproduction commands from the repository root (explicit overwrite is needed
+when the same filenames already exist):
+
+```bash
+.venv/bin/python generate_ecoli_iML1515_AMN_data.py --n-samples 11000 --seed 42 --output-prefix iML1515_AMN_training_data --overwrite-existing
+.venv/bin/python generate_ecoli_iML1515_AMN_data.py --n-samples 11000 --seed 9 --output-prefix iML1515_AMN_11k_test_data --overwrite-existing
+```
 
 ## Shared AMN/MINN Reservoir Data
 

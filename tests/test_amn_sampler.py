@@ -20,6 +20,7 @@ class AMNSamplerTest(unittest.TestCase):
     def test_experimental_patterns_and_balanced_counts(self):
         args = sampler.parse_args([])
         self.assertEqual(args.n_samples, 11000)
+        self.assertEqual(args.seed, 42)
         self.assertEqual(args.flux_solver_mode, "pfba")
         conditions = sampler.load_experimental_conditions(args.conditions_csv)
         with open(args.conditions_csv, newline="") as fh:

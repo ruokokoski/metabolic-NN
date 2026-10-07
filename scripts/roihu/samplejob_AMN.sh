@@ -22,7 +22,7 @@ cd "$WORKDIR"
 
 srun python3 -u "$CODEDIR/generate_ecoli_iML1515_AMN_data.py" \
     --n-samples 11000 \
-    --seed 9 \
+    --seed 42 \
     --flux-solver-mode pfba \
     --pfba-fraction-of-optimum 0.999 \
     --conditions-csv "$CODEDIR/AMN_data/EXP110.csv" \

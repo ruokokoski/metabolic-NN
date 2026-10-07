@@ -77,7 +77,7 @@ def parse_args(argv=None):
         )
     )
     parser.add_argument("--n-samples", type=int, default=11000)
-    parser.add_argument("--seed", type=int, default=9) # use seed 9 for test data
+    parser.add_argument("--seed", type=int, default=42)  # use seed 9 for test data
     parser.add_argument("--model-dir", default="./models")
     parser.add_argument("--data-dir", default="./data")
     parser.add_argument("--output-prefix", default="iML1515_AMN_training_data")

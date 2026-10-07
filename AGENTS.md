@@ -72,6 +72,9 @@ interpretation changes.
   `iml1515_ab_evaluation.py` remains a compatibility import.
 - `ecoli_iML1515_A_model_testing.ipynb`: AMN-style experimental growth-rate
   workflow.
+- `ecoli_iML1515_AMN_model_testing.ipynb`: AMN_11k evaluation using the
+  experimental-pattern sampler and separate simulated test data; mirrors A's
+  tests and plots.
 - `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`: AMN branch using the
   shared AMN/MINN reservoir.
 - `ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb`: MINN branch using the

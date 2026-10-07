@@ -44,6 +44,15 @@ acids stay at 2.2. It defaults to pFBA at fraction 0.999. This new sampler does
 not redefine A or alter A ∪ B/C/D/E generation. See the
 [AMN sampler contract](AMN_experiment_notes.md#experimental-pattern-amn-sampler-2026-10-06).
 
+`ecoli_iML1515_AMN_model_testing.ipynb` is the separate AMN_11k experiment:
+it copies A's tests/plots but selects the experimental-pattern checkpoint and
+an independent 11,000-row test file (100 draws per pattern; test seed 9,
+training seed 42). The earlier test CSV generated with seeds 10--13 requires
+replacement before evaluation; see the seed correction in the AMN notes.
+This does not replace the A/B/A ∪ B/C/D/E series. The checkpoint is not yet
+local, and no new model results are reported. See the
+[AMN_11k notebook contract](AMN_experiment_notes.md#amn_11k-evaluation-notebook-2026-10-06).
+
 As of 2026-10-06, the earlier MINN sampler was deleted and the Tazza-style
 sampler was renamed to `generate_ecoli_iML1515_B_data.py`. This file now
 defines B: independent glucose, oxygen, CO2, ethanol, and acetate cap draws.
