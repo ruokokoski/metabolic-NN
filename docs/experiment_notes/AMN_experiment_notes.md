@@ -136,16 +136,14 @@ Key points:
   oxygen, ions, sulfate, sodium, chloride, and trace elements.
 - Alanine, proline, threonine, and glycine are treated as fixed amino-acid
   exchanges.
-- The generator uses uptake rates around the Faure experimental scale for
-  carbon-containing supplements: selected variable carbon sources, glycerol, and
-  amino-acid exchanges default to `2.2`, while non-carbon base nutrients default
-  to `10.0`.
+- Glycerol and amino-acid exchanges default to `2.2`, while non-carbon base
+  nutrients other than oxygen default to `10.0`.
 - Each sample independently selects one to four of the ten variable carbon
   sources, without restricting the subset to the authors' 110 experimental
-  patterns. Selected-source caps are continuous draws from `0.05` to `2.2`,
+  patterns. Selected-source caps are loguniform draws from `0.05` to `10.0`,
   rather than the authors' cardinality-scaled discrete grid. The fixed `2.2`
   glycerol/amino-acid caps match the author simulation, but non-carbon base
-  caps use `10.0` rather than `2.2`, and oxygen varies from `1.0` to `10.0`.
+  caps use `10.0` rather than `2.2`, and oxygen is loguniform from `1.0` to `25.0`.
   Use `--fixed-oxygen` only for an explicit ablation; this alone does not
   reproduce the author distribution.
 - The current solver default is **plain FBA** (`--flux-solver-mode fba`).
@@ -168,6 +166,16 @@ Key points:
 
 Use this generator as the source of truth for input column order, exchange
 names, and rate conventions when checking the notebook.
+
+### Model A cap alignment (2026-10-08)
+
+Model A now matches the experimental-pattern AMN sampler's default selected-carbon
+caps (loguniform 0.05--10) and oxygen caps (loguniform 1--25), with the same
+two-decimal rounding. Previously A used uniform 0.05--2.2 carbon and uniform
+1--10 oxygen caps. Its unrestricted one-to-four-source subset sampling, fixed
+glycerol/amino-acid caps, basal caps, and plain-FBA default remain unchanged.
+Existing datasets and checkpoints retain their original generation settings;
+this change applies to future A generation only.
 
 ### Experimental-pattern AMN sampler (2026-10-06)
 

@@ -91,7 +91,7 @@ def parse_args():
 
     parser.add_argument("--default-rate", type=float, default=10.0)
     parser.add_argument("--carbon-rate-min", type=float, default=0.05)
-    parser.add_argument("--carbon-rate-max", type=float, default=2.2)
+    parser.add_argument("--carbon-rate-max", type=float, default=10.0)
     parser.add_argument("--fixed-carbon-rate", type=float, default=2.2)
     parser.add_argument("--amino-rate", type=float, default=2.2)
     parser.add_argument(
@@ -99,11 +99,11 @@ def parse_args():
         action="store_true",
         help=(
             "Fix EX_o2_e at --default-rate. By default oxygen is sampled "
-            "between --oxygen-rate-min and --oxygen-rate-max."
+            "loguniformly between --oxygen-rate-min and --oxygen-rate-max."
         ),
     )
     parser.add_argument("--oxygen-rate-min", type=float, default=1.0)
-    parser.add_argument("--oxygen-rate-max", type=float, default=10.0)
+    parser.add_argument("--oxygen-rate-max", type=float, default=25.0)
     parser.add_argument("--max-carbon-sources", type=int, default=4)
 
     parser.add_argument("--batch-size", type=int, default=500)
@@ -208,6 +208,7 @@ def generate_training_sample(
                 rng,
                 min_val=args.carbon_rate_min,
                 max_val=args.carbon_rate_max,
+                log_uniform=True,
             )
             set_uptake(model, data, ex, rate)
 
@@ -223,6 +224,7 @@ def generate_training_sample(
                         rng,
                         min_val=args.oxygen_rate_min,
                         max_val=args.oxygen_rate_max,
+                        log_uniform=True,
                     )
                 set_uptake(model, data, ex, rate)
             else:
@@ -329,9 +331,10 @@ def main():
         + (
             f"fixed at {args.default_rate:g}"
             if args.fixed_oxygen
-            else f"sampled in [{args.oxygen_rate_min:g}, {args.oxygen_rate_max:g}]"
+            else f"loguniform in [{args.oxygen_rate_min:g}, {args.oxygen_rate_max:g}]"
         )
     )
+    print(f"Carbon uptake: loguniform in [{args.carbon_rate_min:g}, {args.carbon_rate_max:g}]")
     print(f"Generating {args.n_samples} AMN-style samples...")
     print(f"Output temp file: {temp_filename}")
     print(f"Planned final file: {planned_final_filename}")

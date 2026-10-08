@@ -69,9 +69,9 @@ Model C's shared AMN/MINN generator is now `generate_ecoli_iML1515_C_data.py`
 ### A — AMN-specific
 
 - Ten eligible AMN carbon sources; one to four active per sample.
-- Continuous selected-carbon bounds from 0.05--2.2.
+- Loguniform selected-carbon caps from 0.05--10.
 - Glycerol and alanine, proline, threonine, and glycine fixed at 2.2.
-- Oxygen sampled continuously from 1--10.
+- Oxygen caps sampled loguniformly from 1--25.
 - Current fixed base rate: 10.
 - Current generator defaults to plain FBA and supports optional pFBA; use
   pFBA with `fraction_of_optimum=0.999` for the new comparison and record the
@@ -80,6 +80,13 @@ Model C's shared AMN/MINN generator is now `generate_ecoli_iML1515_C_data.py`
 Model A keeps glycerol fixed at 2.2, matching the current implemented A
 generator and Faure's simulated reservoir. A glycerol-absent A variant is not
 planned.
+
+On 2026-10-08, A's selected-carbon and oxygen caps were aligned with
+`generate_ecoli_iML1515_AMN_data.py`: the previous uniform 0.05--2.2 and
+1--10 draws became loguniform 0.05--10 and 1--25, respectively. Rounding
+remains two decimals. This affects future A generation; existing datasets,
+checkpoints, and the separate A ∪ B/C/D generators retain their previous
+settings. A still samples unrestricted source subsets and defaults to FBA.
 
 Author comparison verified 2026-10-06: **A independently draws one-to-four
 sources from the ten-source list**, whereas the author iML1515 simulated
@@ -230,7 +237,7 @@ new-checkpoint evaluation and production generation remain unrun.
 
 | Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
 |---|---|---|---|---|
-| **A** | 10 AMN carbons (ribose, maltose, melibiose, trehalose, fructose, galactose, acetate, D-lactate, succinate, pyruvate) | AMN base (22) + fixed glycerol + four fixed amino acids; O2 variable 1--10 | 0.05--2.2 | 1--4 |
+| **A** | 10 AMN carbons (ribose, maltose, melibiose, trehalose, fructose, galactose, acetate, D-lactate, succinate, pyruvate) | AMN base (22) + fixed glycerol + four fixed amino acids; O2 loguniform 1--25 | loguniform 0.05--10 | 1--4 |
 | **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN base (23, incl. cobalamin), base 50 | Glucose 1--15; O2 1--20; secretion caps CO2 0--15, ethanol 0--1, acetate 0--3 | 1 |
 | **A ∪ B** | Union: 10 AMN carbons + glucose (per regime) | A base or B base per regime | A 0.05--2.2; B integer bounds | 1--4 or 1 |
 | **C** | 10 AMN carbons + glucose + amino acids + CO2/ethanol/acetate | Shared base (41 inputs, fixed cobalamin included) | A-like and B-like ranges | mixed |
