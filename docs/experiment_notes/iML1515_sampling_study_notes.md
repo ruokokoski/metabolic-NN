@@ -73,20 +73,31 @@ Model C's shared AMN/MINN generator is now `generate_ecoli_iML1515_C_data.py`
 - Glycerol and alanine, proline, threonine, and glycine fixed at 2.2.
 - Oxygen caps sampled loguniformly from 1--25.
 - Current fixed base rate: 10.
-- Current generator defaults to plain FBA and supports optional pFBA; use
-  pFBA with `fraction_of_optimum=0.999` for the new comparison and record the
+- As of 2026-10-08, the generator defaults to pFBA with
+  `fraction_of_optimum=0.999`; plain FBA remains selectable with
+  `--flux-solver-mode fba`. Record the
   actual generation settings for existing data/checkpoints.
 
 Model A keeps glycerol fixed at 2.2, matching the current implemented A
 generator and Faure's simulated reservoir. A glycerol-absent A variant is not
 planned.
 
+Roihu training entry point: `scripts/roihu/samplejob_A.sh` requests 1,000,000
+samples with seed 42, explicit pFBA at fraction 0.999, and output prefix
+`iML1515_A_training_data`. It uses one CPU, 16 GiB and 72 hours in `small`,
+with code/models under `/projappl/project_2013496/fluxformer` and outputs under
+`/scratch/project_2013496/$USER/fluxformer/data`. Test generation uses seed 9
+and a separate test prefix. This job uses A's unrestricted subset sampler;
+`samplejob_AMN.sh` remains the separate experimental-pattern sampler.
+
 On 2026-10-08, A's selected-carbon and oxygen caps were aligned with
 `generate_ecoli_iML1515_AMN_data.py`: the previous uniform 0.05--2.2 and
 1--10 draws became loguniform 0.05--10 and 1--25, respectively. Rounding
 remains two decimals. This affects future A generation; existing datasets,
 checkpoints, and the separate A ∪ B/C/D generators retain their previous
-settings. A still samples unrestricted source subsets and defaults to FBA.
+settings. A still samples unrestricted source subsets; its default solver was
+also changed to pFBA at fraction 0.999 on 2026-10-08. Existing artifacts retain
+their original solver provenance.
 
 Author comparison verified 2026-10-06: **A independently draws one-to-four
 sources from the ten-source list**, whereas the author iML1515 simulated

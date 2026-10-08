@@ -146,11 +146,16 @@ Key points:
   caps use `10.0` rather than `2.2`, and oxygen is loguniform from `1.0` to `25.0`.
   Use `--fixed-oxygen` only for an explicit ablation; this alone does not
   reproduce the author distribution.
-- The current solver default is **plain FBA** (`--flux-solver-mode fba`).
-  Optional `--flux-solver-mode pfba` defaults to
+- As of 2026-10-08, A's solver default is **pFBA** (`--flux-solver-mode pfba`).
+  Plain FBA remains selectable with `--flux-solver-mode fba`. pFBA defaults to
   `--pfba-fraction-of-optimum 0.999`, distinct from the author pFBA call's
   default 1.0. Record the actual generation arguments when interpreting a
   checkpoint; a Faure-style medium does not establish pFBA provenance.
+- Roihu A training job: `scripts/roihu/samplejob_A.sh` explicitly generates
+  1,000,000 samples with seed 42 and pFBA fraction 0.999, using output prefix
+  `iML1515_A_training_data`. It requests one CPU, 16 GiB and 72 hours in
+  `small`. This is separate from the experimental-pattern `samplejob_AMN.sh`;
+  test data must use seed 9 and a separate output prefix.
 - Each sample starts from a closed uptake medium while preserving the model's
   default exchange upper bounds for secretion. This avoids carrying stale solver
   bounds between samples while keeping unselected nutrients closed.

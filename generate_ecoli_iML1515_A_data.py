@@ -82,7 +82,7 @@ def parse_args():
     parser.add_argument("--overwrite-existing", action="store_true")
 
     parser.add_argument("--objective-reaction", default="BIOMASS_Ec_iML1515_core_75p37M")
-    parser.add_argument("--flux-solver-mode", choices=["fba", "pfba"], default="fba")
+    parser.add_argument("--flux-solver-mode", choices=["fba", "pfba"], default="pfba")
     parser.add_argument("--pfba-fraction-of-optimum", type=float, default=0.999)
     parser.add_argument("--solver-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--solver-reset-interval", type=int, default=5000)
