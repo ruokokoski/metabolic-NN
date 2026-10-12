@@ -48,9 +48,7 @@ COMMON_BASE_EXCHANGES = [
     "EX_slnt_e",
 ]
 
-B_ONLY_BASE_EXCHANGES = [
-    "EX_cbl1_e",
-]
+B_ONLY_BASE_EXCHANGES = []
 
 AMN_CARBON_EXCHANGES = [
     "EX_rib__D_e",
@@ -123,24 +121,24 @@ def parse_args():
 
     parser.add_argument("--a-base-rate", type=float, default=10.0)
     parser.add_argument("--a-carbon-rate-min", type=float, default=0.05)
-    parser.add_argument("--a-carbon-rate-max", type=float, default=2.2)
+    parser.add_argument("--a-carbon-rate-max", type=float, default=10.0)
     parser.add_argument("--a-fixed-carbon-rate", type=float, default=2.2)
     parser.add_argument("--a-amino-rate", type=float, default=2.2)
     parser.add_argument("--a-oxygen-rate-min", type=float, default=1.0)
-    parser.add_argument("--a-oxygen-rate-max", type=float, default=10.0)
+    parser.add_argument("--a-oxygen-rate-max", type=float, default=25.0)
     parser.add_argument("--a-max-carbon-sources", type=int, default=4)
 
-    parser.add_argument("--b-base-rate", type=float, default=50.0)
-    parser.add_argument("--b-glucose-cap-min", type=int, default=1)
-    parser.add_argument("--b-glucose-cap-max", type=int, default=15)
-    parser.add_argument("--b-oxygen-cap-min", type=int, default=1)
-    parser.add_argument("--b-oxygen-cap-max", type=int, default=20)
-    parser.add_argument("--b-co2-cap-min", type=int, default=0)
-    parser.add_argument("--b-co2-cap-max", type=int, default=15)
-    parser.add_argument("--b-ethanol-cap-min", type=int, default=0)
-    parser.add_argument("--b-ethanol-cap-max", type=int, default=1)
-    parser.add_argument("--b-acetate-cap-min", type=int, default=0)
-    parser.add_argument("--b-acetate-cap-max", type=int, default=3)
+    parser.add_argument("--b-base-rate", type=float, default=10.0)
+    parser.add_argument("--b-glucose-cap-min", type=float, default=1.0)
+    parser.add_argument("--b-glucose-cap-max", type=float, default=15.0)
+    parser.add_argument("--b-oxygen-cap-min", type=float, default=1.0)
+    parser.add_argument("--b-oxygen-cap-max", type=float, default=25.0)
+    parser.add_argument("--b-co2-cap-min", type=float, default=0.0)
+    parser.add_argument("--b-co2-cap-max", type=float, default=20.0)
+    parser.add_argument("--b-ethanol-cap-min", type=float, default=0.0)
+    parser.add_argument("--b-ethanol-cap-max", type=float, default=2.0)
+    parser.add_argument("--b-acetate-cap-min", type=float, default=0.0)
+    parser.add_argument("--b-acetate-cap-max", type=float, default=8.0)
 
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--progress-interval", type=int, default=1_000)
@@ -155,6 +153,11 @@ def format_elapsed(seconds):
 
 
 def random_rate(rng, min_val, max_val):
+    """Draw a loguniform A-style uptake cap, rounded to two decimals."""
+    return round(float(10 ** rng.uniform(np.log10(min_val), np.log10(max_val))), 2)
+
+
+def random_uniform_cap(rng, min_val, max_val):
     return round(float(rng.uniform(min_val, max_val)), 2)
 
 
@@ -272,12 +275,14 @@ def validate_args(args):
         "A oxygen rate": (args.a_oxygen_rate_min, args.a_oxygen_rate_max),
     }
     for name, (minimum, maximum) in continuous_ranges.items():
-        if minimum < 0 or maximum < minimum:
+        if not (math.isfinite(minimum) and math.isfinite(maximum)) or minimum <= 0 or maximum < minimum:
             raise ValueError(f"Invalid {name} range [{minimum}, {maximum}]")
 
-    integer_ranges = build_b_cap_config(args)
-    for exchange_id, (minimum, maximum) in integer_ranges.items():
-        if minimum < 0 or maximum < minimum:
+    b_ranges = build_b_cap_config(args)
+    for exchange_id, (minimum, maximum) in b_ranges.items():
+        if exchange_id == "EX_o2_e" and not (math.isfinite(minimum) and math.isfinite(maximum) and minimum > 0):
+            raise ValueError("B oxygen loguniform bounds must be finite and positive")
+        if not (math.isfinite(minimum) and math.isfinite(maximum)) or minimum < 0 or maximum < minimum:
             raise ValueError(
                 f"Invalid B cap range for {exchange_id}: [{minimum}, {maximum}]"
             )
@@ -325,7 +330,7 @@ def set_secretion_cap(model, data, exchange_id, cap):
     reaction = model.reactions.get_by_id(exchange_id)
     reaction.lower_bound = 0.0
     reaction.upper_bound = float(cap)
-    data[exchange_id] = int(cap)
+    data[exchange_id] = cap
 
 
 def apply_a_regime(model, data, rng, exchange_default_bounds, args):
@@ -358,17 +363,19 @@ def apply_a_regime(model, data, rng, exchange_default_bounds, args):
 
 def apply_b_regime(model, data, rng, exchange_default_bounds, b_cap_config, args):
     restore_default_medium(model, exchange_default_bounds)
+    # Cobalamin is absent from the revised union medium and input vocabulary.
+    model.reactions.get_by_id("EX_cbl1_e").lower_bound = 0.0
 
     for exchange_id in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES:
         set_uptake(model, data, exchange_id, args.b_base_rate)
 
-    glucose_cap = random_integer_cap(rng, *b_cap_config["EX_glc__D_e"])
-    oxygen_cap = random_integer_cap(rng, *b_cap_config["EX_o2_e"])
+    glucose_cap = random_uniform_cap(rng, *b_cap_config["EX_glc__D_e"])
+    oxygen_cap = random_rate(rng, *b_cap_config["EX_o2_e"])
     set_uptake(model, data, "EX_glc__D_e", glucose_cap)
     set_uptake(model, data, "EX_o2_e", oxygen_cap)
 
     for exchange_id in ("EX_co2_e", "EX_etoh_e", "EX_ac_e"):
-        secretion_cap = random_integer_cap(rng, *b_cap_config[exchange_id])
+        secretion_cap = random_uniform_cap(rng, *b_cap_config[exchange_id])
         set_secretion_cap(model, data, exchange_id, secretion_cap)
 
 
@@ -499,13 +506,13 @@ def main():
     )
     print(
         "A oxygen uptake range: "
-        f"continuous [{args.a_oxygen_rate_min:g}, {args.a_oxygen_rate_max:g}]"
+        f"loguniform [{args.a_oxygen_rate_min:g}, {args.a_oxygen_rate_max:g}]"
     )
     print(
         "B oxygen uptake range: "
-        f"integer [{args.b_oxygen_cap_min}, {args.b_oxygen_cap_max}]"
+        f"loguniform [{args.b_oxygen_cap_min:g}, {args.b_oxygen_cap_max:g}]"
     )
-    print("B sampled integer bounds (inclusive min, max):")
+    print("B sampled bounds (oxygen loguniform; other channels uniform):")
     for exchange_id in MINN_CONTEXT_EXCHANGES:
         print(f"  {exchange_id}: {b_cap_config[exchange_id]}")
     print(f"Temporary output: {temp_filename}")

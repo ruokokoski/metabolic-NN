@@ -138,6 +138,21 @@ to equalities and applies KOs; its `gapC`-position/b0118 (`acnB`) mapping is
 unresolved. These input/constraint differences require explicit scope when
 interpreting baseline or transfer results. All detailed evidence is in the audit.
 
+## Revised B and A-union-B generation (2026-10-12)
+
+Standalone B now fixes basal uptake caps at 10 and excludes cobalamin,
+closing its uptake and reducing the vocabulary from 27 to 26 inputs. Its
+glucose/CO2 caps are continuous uniform 1--15/0--20; oxygen is loguniform
+1--25, matching A.
+Ethanol/acetate caps are continuous uniform 0--2/0--8. All continuous caps
+are rounded to two decimals.
+The A-union-B generator uses basal caps 10 in both regimes, omits cobalamin
+from its 40-input vocabulary and closes its uptake, and updates A-component
+carbon/oxygen caps to independent loguniform 0.05--10/1--25. Exact 50/50
+accepted quotas remain. Its B medium matches revised standalone B, including
+closed cobalamin uptake and loguniform oxygen 1--25. Existing data/checkpoints and notebook/evaluator
+basal mappings are historical; align them explicitly before using new models.
+
 ## 1) Core goal
 - Use a pretrained `FluxTransformer` as a frozen reservoir.
 - Train only a front MLP on omics + measured inputs.
@@ -155,9 +170,11 @@ interpreting baseline or transfer results. All detailed evidence is in the audit
 ## 1.1) Simulated MINN data generation file
 - Simulated MINN-style training data for FluxTransformer is generated in: `generate_ecoli_iML1515_B_data.py`. As of 2026-10-06, this filename refers to the renamed Tazza-style sampler; the earlier MINN sampler was deleted.
 - Use this file as the sign/bound/order ground truth when validating notebook mappings.
-- The current generator independently samples all five context caps. Glucose and oxygen set negative uptake lower bounds; CO2/ethanol/acetate have `lower_bound=0` and sampled secretion upper bounds. Sampled caps remain in input/context columns, while solved fluxes are written to `*_flux`.
-- Non-variable base exchanges use `lower_bound=-base_rate`, default **50** (`--base-rate`). The generator restores the model's exchange defaults before applying each sample's caps. The deleted legacy sampler instead left secretion uncapped and populated those context columns from realized fluxes; historical datasets/checkpoints using that method do not acquire the new semantics through this filename change.
-- `generate_ecoli_iML1515_C_data.py` is the shared AMN/MINN reservoir generator for retraining a checkpoint that should work in both the AMN growth notebook and the MINN Table 4-style workflow. It adds glucose and ethanol to the Faure-style AMN input set, always includes the five MINN context tokens, and mixes `minn`, `faure`, and `mixed` regimes. The `minn` and `mixed` regimes independently sample the same widened integer caps as the Tazza-style generator: glucose 1--15, oxygen 1--20, CO2 0--15, ethanol 0--1, and acetate 0--3. All shared regimes use non-carbon base nutrient rate 50. Use this for AMN/MINN transfer checkpoints, not for strict Faure-only claims.
+- The current generator independently samples all five context caps; oxygen
+  is loguniform 1--25, ethanol/acetate are continuous uniform 0--2/0--8
+  and glucose/CO2 are continuous uniform 1--15/0--20 (all rounded to two decimals). Glucose and oxygen set negative uptake lower bounds; CO2/ethanol/acetate have `lower_bound=0` and sampled secretion upper bounds. Sampled caps remain in input/context columns, while solved fluxes are written to `*_flux`.
+- Non-variable base exchanges use `lower_bound=-base_rate`, default **10** (`--base-rate`, revised 2026-10-12; previously 50). The generator restores the model's exchange defaults before applying each sample's caps. The deleted legacy sampler instead left secretion uncapped and populated those context columns from realized fluxes; historical datasets/checkpoints using that method do not acquire the new semantics through this filename change.
+- `generate_ecoli_iML1515_C_data.py` is the shared AMN/MINN reservoir generator for retraining a checkpoint that should work in both the AMN growth notebook and the MINN Table 4-style workflow. It adds glucose and ethanol to the Faure-style AMN input set, always includes the five MINN context tokens, and mixes `minn`, `faure`, and `mixed` regimes. The `minn` and `mixed` regimes independently sample the same widened integer caps as the Tazza-style generator: glucose 1--15, oxygen 1--20, CO2 0--15, ethanol 0--1, and acetate 0--3. As of 2026-10-12, shared C uses basal uptake caps 10, attempt probabilities A/B/mixed = 0.40/0.40/0.20, and 40 inputs without cobalamin by default. Mixed rows add one to three non-acetate A sources (uniform count/subset, independent loguniform caps 0.05--10) to the B-style medium. Existing checkpoints and evaluation mappings retain historical basal 50 and require alignment for newly trained C checkpoints. See the shared reservoir note for the complete revised contract. Use this for AMN/MINN transfer checkpoints, not for strict Faure-only claims.
 - The AMN-trial MINN notebook showed why a strict no-glucose AMN checkpoint is not enough for Table 4: `EX_glc__D_e` was absent from the AMN training inputs and effectively constant zero in the simulated AMN data, while MINN uses measured glucose uptake as a central context channel.
 - `generate_ecoli_iML1515_B_data.py` is now the maintained Tazza-style generator and defines sampling-study model B. It uniformly draws integer caps from deliberately widened, rounded envelopes around the raw Ishii ranges: glucose 1--15, oxygen 1--20, CO2 0--15, ethanol 0--1, and acetate 0--3. This is a local adaptation of Tazza et al.'s random five-channel reservoir `Vin` setup without restricting training to the exact experimental extrema, and it intentionally retains this repo's iML1515 model, 500k-sample scale, and pFBA target generation. The author's missing generator prevents verification of the exact original sampling distribution.
 - The Tazza generator accepts the same portable run controls used by the shared generator, including `--n-samples`, `--model-dir`, `--data-dir`, `--output-prefix`, solver timeout/reset controls, bounded retry controls, and cap-range overrides. Its defaults remain 500k samples, seed 42, core biomass, pFBA at 0.999 of optimum, and the cap ranges above. Final files are named `<output-prefix>_<n-samples>_samples.csv`; timestamped temporary files are retained if generation fails.
@@ -640,3 +657,31 @@ the pre-run dataset and context state whether or not an original comparison
 result is available. The final cross-file comparison table still requires the
 original measured and predicted FT+pFBA results. This change avoids rerunning
 those expensive original fits merely to reach the fitted sensitivity test.
+
+Oxygen alignment (2026-10-12): standalone B and its A-union-B/C components
+now use A's loguniform 1--25 oxygen caps rather than uniform integers 1--20.
+This still excludes the fitted MINN maximum 26.2417. Historical datasets and
+checkpoints retain their original bounds and sampling distributions.
+
+CO2 coverage update (2026-10-12): standalone B, the union B component, and
+C MINN/mixed components now draw CO2 secretion caps as uniform inclusive
+integers 0--20 (previously 0--15), covering the fitted MINN maximum 19.6169.
+A-like CO2 basal uptake remains 10. This changes future generation only.
+
+Ethanol/acetate sampling trial (2026-10-12): B, the B component of A ∪ B,
+and C MINN/mixed components now independently draw secretion caps from
+continuous uniform 0--2 (ethanol) and 0--8 (acetate), rounded to two decimals.
+Previously these were uniform integer 0--1/0--3. CLI endpoints accept floats;
+CSV inputs preserve the sampled fractional caps and match solver upper bounds.
+A-like acetate uptake, oxygen, CO2, glucose and mixture settings are unchanged.
+The wider acetate range covers the alternative iML1515-fitted maximum 7.2137;
+ethanol expansion and finer cap coverage are trial choices, not established
+accuracy improvements. Existing datasets/checkpoints were not regenerated.
+
+Continuous glucose/CO2 update (2026-10-12): B, the B component of A ∪ B,
+and C MINN/mixed components now use independent continuous uniform glucose
+uptake caps 1--15 and CO2 secretion caps 0--20, rounded to two decimals,
+replacing integer sampling. CLI endpoints accept floats. Together with the
+previous ethanol/acetate change, all B-style context caps are continuous;
+oxygen retains loguniform 1--25. A-like CO2 basal uptake and source-count
+sampling are unchanged. Existing datasets/checkpoints were not regenerated.

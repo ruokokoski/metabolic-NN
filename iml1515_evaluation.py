@@ -56,10 +56,14 @@ def save_json(path, value):
     path.write_text(json.dumps(value, indent=2, default=str), encoding="utf-8")
 
 
-def input_contract(model_family="AB_union", exclude_cbl1=False):
-    """Return the generator's ordered inputs; C also supports legacy 40-input runs."""
+def input_contract(model_family="AB_union", exclude_cbl1=True):
+    """Return current ordered inputs, with explicit cobalamin schema variants."""
     if model_family == "AB_union":
-        return build_input_columns()
+        inputs = build_input_columns()
+        if not exclude_cbl1:
+            # Historical union checkpoints declared cobalamin after the basal inputs.
+            inputs.insert(inputs.index("EX_glyc_e"), "EX_cbl1_e")
+        return inputs
     if model_family == "C":
         from generate_ecoli_iML1515_C_data import build_input_cols
         return build_input_cols(exclude_cbl1=exclude_cbl1)[0]

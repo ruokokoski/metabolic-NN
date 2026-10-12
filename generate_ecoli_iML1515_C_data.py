@@ -105,41 +105,48 @@ def parse_args():
     parser.add_argument("--failure-reload-interval", type=int, default=100)
     parser.add_argument("--max-attempt-multiplier", type=float, default=20.0)
 
-    parser.add_argument("--regime-minn-weight", type=float, default=0.50)
+    parser.add_argument("--regime-minn-weight", type=float, default=0.40)
     parser.add_argument("--regime-faure-weight", type=float, default=0.40)
-    parser.add_argument("--regime-mixed-weight", type=float, default=0.10)
+    parser.add_argument("--regime-mixed-weight", type=float, default=0.20)
 
-    parser.add_argument("--base-rate", type=float, default=50.0)
-    parser.add_argument("--glucose-rate-min", type=int, default=1)
-    parser.add_argument("--glucose-rate-max", type=int, default=15)
-    parser.add_argument("--oxygen-rate-min", type=int, default=1)
-    parser.add_argument("--oxygen-rate-max", type=int, default=20)
-    parser.add_argument("--co2-secretion-cap-min", type=int, default=0)
-    parser.add_argument("--co2-secretion-cap-max", type=int, default=15)
-    parser.add_argument("--ethanol-secretion-cap-min", type=int, default=0)
-    parser.add_argument("--ethanol-secretion-cap-max", type=int, default=1)
-    parser.add_argument("--acetate-secretion-cap-min", type=int, default=0)
-    parser.add_argument("--acetate-secretion-cap-max", type=int, default=3)
+    parser.add_argument("--base-rate", type=float, default=10.0)
+    parser.add_argument("--glucose-rate-min", type=float, default=1.0)
+    parser.add_argument("--glucose-rate-max", type=float, default=15.0)
+    parser.add_argument("--oxygen-rate-min", type=float, default=1.0)
+    parser.add_argument("--oxygen-rate-max", type=float, default=25.0)
+    parser.add_argument("--co2-secretion-cap-min", type=float, default=0.0)
+    parser.add_argument("--co2-secretion-cap-max", type=float, default=20.0)
+    parser.add_argument("--ethanol-secretion-cap-min", type=float, default=0.0)
+    parser.add_argument("--ethanol-secretion-cap-max", type=float, default=2.0)
+    parser.add_argument("--acetate-secretion-cap-min", type=float, default=0.0)
+    parser.add_argument("--acetate-secretion-cap-max", type=float, default=8.0)
     parser.add_argument("--faure-oxygen-rate-min", type=float, default=1.0)
-    parser.add_argument("--faure-oxygen-rate-max", type=float, default=10.0)
+    parser.add_argument("--faure-oxygen-rate-max", type=float, default=25.0)
     parser.add_argument("--carbon-rate-min", type=float, default=0.05)
-    parser.add_argument("--carbon-rate-max", type=float, default=2.2)
+    parser.add_argument("--carbon-rate-max", type=float, default=10.0)
     parser.add_argument("--fixed-carbon-rate", type=float, default=2.2)
     parser.add_argument("--amino-rate", type=float, default=2.2)
     parser.add_argument("--max-faure-carbon-sources", type=int, default=4)
-    parser.add_argument("--max-mixed-extra-carbon-sources", type=int, default=2)
+    parser.add_argument("--max-mixed-extra-carbon-sources", type=int, default=3)
     parser.add_argument("--mixed-supplement-probability", type=float, default=0.0)
 
-    parser.add_argument(
+    cobalamin = parser.add_mutually_exclusive_group()
+    cobalamin.add_argument(
         "--exclude-cbl1",
+        dest="exclude_cbl1",
         action="store_true",
+        help="Exclude EX_cbl1_e from the base medium (default; 40 inputs).",
+    )
+    cobalamin.add_argument(
+        "--include-cbl1",
+        dest="exclude_cbl1",
+        action="store_false",
         help=(
-            "Exclude the fixed cobalamin exchange EX_cbl1_e from the base "
-            "medium. By default EX_cbl1_e is included because it is required "
-            "for the wild-type objective BIOMASS_Ec_iML1515_WT_75p37M and is "
-            "harmless for the core objective."
+            "Include fixed EX_cbl1_e (41 inputs), required for the wild-type "
+            "objective BIOMASS_Ec_iML1515_WT_75p37M."
         ),
     )
+    parser.set_defaults(exclude_cbl1=True)
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--progress-interval", type=int, default=1000)
     parser.add_argument("--attempt-progress-interval", type=int, default=10000)
@@ -162,7 +169,7 @@ def random_integer_cap(rng, min_val, max_val):
     """Draw an integer cap uniformly from the inclusive range [min_val, max_val]."""
     if not isinstance(min_val, int) or not isinstance(max_val, int):
         raise TypeError("Integer cap endpoints must be integers.")
-    if min_val < 0 or max_val < min_val:
+    if not (np.isfinite(min_val) and np.isfinite(max_val)) or min_val < 0 or max_val < min_val:
         raise ValueError(f"Invalid integer cap range [{min_val}, {max_val}]")
     return int(rng.integers(min_val, max_val + 1))
 
@@ -203,7 +210,7 @@ def load_generation_model(model_dir, objective_reaction, solver_timeout_seconds)
     return model, exchange_default_bounds, outputs
 
 
-def build_input_cols(exclude_cbl1=False):
+def build_input_cols(exclude_cbl1=True):
     base_exchanges = list(BASE_EXCHANGES)
     if not exclude_cbl1:
         base_exchanges.append("EX_cbl1_e")
@@ -242,8 +249,6 @@ def reset_closed_medium(model, exchange_default_bounds):
 
 def set_uptake(model, data, exchange_id, rate):
     model.reactions.get_by_id(exchange_id).lower_bound = -float(rate)
-    # Preserve integer-valued MINN caps in the CSV while still accepting
-    # continuous Faure carbon/oxygen rates.
     data[exchange_id] = rate
 
 
@@ -258,7 +263,7 @@ def set_secretion_cap(model, data, exchange_id, cap):
     rxn = model.reactions.get_by_id(exchange_id)
     rxn.lower_bound = 0.0
     rxn.upper_bound = float(cap)
-    data[exchange_id] = int(cap)
+    data[exchange_id] = cap
 
 
 def solve_fluxes(model, flux_solver_mode, pfba_fraction_of_optimum):
@@ -297,28 +302,29 @@ def apply_base_medium(model, data, base_exchanges, rate):
 
 
 def apply_minn_context_caps(model, data, rng, args):
-    glc_rate = random_integer_cap(
+    glc_rate = random_rate(
         rng,
         args.glucose_rate_min,
         args.glucose_rate_max,
     )
-    o2_rate = random_integer_cap(
+    o2_rate = random_rate(
         rng,
         args.oxygen_rate_min,
         args.oxygen_rate_max,
+        log_uniform=True,
     )
     secretion_caps = {
-        "EX_co2_e": random_integer_cap(
+        "EX_co2_e": random_rate(
             rng,
             args.co2_secretion_cap_min,
             args.co2_secretion_cap_max,
         ),
-        "EX_etoh_e": random_integer_cap(
+        "EX_etoh_e": random_rate(
             rng,
             args.ethanol_secretion_cap_min,
             args.ethanol_secretion_cap_max,
         ),
-        "EX_ac_e": random_integer_cap(
+        "EX_ac_e": random_rate(
             rng,
             args.acetate_secretion_cap_min,
             args.acetate_secretion_cap_max,
@@ -340,12 +346,12 @@ def apply_faure_regime(model, data, rng, exchange_default_bounds, base_exchanges
     apply_base_medium(model, data, base_exchanges, args.base_rate)
     set_uptake(model, data, "EX_co2_e", args.base_rate)
 
-    # Keep the Faure AMN medium sampling unchanged except for oxygen: Faure
-    # holds oxygen fixed, whereas this FluxTransformer generator samples it.
+    # Match Distribution A's selected-carbon and oxygen cap distributions.
     o2_rate = random_rate(
         rng,
         args.faure_oxygen_rate_min,
         args.faure_oxygen_rate_max,
+        log_uniform=True,
     )
     set_uptake(model, data, "EX_o2_e", o2_rate)
 
@@ -356,7 +362,7 @@ def apply_faure_regime(model, data, rng, exchange_default_bounds, base_exchanges
         min_sources=1,
     )
     for ex in carbon_subset:
-        rate = random_rate(rng, args.carbon_rate_min, args.carbon_rate_max)
+        rate = random_rate(rng, args.carbon_rate_min, args.carbon_rate_max, log_uniform=True)
         set_uptake(model, data, ex, rate)
 
     for ex in FIXED_CARBON_EXCHANGES:
@@ -375,10 +381,10 @@ def apply_mixed_regime(model, data, rng, base_exchanges, args):
         rng,
         NON_CONTEXT_FAURE_CARBON_EXCHANGES,
         max_sources=args.max_mixed_extra_carbon_sources,
-        min_sources=0,
+        min_sources=1,
     )
     for ex in extra_carbons:
-        rate = random_rate(rng, args.carbon_rate_min, args.carbon_rate_max)
+        rate = random_rate(rng, args.carbon_rate_min, args.carbon_rate_max, log_uniform=True)
         set_uptake(model, data, ex, rate)
 
     if rng.random() < args.mixed_supplement_probability:
@@ -472,8 +478,10 @@ def main():
         raise ValueError("--pfba-fraction-of-optimum must be in (0, 1]")
     if not (0 <= args.mixed_supplement_probability <= 1):
         raise ValueError("--mixed-supplement-probability must be in [0, 1]")
+    if not (1 <= args.max_mixed_extra_carbon_sources <= len(NON_CONTEXT_FAURE_CARBON_EXCHANGES)):
+        raise ValueError("--max-mixed-extra-carbon-sources must be between 1 and 9")
 
-    integer_cap_ranges = {
+    context_cap_ranges = {
         "glucose": (args.glucose_rate_min, args.glucose_rate_max),
         "oxygen": (args.oxygen_rate_min, args.oxygen_rate_max),
         "CO2 secretion": (
@@ -489,10 +497,12 @@ def main():
             args.acetate_secretion_cap_max,
         ),
     }
-    for name, (min_val, max_val) in integer_cap_ranges.items():
-        if min_val < 0 or max_val < min_val:
+    for name, (min_val, max_val) in context_cap_ranges.items():
+        if name == "oxygen" and not (np.isfinite(min_val) and np.isfinite(max_val) and min_val > 0):
+            raise ValueError("Oxygen loguniform bounds must be finite and positive")
+        if not (np.isfinite(min_val) and np.isfinite(max_val)) or min_val < 0 or max_val < min_val:
             raise ValueError(
-                f"Invalid {name} integer cap range [{min_val}, {max_val}]"
+                f"Invalid {name} cap range [{min_val}, {max_val}]"
             )
 
     rng = np.random.default_rng(args.seed)
@@ -540,8 +550,11 @@ def main():
     for name, prob in zip(regime_names, regime_probabilities):
         print(f"  {name}: {prob:.3f}")
     print(f"Shared non-carbon base nutrient rate: {args.base_rate:g}")
-    print("MINN integer context caps (inclusive min, max):")
-    for name, cap_range in integer_cap_ranges.items():
+    print(f"A-like carbon caps: loguniform [{args.carbon_rate_min:g}, {args.carbon_rate_max:g}]")
+    print(f"A-like oxygen caps: loguniform [{args.faure_oxygen_rate_min:g}, {args.faure_oxygen_rate_max:g}]")
+    print(f"Mixed added sources: uniform count 1--{args.max_mixed_extra_carbon_sources}, excluding acetate")
+    print("MINN caps (oxygen loguniform; glucose/CO2/ethanol/acetate uniform):")
+    for name, cap_range in context_cap_ranges.items():
         print(f"  {name}: {cap_range}")
     print("MINN context inputs:")
     for ex in MINN_CONTEXT_EXCHANGES:

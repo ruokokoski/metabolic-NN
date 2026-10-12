@@ -40,7 +40,6 @@ BASE_EXCHANGES = [
     "EX_sel_e",
     "EX_tungs_e",
     "EX_slnt_e",
-    "EX_cbl1_e",
 ]
 SAMPLED_EXCHANGES = [
     "EX_glc__D_e",
@@ -85,17 +84,17 @@ def parse_args():
     parser.add_argument("--solver-reset-interval", type=int, default=5_000)
     parser.add_argument("--failure-reload-interval", type=int, default=100)
     parser.add_argument("--max-attempt-multiplier", type=float, default=20.0)
-    parser.add_argument("--base-rate", type=float, default=50.0)
-    parser.add_argument("--glucose-cap-min", type=int, default=1)
-    parser.add_argument("--glucose-cap-max", type=int, default=15)
-    parser.add_argument("--oxygen-cap-min", type=int, default=1)
-    parser.add_argument("--oxygen-cap-max", type=int, default=20)
-    parser.add_argument("--co2-cap-min", type=int, default=0)
-    parser.add_argument("--co2-cap-max", type=int, default=15)
-    parser.add_argument("--ethanol-cap-min", type=int, default=0)
-    parser.add_argument("--ethanol-cap-max", type=int, default=1)
-    parser.add_argument("--acetate-cap-min", type=int, default=0)
-    parser.add_argument("--acetate-cap-max", type=int, default=3)
+    parser.add_argument("--base-rate", type=float, default=10.0)
+    parser.add_argument("--glucose-cap-min", type=float, default=1.0)
+    parser.add_argument("--glucose-cap-max", type=float, default=15.0)
+    parser.add_argument("--oxygen-cap-min", type=float, default=1.0)
+    parser.add_argument("--oxygen-cap-max", type=float, default=25.0)
+    parser.add_argument("--co2-cap-min", type=float, default=0.0)
+    parser.add_argument("--co2-cap-max", type=float, default=20.0)
+    parser.add_argument("--ethanol-cap-min", type=float, default=0.0)
+    parser.add_argument("--ethanol-cap-max", type=float, default=2.0)
+    parser.add_argument("--acetate-cap-min", type=float, default=0.0)
+    parser.add_argument("--acetate-cap-max", type=float, default=8.0)
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--progress-interval", type=int, default=1_000)
     parser.add_argument("--attempt-progress-interval", type=int, default=10_000)
@@ -106,6 +105,15 @@ def format_elapsed(seconds):
     hours, remainder = divmod(int(seconds), 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{hours}h {minutes}m {seconds}s"
+
+
+def random_loguniform_cap(rng, min_val, max_val):
+    """Draw oxygen uptake caps with A's loguniform law and rounding."""
+    return round(float(10 ** rng.uniform(np.log10(min_val), np.log10(max_val))), 2)
+
+
+def random_uniform_cap(rng, min_val, max_val):
+    return round(float(rng.uniform(min_val, max_val)), 2)
 
 
 def random_integer_cap(rng, min_val, max_val):
@@ -186,13 +194,14 @@ def generate_training_sample(
             lower_bound, upper_bound = exchange_default_bounds[reaction.id]
             reaction.lower_bound = lower_bound
             reaction.upper_bound = upper_bound
+        model.reactions.get_by_id("EX_cbl1_e").lower_bound = 0.0
 
         # Glucose is a sampled uptake cap. Ethanol and acetate are independent
         # sampled secretion caps. CSV cap values are stored as positive values.
         for exchange_id in context_exchanges:
             reaction = model.reactions.get_by_id(exchange_id)
             minimum, maximum = sampled_cap_config[exchange_id]
-            rate = random_integer_cap(rng, minimum, maximum)
+            rate = random_uniform_cap(rng, minimum, maximum)
 
             if exchange_id == "EX_glc__D_e":
                 reaction.lower_bound = -rate
@@ -210,12 +219,12 @@ def generate_training_sample(
             reaction = model.reactions.get_by_id(exchange_id)
             if exchange_id == "EX_o2_e":
                 minimum, maximum = sampled_cap_config[exchange_id]
-                rate = random_integer_cap(rng, minimum, maximum)
+                rate = random_loguniform_cap(rng, minimum, maximum)
                 reaction.lower_bound = -rate
                 data[exchange_id] = rate
             elif exchange_id in SECRETION_CONTEXT_EXCHANGES:
                 minimum, maximum = sampled_cap_config[exchange_id]
-                rate = random_integer_cap(rng, minimum, maximum)
+                rate = random_uniform_cap(rng, minimum, maximum)
                 reaction.lower_bound = 0.0
                 reaction.upper_bound = rate
                 data[exchange_id] = rate
@@ -264,7 +273,9 @@ def main():
         "EX_ac_e": (args.acetate_cap_min, args.acetate_cap_max),
     }
     for exchange_id, (minimum, maximum) in sampled_cap_config.items():
-        if minimum < 0 or maximum < minimum:
+        if exchange_id == "EX_o2_e" and not (np.isfinite(minimum) and np.isfinite(maximum) and minimum > 0):
+            raise ValueError("Oxygen loguniform bounds must be finite and positive")
+        if not (np.isfinite(minimum) and np.isfinite(maximum)) or minimum < 0 or maximum < minimum:
             raise ValueError(
                 f"Invalid cap range for {exchange_id}: [{minimum}, {maximum}]"
             )
@@ -307,7 +318,7 @@ def main():
     if args.flux_solver_mode == "pfba":
         print(f"pFBA fraction_of_optimum: {args.pfba_fraction_of_optimum}")
     print(f"Generating {args.n_samples} training samples")
-    print("Sampled integer reservoir cap configuration (inclusive min, max):")
+    print("Sampled caps (oxygen loguniform; glucose/CO2/ethanol/acetate uniform):")
     for exchange_id in SAMPLED_EXCHANGES:
         print(f"  {exchange_id}: {sampled_cap_config[exchange_id]}")
     print(

@@ -117,12 +117,13 @@ and the [repository inspection](../reference/amn_repository_notes.md).
 
 ### B — Tazza-style MINN-specific
 
-- Glucose uptake bound: integer 1--15.
-- Oxygen uptake bound: integer 1--20.
-- CO2 secretion bound: integer 0--15.
-- Ethanol secretion bound: integer 0--1.
-- Acetate secretion bound: integer 0--3.
-- Other base inputs fixed at 50.
+- Glucose uptake cap: continuous uniform 1--15, rounded to two decimals.
+- Oxygen uptake cap: loguniform 1--25, rounded to two decimals, matching A.
+- CO2 secretion cap: continuous uniform 0--20, rounded to two decimals.
+- Ethanol secretion cap: continuous uniform 0--2, rounded to two decimals.
+- Acetate secretion cap: continuous uniform 0--8, rounded to two decimals.
+- Other base inputs fixed at 10; cobalamin uptake closed and omitted from
+  the revised 26-input vocabulary (2026-10-12).
 - pFBA with `fraction_of_optimum=0.999`.
 
 Author comparison verified 2026-10-06: the
@@ -130,10 +131,10 @@ Author comparison verified 2026-10-06: the
 glucose-minimal 587-reaction iAF1260 reservoir model with 16 basal imports,
 no AMN glycerol/amino-acid supplements, and CO2/ethanol/acetate as exports.
 The paper describes 2,000 randomized five-channel exchange simulations, but
-the generator and pretraining data are not released. B's integer sampling,
-base rate 50, iML1515 GEM, and pFBA at 0.999 are adaptations, not established
+the generator and pretraining data are not released. B's sampling distributions,
+base rate (previously 50, now 10), iML1515 GEM, and pFBA at 0.999 are adaptations, not established
 original sampling settings. The widened ranges cover the observed raw exchange
-values but exclude fitted O2/CO2 maxima of 26.2417/19.6169; the released author
+values and fitted CO2 up to 19.6169, but exclude fitted O2 at 26.2417; the released author
 reservoir loader uses fitted uptake inputs and five fitted exchange targets.
 Keep this support distinction explicit when interpreting B and MINN regimes
 within A ∪ B, C, and D.
@@ -142,8 +143,10 @@ within A ∪ B, C, and D.
 
 - Exactly balanced A and B accepted-sample quotas.
 - Default size: 1,000,000 rows, comprising 500,000 A and 500,000 B rows.
-- One 41-exchange input vocabulary containing the exact A/B identity union.
-- A oxygen remains continuous 1--10; B oxygen remains integer 1--20.
+- One 40-exchange input vocabulary; cobalamin uptake is closed in both regimes.
+- A carbon caps are independently loguniform 0.05--10; A oxygen is
+  loguniform 1--25. Both retain two-decimal rounding, matching updated A.
+- B oxygen also uses loguniform 1--25; both regimes use basal uptake caps 10.
 - pFBA with `fraction_of_optimum=0.999` for both regimes.
 - No mixed or intermediate rows.
 - Roihu generation job: `scripts/roihu/samplejob_AB.sh`.
@@ -155,17 +158,73 @@ The Roihu job explicitly requests one million samples and pFBA at 0.999. The
 insufficient during a long generation run. No A union B production job has yet
 been recorded as submitted or completed.
 
+Revised 2026-10-12: standalone B basal caps changed from 50 to 10, and
+cobalamin was removed from its inputs and its uptake closed (27 to 26 inputs).
+A ∪ B changed from 41 to 40 inputs by removing cobalamin, updated its A
+carbon/oxygen draws from uniform 0.05--2.2/1--10 to loguniform
+0.05--10/1--25, and changed B-component basal caps from 50 to 10. Exact
+50/50 accepted quotas are preserved; glucose/CO2 caps now use continuous
+uniform sampling over 1--15/0--20 with two-decimal rounding.
+B oxygen is now loguniform 1--25 in both standalone B and the union, matching A. Standalone B
+and the union B component both exclude cobalamin; the revised 40-input union
+contains the identities required by the revised standalone A and B media. Existing datasets/checkpoints/evaluator mappings retain their original
+provenance; newly trained models require regenerated data and matching
+schema/media configuration. Historical evaluation tests explicitly retain the
+old 41-input schema. The evaluator schema check now accepts declared 40-input and historical
+41-input union metadata without reordering tokens; basal media mappings remain
+historical. No production artifact was changed.
+
+Verification: two `tests/test_ab_sampler.py` tests passed under unittest,
+including loguniform cap statistics and complete 10-row pFBA generation for
+each generator (union accepted split exactly 5/5). Syntax and diff checks
+passed. Broader evaluator tests could not collect because PyTorch is absent
+from the current Python environment.
+
 ### C — task-relevant bridge distribution
 
-- Uses the current shared AMN/MINN generator.
-- Default regime weights are 0.50 MINN, 0.40 Faure, and 0.10 mixed.
-- The mixed regime introduces conditions outside the literal A ∪ B mixture.
-- Uses 41 inputs because cobalamin (`EX_cbl1_e`) is now included by default
-  (opt-out with `--exclude-cbl1`). Cobalamin is a fixed basal nutrient, not a
-  variable carbon source. The earlier 40-input C checkpoint and runs used
-  `--exclude-cbl1` semantics; regenerate C data before comparing C against
-  other 1M-row models.
-- Default solver is pFBA with `fraction_of_optimum=0.999`.
+Revised 2026-10-12 in `generate_ecoli_iML1515_C_data.py`:
+
+- Attempt-level regime probabilities: 0.40 Faure/A-like, 0.40 MINN/B-like,
+  0.20 mixed. These are independent regime draws, not exact accepted-row
+  quotas; solver rejection can alter accepted proportions.
+- Fixed basal uptake caps are 10 in every regime: the 21 `BASE_EXCHANGES`
+  shared with A except CO2. A-like rows additionally allow CO2 uptake at 10;
+  B-like/mixed rows instead keep CO2 secretion-only with a sampled upper cap.
+- A-like rows use A's one-to-four-source uniform count/subset selection,
+  independent loguniform carbon caps 0.05--10 and oxygen caps 1--25, and
+  glycerol/four amino-acid uptake caps fixed at 2.2.
+- B-like and mixed rows draw oxygen independently loguniformly over 1--25.
+  Glucose uptake and CO2/ethanol/acetate secretion caps are independently
+  continuous uniform over 1--15 and 0--20/0--2/0--8, respectively. All caps
+  are rounded to two decimals. B-like rows have no organic supplements.
+- Mixed rows start from the B-like medium and add k=1,2,3 sources, each count
+  with probability 1/3. Identities are uniform without replacement from the
+  nine A carbons excluding acetate, which retains its B-style secretion-only
+  role. Added uptake caps are independently loguniform 0.05--10. Glycerol
+  and amino-acid supplements are absent by default
+  (`--mixed-supplement-probability=0`). Continuous draws are rounded to two
+  decimals, as in A.
+- Default vocabulary: 40 inputs, with cobalamin uptake closed. `--include-cbl1`
+  restores a 41-input variant with cobalamin uptake cap 10;
+  `--exclude-cbl1` remains supported explicitly.
+- Default solver: pFBA with `fraction_of_optimum=0.999`.
+
+Previously C used weights 0.40/0.50/0.10 (A/B/mixed), basal caps 50,
+41 inputs, uniform carbon 0.05--2.2/oxygen 1--10 in A-like rows, and
+zero-to-two uniform-cap additions in mixed rows. Existing datasets,
+checkpoints, evaluation notebooks and historical results retain that
+provenance. Regenerate/retrain for the revised contract; existing C evaluators
+retain historical basal mappings and require alignment before evaluating a new
+checkpoint. B and A ∪ B were subsequently revised on the same date as
+described in their distribution contracts above.
+
+Verification: `tests/test_c_sampler.py` passed three tests covering regime
+frequencies, mixed-source cardinality/identity frequencies and loguniform cap
+statistics, 40/41-input options, and actual pFBA bounds/objectives in each
+regime. A separate 10-row end-to-end CLI smoke run passed with 40 inputs,
+2,712 flux targets, basal caps 10 and closed cobalamin uptake. No production
+data were generated. The current environment lacks pytest; the tests ran
+through standard-library unittest discovery.
 
 ### D and E — broad distributions
 
@@ -249,9 +308,9 @@ new-checkpoint evaluation and production generation remain unrun.
 | Model | Variable carbon sources | Fixed exchanges | Carbon uptake range | Active count |
 |---|---|---|---|---|
 | **A** | 10 AMN carbons (ribose, maltose, melibiose, trehalose, fructose, galactose, acetate, D-lactate, succinate, pyruvate) | AMN base (22) + fixed glycerol + four fixed amino acids; O2 loguniform 1--25 | loguniform 0.05--10 | 1--4 |
-| **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN base (23, incl. cobalamin), base 50 | Glucose 1--15; O2 1--20; secretion caps CO2 0--15, ethanol 0--1, acetate 0--3 | 1 |
-| **A ∪ B** | Union: 10 AMN carbons + glucose (per regime) | A base or B base per regime | A 0.05--2.2; B integer bounds | 1--4 or 1 |
-| **C** | 10 AMN carbons + glucose + amino acids + CO2/ethanol/acetate | Shared base (41 inputs, fixed cobalamin included) | A-like and B-like ranges | mixed |
+| **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN basal 10, cobalamin absent | Glucose uniform 1--15; O2 loguniform 1--25; CO2 uniform 0--20; ethanol/acetate uniform 0--2/0--8 | 1 |
+| **A ∪ B** | 10 AMN carbons or glucose (per regime) | Basal 10; 40 inputs, cobalamin absent | A loguniform 0.05--10, oxygen 1--25; B uniform glucose/secretion, oxygen loguniform 1--25 | 1--4 or 1 |
+| **C** | 10 AMN carbons in A-like; glucose in B-like/mixed, plus 1--3 non-acetate A sources in mixed | Shared basal 10; 40 inputs, cobalamin absent by default | A-like/additions loguniform 0.05--10; all oxygen loguniform 1--25; uniform glucose/secretion | A/B/mixed probabilities 0.40/0.40/0.20 |
 | **D** | Original 31-source general pool (glycerol variable) + A/B task regimes | 23 fixed base (incl. cobalamin); O2 variable 1--10 | G log-uniform 0.05--5.0; A/B task ranges | G 1--8, E[K]=3 |
 | **E** | Curated 48-source pool, including glycerol/four AMN amino acids as selectable; no task regimes | AMN basal uptake caps 10, CO2 uptake allowed, no cobalamin; O2 loguniform 1--25 | loguniform 0.05--10 | 1--10, P(k) proportional to (2/3)^(k-1) |
 
@@ -922,3 +981,37 @@ as such in the saved protocol. That comparison includes inference at a token
 not used as an input in revised E pretraining. Original checkpoint/data paths
 are retained. Historical saved notebook outputs describe archived E; changed
 code cells have cleared outputs. No new predictive or t-SNE results are claimed.
+
+## Oxygen alignment across A/B/union/C (2026-10-12)
+
+Standalone B oxygen changed from uniform integers 1--20 to loguniform
+1--25 with two-decimal rounding, matching A. Its CLI oxygen endpoints now
+accept floats and require finite positive bounds. The B component in A ∪ B
+and the B-like/mixed components of C use the same updated oxygen sampling.
+Glucose and secretion channels retain their integer distributions. D and
+historical artifacts retain their previous settings. This alignment still
+excludes the MINN fitted oxygen maximum 26.2417; it is a chosen shared
+sampling range, not full fitted-data coverage.
+
+CO2 coverage update (2026-10-12): standalone B, the union B component, and
+C MINN/mixed components now draw CO2 secretion caps as uniform inclusive
+integers 0--20 (previously 0--15), covering the fitted MINN maximum 19.6169.
+A-like CO2 basal uptake remains 10. This changes future generation only.
+
+Ethanol/acetate sampling trial (2026-10-12): B, the B component of A ∪ B,
+and C MINN/mixed components now independently draw secretion caps from
+continuous uniform 0--2 (ethanol) and 0--8 (acetate), rounded to two decimals.
+Previously these were uniform integer 0--1/0--3. CLI endpoints accept floats;
+CSV inputs preserve the sampled fractional caps and match solver upper bounds.
+A-like acetate uptake, oxygen, CO2, glucose and mixture settings are unchanged.
+The wider acetate range covers the alternative iML1515-fitted maximum 7.2137;
+ethanol expansion and finer cap coverage are trial choices, not established
+accuracy improvements. Existing datasets/checkpoints were not regenerated.
+
+Continuous glucose/CO2 update (2026-10-12): B, the B component of A ∪ B,
+and C MINN/mixed components now use independent continuous uniform glucose
+uptake caps 1--15 and CO2 secretion caps 0--20, rounded to two decimals,
+replacing integer sampling. CLI endpoints accept floats. Together with the
+previous ethanol/acetate change, all B-style context caps are continuous;
+oxygen retains loguniform 1--25. A-like CO2 basal uptake and source-count
+sampling are unchanged. Existing datasets/checkpoints were not regenerated.

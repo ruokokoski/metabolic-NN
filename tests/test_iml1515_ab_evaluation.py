@@ -13,11 +13,16 @@ from flux_transformer import FluxTransformer
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def legacy_input_columns():
+    """Keep historical 41-input checkpoint tests independent of new generation."""
+    return ev.input_contract("AB_union", exclude_cbl1=False)
+
+
 @pytest.fixture
 def setup():
     import pandas as pd
     source = pd.read_csv(ROOT / "MINN_data" / ev.FLUX_FILES["minn_fitted"], nrows=0)
-    tokens = [f"{name}_flux" for name in ev.build_input_columns()]
+    tokens = [f"{name}_flux" for name in legacy_input_columns()]
     for name in source.columns[1:]:
         if name.startswith("R_BIOMASS"):
             token = f"{ev.OBJECTIVE}_flux"
@@ -28,7 +33,7 @@ def setup():
     ev.seed_all(10)
     model = FluxTransformer(len(tokens), list(range(41)), d_model=4, n_heads=2, n_layers=1, d_ff=8, dropout=0)
     model.eval().requires_grad_(False)
-    return model, tokens, ev.load_amn(ROOT / "AMN_data"), ev.load_minn(ROOT / "MINN_data", tokens)
+    return model, tokens, ev.load_amn(ROOT / "AMN_data", input_names=legacy_input_columns()), ev.load_minn(ROOT / "MINN_data", tokens, input_names=legacy_input_columns())
 
 
 def settings():
@@ -88,12 +93,12 @@ def test_checkpoint_schema_rejects_reordering(setup, tmp_path):
     model, tokens, _, _ = setup
     checkpoint = dict(model_state_dict=model.state_dict(), config=dict(d_model=4, n_heads=2,
         n_layers=1, d_ff=8, dropout=0, vocab_size=len(tokens)),
-        data_info=dict(input_cols=ev.build_input_columns(), output_cols=tokens))
+        data_info=dict(input_cols=legacy_input_columns(), output_cols=tokens))
     path = tmp_path / "checkpoint.pth"
     torch.save(checkpoint, path)
     loaded, *_ = ev.load_reservoir(path, "cpu")
     assert not any(p.requires_grad for p in loaded.parameters())
-    checkpoint["data_info"]["input_cols"] = list(reversed(ev.build_input_columns()))
+    checkpoint["data_info"]["input_cols"] = list(reversed(legacy_input_columns()))
     torch.save(checkpoint, path)
     with pytest.raises(ValueError, match="input order"):
         ev.load_reservoir(path, "cpu")
@@ -320,7 +325,7 @@ def test_legacy_amn_matches_original_notebook_training(setup):
     from torch.utils.checkpoint import checkpoint
 
     reservoir, tokens, _, _ = setup
-    inputs = ev.build_input_columns()
+    inputs = legacy_input_columns()
     data = ev.load_amn(ROOT / "AMN_data", inputs, "C", feature_order="checkpoint")
     variable = data["features"]
     assert variable == [name for name in inputs if name in ev.AMN_CARBON_EXCHANGES + ["EX_o2_e"]]
@@ -449,7 +454,7 @@ def test_legacy_minn_matches_original_fit_and_rng(setup, mode, device_name):
 
 def test_legacy_cobalamin_and_pfba_summary(setup):
     reservoir, tokens, _, _ = setup
-    inputs = [x for x in ev.build_input_columns() if x != "EX_cbl1_e"]
+    inputs = [x for x in legacy_input_columns() if x != "EX_cbl1_e"]
     current = ev.load_minn(ROOT / "MINN_data", tokens, "minn_fitted", input_names=inputs, model_family="C")
     legacy = ev.load_minn(ROOT / "MINN_data", tokens, "minn_fitted", input_names=inputs, model_family="C", legacy_protocol=True)
     assert "EX_cbl1_e" not in current["fixed"] and legacy["fixed"]["EX_cbl1_e"] == 50
@@ -466,7 +471,7 @@ def test_legacy_cobalamin_and_pfba_summary(setup):
 
 def test_ab_union_protocol_retains_regime_media(setup):
     model, outputs, _, _ = setup
-    inputs = ev.build_input_columns()
+    inputs = legacy_input_columns()
     amn = ev.load_amn(ROOT / "AMN_data", inputs, "AB_union", feature_order="checkpoint")
     minn = ev.load_minn(ROOT / "MINN_data", outputs, input_names=inputs,
                         model_family="AB_union", legacy_protocol=True)
