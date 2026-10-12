@@ -258,7 +258,7 @@ Their current comparison cannot isolate task-aware allocation alone.
   uniformly without replacement. `--g-k-beta=log(3/2)` and
   `--g-max-organic-sources=10` implement this design. The cap is a simulator
   coverage choice, not a biological maximum; see
-  [the literature review](../working_notes/iML1515_broad_pool_literature_review.md#recommendation-for-k-and-the-one-million-sample-budget).
+  [the literature review](../reference/iML1515_broad_pool_literature_review.md#recommendation-for-k-and-the-one-million-sample-budget).
 - Selected organic uptake caps are independently loguniform 0.05--10;
   oxygen is independently loguniform 1--25 and is outside k. Rates are rounded
   to two decimal places, matching `generate_ecoli_iML1515_AMN_data.py`.

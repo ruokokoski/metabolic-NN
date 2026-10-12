@@ -97,7 +97,7 @@ This file should contain all primary sources used to support inclusion, exclusio
 Save the full literature and design review as:
 
 ```text
-docs/working_notes/iML1515_broad_pool_literature_review.md
+docs/reference/iML1515_broad_pool_literature_review.md
 ```
 
 Finish with these clearly labeled outputs:
