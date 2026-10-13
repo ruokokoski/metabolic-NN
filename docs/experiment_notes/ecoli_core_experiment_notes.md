@@ -36,6 +36,43 @@ unless the user explicitly asks otherwise.
   experimenting with the E. coli core COBRA model itself before changing
   training or evaluation code.
 
+## Signed Exchange Inputs (2026-10-13)
+
+New samples from `generate_ecoli_core_data.py` store exchange lower bounds
+directly as inputs: enabled uptake has a negative value, and disabled uptake
+is written as zero. This applies to carbon, nitrogen, oxygen, phosphate, CO2,
+H+, and water inputs. Inputs describe bounds, not realized fluxes; an exchange
+with a negative input bound may still have a positive secretion target.
+
+The sign change affects only input serialization. Sampling, solver bounds,
+reaction order, and raw signed `*_flux` targets are unchanged. Existing CSVs,
+checkpoints, shared trainers, and evaluation notebooks were not migrated.
+The current evaluation model still expects the legacy positive-input convention;
+new signed-input data require a separately trained compatible checkpoint.
+
+## Core Generator Solver and Defaults (2026-10-13)
+
+`generate_ecoli_core_data.py` now defaults to pFBA at fraction of optimum 0.999,
+training seed 42, and 10,000,000 successful samples. Infeasible draws are retried
+until the requested number is written; the earlier generator counted attempts.
+Use `--flux-solver-mode fba` for ordinary FBA, `--seed 9` for independent test
+generation, and `--n-samples` to override the dataset size. Solver choice does
+not alter sampled bounds or token order. The pFBA objective minimizes total
+absolute flux after imposing the requested growth fraction; flux targets remain
+raw signed reaction fluxes.
+
+Example training command (new defaults):
+`python generate_ecoli_core_data.py`
+
+Example independent test command:
+`python generate_ecoli_core_data.py --seed 9 --n-samples 100000 --output-prefix ecoli_core_test_data`
+
+For a separate ordinary-FBA dataset, select `--flux-solver-mode fba` and a distinct
+`--output-prefix`, such as `ecoli_core_fba_training_data`. The optional
+`--pfba-fraction-of-optimum` must be in (0, 1]. Existing datasets and checkpoint
+results retain their original solver provenance; no datasets were regenerated
+and shared trainers and evaluation notebooks remain unchanged.
+
 ## Current Training Setup
 
 - Current large core runs use `num_epochs=100` and `patience=10`.

@@ -1,12 +1,32 @@
+import argparse
 import os
 import csv
 import numpy as np
 import pandas as pd
 from cobra.io import load_model
+from cobra.exceptions import OptimizationError
+from cobra.flux_analysis import pfba
 import time
 from datetime import datetime
 import warnings
 warnings.filterwarnings("ignore", message="Solver status is 'infeasible'")
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Generate signed-input E. coli core flux data.")
+    parser.add_argument("--n-samples", type=int, default=10_000_000,
+                        help="Number of successful samples to write (default: 10000000).")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed (default: 42 for training; use 9 for test data).")
+    parser.add_argument("--flux-solver-mode", choices=["fba", "pfba"], default="pfba")
+    parser.add_argument("--pfba-fraction-of-optimum", type=float, default=0.999)
+    parser.add_argument("--output-prefix", default="ecoli_core_training_data",
+                        help="Filename prefix after the date, inside ./data.")
+    args = parser.parse_args(argv)
+    if args.n_samples <= 0:
+        parser.error("--n-samples must be positive")
+    if not (0 < args.pfba_fraction_of_optimum <= 1):
+        parser.error("--pfba-fraction-of-optimum must be in (0, 1]")
+    return args
 
 def draw_subset(exchanges, selection_rate=0.5):
     n = len(exchanges)
@@ -34,7 +54,9 @@ def random_rate(min_val=0.1, max_val=10.0, log_uniform=False):
         # Uniform sampling
         return round(np.random.uniform(min_val, max_val), 2)
 
-def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_rate):
+def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_rate,
+                             flux_solver_mode="pfba", pfba_fraction_of_optimum=0.999):
+    """Store signed exchange lower bounds as inputs and raw solver fluxes as targets."""
     data = {}
     with model:
         # Reset all exchanges
@@ -45,33 +67,40 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_ra
         for ex in carbon_subset:
             rate = random_rate(log_uniform=True)
             model.reactions.get_by_id(ex).lower_bound = -rate
-            data[ex] = rate
+            data[ex] = -rate
 
         # Set uptake rates for selected nitrogen sources
         for ex in nitrogen_subset:
             rate = random_rate(1, default_rate)
             model.reactions.get_by_id(ex).lower_bound = -rate
-            data[ex] = rate
+            data[ex] = -rate
 
         # Set variable oxygen uptake
         o2_rate = random_rate(0.1, default_rate)
         model.reactions.get_by_id("EX_o2_e").lower_bound = -o2_rate
-        data["EX_o2_e"] = o2_rate
+        data["EX_o2_e"] = -o2_rate
 
         # Set base exchange rates
         # Leave CO2, H+, and H2O unconstrained because they are usually byproducts or balancing species
         # Constraining or varying them can cause infeasible or biologically unrealistic fluxes
         for ex in ['EX_co2_e', 'EX_h_e', 'EX_h2o_e']:
             model.reactions.get_by_id(ex).lower_bound = -default_rate
-            data[ex] = default_rate
+            data[ex] = -default_rate
 
         # Make phosphate (EX_pi_e) variable, as its availability can limit growth and vary naturally
         pi_rate = random_rate(1, default_rate) 
         model.reactions.get_by_id('EX_pi_e').lower_bound = -pi_rate
-        data['EX_pi_e'] = pi_rate
+        data['EX_pi_e'] = -pi_rate
 
-        # Run FBA
-        solution = model.optimize()
+        try:
+            if flux_solver_mode == "pfba":
+                solution = pfba(model, fraction_of_optimum=pfba_fraction_of_optimum)
+            elif flux_solver_mode == "fba":
+                solution = model.optimize()
+            else:
+                raise ValueError(f"Unknown flux solver mode: {flux_solver_mode}")
+        except OptimizationError:
+            return None
         if solution.status != 'optimal':
             return None
 
@@ -80,10 +109,12 @@ def generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_ra
 
         return data
 
-if __name__ == "__main__":
-    np.random.seed(9) # test data: 9
+def main(argv=None):
+    global model
+    args = parse_args(argv)
+    np.random.seed(args.seed)
     default_rate = 50
-    n_samples = 100000
+    n_samples = args.n_samples
 
     # Load the simplified E. coli metabolic model
     model = load_model("textbook")
@@ -127,21 +158,27 @@ if __name__ == "__main__":
     # Prepare output file
     os.makedirs("./data", exist_ok=True)
     today = datetime.today().strftime('%Y-%m-%d')
-    temp_filename = f"./data/{today}_training_data_temp.csv"
+    temp_filename = f"./data/{today}_{args.output_prefix}_temp.csv"
     start_time = time.time()
 
-    print(f"Generating {n_samples} FBA training samples...\n")
+    print(f"Generating {n_samples} {args.flux_solver_mode.upper()} samples; seed={args.seed}")
+    if args.flux_solver_mode == "pfba":
+        print(f"pFBA fraction_of_optimum: {args.pfba_fraction_of_optimum}")
     sample_count = 0
 
     with open(temp_filename, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(ordered_columns)
         
-        for i in range(n_samples):
+        while sample_count < n_samples:
             carbon_subset = draw_subset(carbon_exchanges)
             nitrogen_subset = draw_subset(nitrogen_exchanges)
             
-            sample = generate_training_sample(carbon_subset, nitrogen_subset, outputs, default_rate)
+            sample = generate_training_sample(
+                carbon_subset, nitrogen_subset, outputs, default_rate,
+                flux_solver_mode=args.flux_solver_mode,
+                pfba_fraction_of_optimum=args.pfba_fraction_of_optimum,
+            )
             if sample:
                 row = [sample.get(col, 0.0) for col in ordered_columns]
                 writer.writerow(row)
@@ -152,9 +189,13 @@ if __name__ == "__main__":
                     print(f"Generated {sample_count}/{n_samples}")
 
     # Rename with actual sample count
-    final_filename = f"./data/{today}_ecoli_core_training_data_{sample_count}_samples.csv"
+    final_filename = f"./data/{today}_{args.output_prefix}_{sample_count}_samples.csv"
     os.rename(temp_filename, final_filename)
     
     total_time = time.time() - start_time
     print(f"\nCompleted {sample_count} samples in {total_time:.2f} seconds")
     print(f"Saved to {final_filename}")
+
+
+if __name__ == "__main__":
+    main()
