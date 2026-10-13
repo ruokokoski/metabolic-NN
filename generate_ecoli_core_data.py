@@ -186,7 +186,9 @@ def main(argv=None):
                 
                 if sample_count % 1000 == 0:
                     elapsed = time.time() - start_time
-                    print(f"Generated {sample_count}/{n_samples}")
+                    hours, remainder = divmod(int(elapsed), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    print(f"Generated {sample_count}/{n_samples} | elapsed={hours:02d}:{minutes:02d}:{seconds:02d} | time={datetime.now():%H:%M}")
 
     # Rename with actual sample count
     final_filename = f"./data/{today}_{args.output_prefix}_{sample_count}_samples.csv"

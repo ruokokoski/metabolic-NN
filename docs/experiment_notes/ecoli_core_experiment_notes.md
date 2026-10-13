@@ -61,6 +61,9 @@ not alter sampled bounds or token order. The pFBA objective minimizes total
 absolute flux after imposing the requested growth fraction; flux targets remain
 raw signed reaction fluxes.
 
+Progress lines every 1,000 accepted samples include elapsed time (HH:MM:SS,
+with cumulative hours) and the current local clock time (HH:MM).
+
 Example training command (new defaults):
 `python generate_ecoli_core_data.py`
 
