@@ -4,6 +4,7 @@ venv
 pics
 data/*
 !data/reference
+metabolic_models
 __pycache__
 puhti.txt
 roihu.txt
@@ -12,10 +13,11 @@ docs/working_notes/
 tmp_memmap/
 MINN
 omics2flux
+.agents
 .codex/*
 !.codex/hooks.json
 !.codex/hooks/
 !.codex/hooks/**
 .codex/hooks/__pycache__/
-.agents
-AGENTS.md
+.ipynb_checkpoints
+.pytest_cache

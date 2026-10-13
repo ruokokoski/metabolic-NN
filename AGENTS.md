@@ -1,200 +1,128 @@
 # AGENTS.md
 
-This repository contains FluxTransformer experiments for metabolic-flux
-prediction and analysis. Use this file as the repo-wide map and invariant list.
-Read the relevant maintained note under `docs/experiment_notes/` before changing
-an experiment. Keep detailed settings, results, and trial history in those notes
-rather than expanding this file.
+## Purpose and Scope
 
-Update this file after major structural changes. Update the matching experiment
-note whenever an experiment's data generation, model, evaluation, or current
-interpretation changes.
+Develop FluxTransformer toward a universal neural surrogate for metabolic flux
+prediction across diverse simulated conditions and downstream tasks. Current
+experiments use separate reaction vocabularies and checkpoints for E. coli core,
+iML1515, and Yeast9; cross-model universality is a development goal, not an
+established capability.
 
-## Repository Purpose
+Use this file as a concise repository map and set of development invariants.
+Keep experiment settings, results, and trial history in `docs/experiment_notes/`.
+Read the relevant note before changing an experiment, update it when generation,
+training, evaluation, or interpretation changes, and update this map after
+structural changes.
 
-- Build neural surrogates for FBA/pFBA-generated flux distributions.
-- Train FluxTransformer models on simulated metabolic conditions.
-- Test whether predictions and token embeddings preserve biologically meaningful
-  reaction structure.
-- Compare direct neural flux prediction, frozen-reservoir workflows, and pFBA
-  downstream workflows.
+## Repository Map and Experiment Notes
 
-## Repository Map
-
-- Root `*.py`: model definitions, training scripts, data generators, and
-  reaction-list helpers.
-- Root `*.ipynb`: active experiment, evaluation, and exploration notebooks.
-- `docs/experiment_notes/`: maintained experiment state and interpretation.
-- `data/`: generated FBA/pFBA training and test datasets.
-- `AMN_data/`: measured Faure-like iML1515 growth data and uncertainties.
-- `MINN_data/`: MINN benchmark tables and measured exchange-flux inputs.
-- `models/`: checkpoints, weights, and training logs grouped by model name.
-- `scripts/`: plotting, data-combination, fitting, and batch utilities.
-- `insights/` and `pics/`: generated analysis artifacts; thesis figures usually
-  live under `insights/thesis/`.
-- `old/`: historical notebooks and scripts for comparison only.
-- `venv/`, `__pycache__/`, and other cache/build directories are not sources of
-  experiment truth.
-
-## Read First by Task
-
-- Model architecture or tensor behavior: `flux_transformer.py`.
-- E. coli core work: `docs/experiment_notes/ecoli_core_experiment_notes.md`.
-- Shared AMN/MINN generator, checkpoint, or trial work:
-  `docs/experiment_notes/AMN_MINN_shared_reservoir_notes.md`.
-- Cross-model iML1515 sampling study across both AMN and MINN tasks:
-  `docs/experiment_notes/iML1515_sampling_study_notes.md`.
-- MINN-only reservoir or Table 2 work:
-  `docs/experiment_notes/MINN_training_notes.md`.
-- AMN-only growth prediction or data:
-  `docs/experiment_notes/AMN_experiment_notes.md`.
-- Yeast9 evaluation or output-subset training:
-  `docs/experiment_notes/yeast9_experiment_notes.md`.
-- Notes index and repository-wide experiment history:
-  `docs/experiment_notes/README.md`.
+- Root Python files and notebooks: models, training, generation, and evaluation.
+- `docs/experiment_notes/README.md`: experiment-note index. Relevant notes:
+  - `ecoli_core_experiment_notes.md`: core training and evaluation.
+  - `iML1515_sampling_study_notes.md`: A/B/A ∪ B/C/D/E distributions and transfer.
+  - `AMN_experiment_notes.md`: AMN growth prediction and experimental-pattern data.
+  - `MINN_training_notes.md`: MINN flux prediction, context, and pFBA protocols.
+  - `AMN_MINN_shared_reservoir_notes.md`: shared C and cross-task workflows;
+    update alongside affected task notes when shared experiments change.
+  - `yeast9_experiment_notes.md`: Yeast9 evaluation and output-subset training.
+- `docs/reference/`: source audits, biological mappings, and dataset provenance.
+- `data/`: simulated datasets; `AMN_data/` and `MINN_data/`: experimental inputs.
+- `models/`: checkpoints and training logs; `tests/`: focused regression checks.
+- `scripts/`: utilities and cluster jobs, including `scripts/roihu/`.
+- `insights/` and `pics/`: generated analyses and figures; `old/`: historical code.
+  Generated artifacts, caches, and environments are not implementation authority.
 
 ## Main Entry Points
 
-- `flux_transformer.py`: canonical current `FluxTransformer` implementation.
+- `flux_transformer.py`: shared injected-token `FluxTransformer`, including
+  output-subset inference. Trainers and some notebooks also define local model
+  classes; verify the actual class used before changing architecture or loading
+  checkpoints.
 - `train_flux_transformer.py`: cached/memmap training with ordinary Huber loss.
-- `train_flux_transformer_norm_loss.py`: per-flux normalized Huber-loss trial;
-  keep removed activity-head and tail-loss experiments out of this file.
-- `yeast9_data.py`: shared Yeast9 data-loading and deterministic split helpers.
-- `yeast9_rs_transformer.py`: Yeast9 trainer with full-output training by
-  default and optional correlation-based output-subset training.
-- `ecoli_core_model_testing.ipynb`: main E. coli core evaluation.
-- `ecoli_core_transformer.ipynb`: E. coli core architecture-size sweep.
-- `ecoli_iML1515_B_model_testing.ipynb`: MINN frozen-reservoir workflow.
-- `ecoli_iML1515_MINN_Table2.ipynb`: separate Table 2-style benchmark.
-- `ecoli_iML1515_AB_union_model_testing.ipynb`: combined literal-union AMN/MINN
-  evaluation. `ecoli_iML1515_C_model_testing.ipynb` evaluates model C with the
-  same workflow. `iml1515_evaluation.py` contains shared helpers for AB/C/D/E.
-- `ecoli_iML1515_A_model_testing.ipynb`: AMN-style experimental growth-rate
-  workflow.
-- `ecoli_iML1515_AMN_model_testing.ipynb`: AMN_11k evaluation using the
-  experimental-pattern sampler and separate simulated test data; mirrors A's
-  tests and plots.
-- `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb`: AMN branch using the
-  shared AMN/MINN reservoir.
-- `ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb`: MINN branch using the
-  shared AMN/MINN reservoir.
-- `yeast9_model_testing.ipynb`: main Yeast9 evaluation; it intentionally defines
-  the older non-injected FluxTransformer locally for its saved checkpoint.
+- `train_flux_transformer_norm_loss.py`: per-flux normalized Huber-loss training;
+  loss scales are estimated from the training split.
+- `yeast9_rs_transformer.py`: Yeast9 training, full-output by default with
+  optional correlation-based output subsets. `yeast9_data.py` provides shared
+  data loading and deterministic splits; `yeast9_reactions.py` defines tokens.
+- `ecoli_iML1515_reactions.py`: shared iML1515 reaction/token helpers.
+- `iml1515_evaluation.py`: shared AB-union/C/D/E simulated-fidelity, AMN, MINN,
+  and pFBA evaluation helpers.
+- `ecoli_iML1515_AB_union_model_testing.ipynb`,
+  `ecoli_iML1515_C_model_testing.ipynb`, `ecoli_iML1515_D_model_testing.ipynb`,
+  and `ecoli_iML1515_E_model_testing.ipynb`: combined AMN/MINN transfer evaluation.
+- `ecoli_iML1515_A_model_testing.ipynb` and
+  `ecoli_iML1515_B_model_testing.ipynb`: standalone reservoir evaluations,
+  including distribution-shift and cross-task controls.
+- `ecoli_iML1515_AMN_model_testing.ipynb`: separate AMN_11k experimental-pattern
+  experiment with independent simulated test data; check artifact availability
+  and provenance in the AMN note before running.
+- `ecoli_iML1515_MINN_Table2.ipynb`: separate MINN Table 2-style benchmark.
+  `ecoli_iML1515_AMN_MINN_model_testing_trial.ipynb` and
+  `ecoli_iML1515_MINN_AMN_model_testing_trial.ipynb`: shared-reservoir task trials.
+- `ecoli_core_model_testing.ipynb`: main core evaluation;
+  `ecoli_core_10M_ordinary_huber_eval.ipynb`: ordinary-Huber comparison;
+  `ecoli_core_transformer.ipynb`: architecture-size sweep.
+- `yeast9_model_testing.ipynb`: main Yeast9 evaluation, with a local older
+  non-injected model class required by its saved checkpoint.
 
-Exploration notebooks are `ecoli_core_exploration.ipynb`,
-`ecoli_iML1515_exploration.ipynb`, `yeast_gem_exploration.ipynb`, and
-`yeast9_explore_samples.ipynb`. Use them to inspect model structure, exchange
-bounds, media, FBA/pFBA/FVA behavior, and sample distributions before changing
-biological constraints or generators.
+Use `ecoli_core_exploration.ipynb`, `ecoli_iML1515_exploration.ipynb`,
+`yeast_gem_exploration.ipynb`, and `yeast9_explore_samples.ipynb` to inspect
+metabolic constraints and sample distributions before changing generators.
 
 ## Data Generator Routing
 
 - E. coli core: `generate_ecoli_core_data.py`.
-- General iML1515: `generate_ecoli_iML1515_data.py`.
-- MINN / sampling-study model B: `generate_ecoli_iML1515_B_data.py`, the
-  Tazza-style five-channel cap sampler. The earlier MINN sampler was removed.
-- AMN and shared AMN/MINN: `generate_ecoli_iML1515_A_data.py` and
-  `generate_ecoli_iML1515_C_data.py`.
-- Experimental-pattern AMN sampler: `generate_ecoli_iML1515_AMN_data.py`;
-  see the AMN note for its loguniform caps and condition allocation.
-- Broad sampling-study models D and E: `generate_ecoli_iML1515_D_data.py` and
-  `generate_ecoli_iML1515_E_data.py`.
+- iML1515 A: `generate_ecoli_iML1515_A_data.py`, AMN-oriented source subsets.
+- iML1515 B: `generate_ecoli_iML1515_B_data.py`, Tazza-style five-channel cap
+  sampling; consult code and notes for current distributions.
+- iML1515 A ∪ B: `generate_ecoli_iML1515_AB_union_data.py`, balanced literal
+  mixture of A and B regimes.
+- iML1515 C: `generate_ecoli_iML1515_C_data.py`, shared AMN/MINN and bridge regimes.
+- iML1515 D: `generate_ecoli_iML1515_D_data.py`, broad task-aware distribution.
+- iML1515 E: `generate_ecoli_iML1515_E_data.py`, curated broad task-agnostic
+  distribution. `generate_ecoli_iML1515_E_data_old.py` is archival.
+- Experimental-pattern AMN: `generate_ecoli_iML1515_AMN_data.py`, condition-based
+  allocation; separate from A. `generate_AMN_sweep.py` generates diagnostic sweeps.
 - Yeast9: `generate_yeast9_data.py`.
 
-Read the matching experiment note before running or modifying a generator.
+## Model, Data, and Constraint Contracts
 
-## Token, Mapping, and Constraint Invariants
+- Treat ordered inputs, output vocabulary, input-to-`*_flux` mappings, reversible
+  token conventions, and architecture as a contract across generation, training,
+  checkpoints, and evaluation. Assert compatibility before scoring; identify
+  incompatible consumers before changing tokenization or architecture.
+- Use generators as authority for sampling, bounds, and signs. Verify positive
+  `*_rev` magnitudes against signed COBRA uptake bounds and secretion caps.
+  Concentrations are not flux bounds; an unmeasured nutrient is not absent.
+- Record the metabolic model, generator arguments, solver/objective, pFBA
+  fraction, seeds, token order, and data paths. Keep training, validation, and
+  test data separate; fit preprocessing and loss scales on training data only.
+- Preserve numerical tolerances, seeds, splits, loss definitions, and defaults
+  unless intentionally changing the experiment. Generator revisions do not
+  retroactively change existing datasets or checkpoint provenance.
+- Save best-validation checkpoints when using early stopping, with architecture,
+  token mappings, and reproducible settings. Keep companion training logs at
+  `models/{model_name}/{model_name}_training.log`.
 
-- Treat token order as a contract between generators, CSV files, checkpoints,
-  notebooks, and plots.
-- Assert that loaded test-data token order matches checkpoint output order before
-  evaluating a saved model.
-- Verify the mapping from inputs to matching `*_flux` tokens explicitly.
-- Do not rename tokens or split reversible reactions unless the generator,
-  checkpoint, and evaluation code use the same convention.
-- Use each generator as the source of truth for reaction order, sampled
-  constraints, exchange bounds, and sign conventions.
-- In COBRA/pFBA workflows, verify uptake/secretion direction and the conversion
-  of positive `*_rev` magnitudes into signed bounds.
-- Keep model architecture and input/output dimensions consistent with checkpoint
-  metadata. Do not silently adapt incompatible checkpoints.
+## Evaluation and Verification
 
-## Data and Training Invariants
-
-- Keep training and test datasets separate and record the exact generator,
-  arguments, seed, reaction order, and data path used for reported runs.
-- Preserve numerical tolerances, random seeds, preprocessing, dataset splits,
-  loss scaling, and objective definitions unless the experiment explicitly
-  changes them.
-- Save training logs beside checkpoints as
-  `models/{model_name}/{model_name}_training.log` and include data, device,
-  architecture, training, and loss settings.
-- Where early stopping is implemented, restore and save the best validation
-  epoch rather than the final epoch.
-- Keep temporary checkpoints and partial output files out of final artifacts.
-- Diagnose CUDA OOM by checking batch size, sample count, and first-batch memory
-  before changing model semantics.
-
-## Evaluation and Plotting Invariants
-
-- Report pooled and per-flux metrics together. Pooled `R^2` or RMSE can improve
-  while individual fluxes or MAE worsen.
-- Analyze difficult reactions by failure mode, including sparsity, low variance,
-  tail compression, alternative pathways, reversibility, and redox sensitivity.
-- Do not treat high regression metrics as proof of metabolic feasibility. Check
-  mass-balance residuals, bound violations, and objective consistency when
-  feasibility matters.
-- Keep notebooks reproducible: expose model names, paths, sample counts, seeds,
-  perplexity, cluster counts, and other material settings in cells.
-- Save thesis plots through `pic_dir` with filenames that identify the model.
-- Keep uncertain trial notebooks and outputs separate from main-model results.
-- Treat t-SNE and UMAP as qualitative evidence. Connect visual structure to
-  correlations, stoichiometry, pathway membership, and known biology; do not
-  infer mechanism from a plot alone.
-- Keep pathway groupings biologically defensible even when adjusting them for
-  readability.
-
-## Change Coordination
-
-- When changing a generator, update every affected notebook mapping and the
-  matching experiment note.
-- Update `docs/experiment_notes/AMN_MINN_shared_reservoir_notes.md` in the same
-  change whenever the shared generator, either shared trial notebook, a shared
-  training configuration, dataset, checkpoint, model trial, result, or
-  cross-task interpretation changes. Apply this requirement to newly added
-  files whose names contain `AMN_MINN` or `MINN_AMN`.
-- A new shared model trial must record its data provenance, checkpoint,
-  architecture, changed variable, validation protocol, main results, and
-  keep/reject decision in the shared note.
-- When changing model tokenization or architecture, identify all incompatible
-  checkpoints and notebooks before editing consumers.
-- When changing AMN generation, update
-  `docs/experiment_notes/AMN_experiment_notes.md` in the same change.
-- When changing an A/B/A union B/C/D/E sampling-study generator, dataset,
-  checkpoint, evaluation, or interpretation, update
-  `docs/experiment_notes/iML1515_sampling_study_notes.md` in the same change.
-- When changing MINN context, cap, mapping, or benchmark behavior, update
-  `docs/experiment_notes/MINN_training_notes.md` in the same change.
-- When changing E. coli core training, evaluation, or plotting behavior, update
-  `docs/experiment_notes/ecoli_core_experiment_notes.md`.
-- When changing Yeast9 checkpoint handling or subset training, update
-  `docs/experiment_notes/yeast9_experiment_notes.md`.
-
-## Verification
-
-- Run the narrowest relevant tests, notebook checks, or script validation.
-- For Python edits, at minimum confirm syntax and inspect the final diff.
-- For notebooks, validate JSON structure and review changed code cells and saved
-  outputs deliberately.
-- For data or checkpoint work, validate shapes, token order, dtypes, devices,
-  signs, bounds, and representative samples.
-- State what was verified and what remains unverified.
-
-## Git and Artifact Hygiene
-
-- Preserve user changes and ignore unrelated dirty files.
-- Do not commit large generated datasets, checkpoints, plots, caches, or
-  environments unless explicitly requested.
-- Do not replace main results with trial outputs or evaluate a trial checkpoint
-  as the main model.
-- Keep generated and historical artifacts out of the source-of-truth path.
+- Report pooled and per-flux metrics; inspect sparse, low-variance, tail, and
+  reversible fluxes when interpreting errors. Evaluate held-out conditions and
+  distribution shifts when claiming broader generalization, and distinguish
+  simulated fidelity from experimental downstream transfer.
+- Check mass balance, bound violations, and objective consistency when assessing
+  feasibility. Track neural context inputs separately from downstream pFBA caps.
+  Embedding visualizations alone do not establish biological mechanism.
+- Keep notebook paths, model identity, seeds, and material settings explicit.
+  Distinguish current code, saved outputs, archival results, and pending reruns;
+  keep trial artifacts separate from established results.
+- Update affected consumers and experiment notes together. Shared AMN/MINN
+  changes also require the shared-reservoir note; sampling-study changes require
+  the sampling-study note. Record trial provenance, changed variables, validation
+  protocol, results, and keep/reject decisions in the relevant note.
+- Run focused existing tests and relevant validation. For Python, check syntax;
+  for notebooks, validate JSON and inspect changed cells and outputs; for data
+  and checkpoints, check shapes, token order, dtypes/devices, signs, and bounds.
+  Review the final diff and report verification limits.
+- Preserve unrelated user changes. Keep large datasets, checkpoints, plots,
+  caches, and environments out of commits unless explicitly requested.
