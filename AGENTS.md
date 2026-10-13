@@ -68,6 +68,8 @@ structural changes.
 Use `ecoli_core_exploration.ipynb`, `ecoli_iML1515_exploration.ipynb`,
 `yeast_gem_exploration.ipynb`, and `yeast9_explore_samples.ipynb` to inspect
 metabolic constraints and sample distributions before changing generators.
+`fungi_exploration.ipynb` loads the SBML models in `metabolic_models/` and prints
+basic structural summaries.
 
 ## Data Generator Routing
 
