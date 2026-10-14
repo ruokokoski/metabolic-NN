@@ -17,10 +17,11 @@ from sklearn.model_selection import train_test_split
 
 import matplotlib.pyplot as plt
 
-DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
-#DATA_PATH = "./data/2026-06-25_ecoli_core_training_data_980621_samples.csv"
+#DATA_PATH = "./data/2026-03-30_ecoli_core_training_data_9805381_samples.csv"
 #DATA_PATH = "iML1515_AMN_training_data_500000_samples.csv"
-MODEL_NAME = "ecoli_core_10M"
+DATA_PATH = "./data/2026-10-13_ecoli_core_training_data_10000000_samples.csv"
+MODEL_NAME = "ecoli_core_10M_signed_pfba"
+
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -775,8 +776,8 @@ if __name__ == "__main__":
 
     d_model = 128
     n_heads = 8
-    n_layers = 4
-    d_ff = 1024
+    n_layers = 3
+    d_ff = 640
     batch_size = 256
     num_epochs = 200
     patience = 10
