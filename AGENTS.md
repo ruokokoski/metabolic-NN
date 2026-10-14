@@ -26,6 +26,8 @@ structural changes.
     update alongside affected task notes when shared experiments change.
   - `yeast9_experiment_notes.md`: Yeast9 evaluation and output-subset training.
 - `docs/reference/`: source audits, biological mappings, and dataset provenance.
+- `docs/working_notes/fungi_experiment_notes.md`: private, ignored fungi / FluxFormer
+  working notes; keep fungi findings here until public documentation is requested.
 - `data/`: simulated datasets; `AMN_data/` and `MINN_data/`: experimental inputs.
 - `models/`: checkpoints and training logs; `tests/`: focused regression checks.
 - `scripts/`: utilities and cluster jobs, including `scripts/roihu/`.
@@ -69,7 +71,9 @@ Use `ecoli_core_exploration.ipynb`, `ecoli_iML1515_exploration.ipynb`,
 `yeast_gem_exploration.ipynb`, and `yeast9_explore_samples.ipynb` to inspect
 metabolic constraints and sample distributions before changing generators.
 `fungi_exploration.ipynb` loads the SBML models in `metabolic_models/` and prints
-basic structural summaries.
+basic structural summaries, baseline FBA feasibility, and permitted uptake bounds.
+`metabolic_models/Growth_data_for_ML_Helsinki_Uni.csv` contains accompanying
+growth summaries; model/strain mappings and interpretation limits are in the fungi note.
 
 ## Data Generator Routing
 
