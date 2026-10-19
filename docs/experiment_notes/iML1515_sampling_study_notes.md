@@ -117,6 +117,13 @@ and the [repository inspection](../reference/amn_repository_notes.md).
 
 ### B — Tazza-style MINN-specific
 
+Roihu training entry point (2026-10-16): `scripts/roihu/samplejob_B.sh` requests
+1,000,000 samples, seed 42, and explicit pFBA at fraction 0.999, with output
+prefix `iML1515_B_training_data`. It uses one CPU, 16 GiB and 72 hours
+in `small`, with code/models under `/projappl/project_2013496/fluxformer` and
+outputs under `/scratch/project_2013496/$USER/fluxformer/data`. No production
+run is implied by this addition.
+
 - Glucose uptake cap: continuous uniform 1--15, rounded to two decimals.
 - Oxygen uptake cap: loguniform 1--25, rounded to two decimals, matching A.
 - CO2 secretion cap: continuous uniform 0--20, rounded to two decimals.

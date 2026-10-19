@@ -1,5 +1,15 @@
 # MINN Training Notes
 
+## Model B Roihu generation job (2026-10-16)
+
+`scripts/roihu/samplejob_B.sh` runs `generate_ecoli_iML1515_B_data.py` with
+1,000,000 training samples, seed 42, and explicit pFBA at fraction 0.999.
+It explicitly uses output prefix `iML1515_B_training_data`, matching A's naming.
+Resources match the other sampling-study jobs: one CPU, 16 GiB, 72 hours in
+`small`. Code/models are under `/projappl/project_2013496/fluxformer`; outputs
+are under `/scratch/project_2013496/$USER/fluxformer/data`. Adding the job does
+not change generator defaults or establish a completed production run.
+
 ## Revised E reservoir basal mapping (2026-10-07)
 
 The curated E generator now uses 48 selectable organic sources with AMN basal

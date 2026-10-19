@@ -1,0 +1,169 @@
+============================================================
+Training run started: 2026-10-15 09:19:59
+Training file: train_flux_transformer.py
+MODEL_NAME: ecoli_core_10M_signed_pfba
+model_name: ecoli_core_10M_signed_pfba_d128_h8_l3_ff640
+
+Data path: ./data/2026-10-13_ecoli_core_training_data_10000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=128
+n_heads=8
+n_layers=3
+d_ff=640
+dropout=0.02
+
+Training settings:
+batch_size=256
+num_epochs=200
+patience=10
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 10000000 samples from ./data/2026-10-13_ecoli_core_training_data_10000000_samples.csv
+Extracted input columns count:  20
+Extracted output columns count: 95
+Medium constraints are injected into these token indices (in outputs order):
+[27, 25, 32, 37, 19, 21, 38, 26, 33, 23, 20, 24, 28, 29, 22, 30, 31, 34, 35, 36]
+Training samples: 8000000
+Test samples: 2000000
+Early stopping patience: 10
+Allocated memory: 27.66 MB
+Reserved memory: 1496.00 MB
+Epoch 1/200 | Train Loss: 0.435739 | Test Loss: 0.090350 | Elapsed: 00:53:14 | Time: 10:16
+Epoch 2/200 | Train Loss: 0.099307 | Test Loss: 0.043081 | Elapsed: 01:45:38 | Time: 11:08
+Epoch 3/200 | Train Loss: 0.064537 | Test Loss: 0.032976 | Elapsed: 02:38:08 | Time: 12:01
+Epoch 4/200 | Train Loss: 0.050172 | Test Loss: 0.023689 | Elapsed: 03:30:39 | Time: 12:53
+Epoch 5/200 | Train Loss: 0.041500 | Test Loss: 0.023481 | Elapsed: 04:24:49 | Time: 13:48
+Epoch 6/200 | Train Loss: 0.035842 | Test Loss: 0.017291 | Elapsed: 05:18:16 | Time: 14:41
+Epoch 7/200 | Train Loss: 0.031750 | Test Loss: 0.016050 | Elapsed: 06:11:35 | Time: 15:34
+Epoch 8/200 | Train Loss: 0.028672 | Test Loss: 0.015731 | Elapsed: 07:04:37 | Time: 16:27
+Epoch 9/200 | Train Loss: 0.026304 | Test Loss: 0.013572 | Elapsed: 07:56:54 | Time: 17:20
+Epoch 10/200 | Train Loss: 0.024376 | Test Loss: 0.012623 | Elapsed: 08:49:06 | Time: 18:12
+Epoch 11/200 | Train Loss: 0.022812 | Test Loss: 0.012328 | Elapsed: 09:41:17 | Time: 19:04
+Epoch 12/200 | Train Loss: 0.021501 | Test Loss: 0.011420 | Elapsed: 10:33:28 | Time: 19:56
+Epoch 13/200 | Train Loss: 0.020416 | Test Loss: 0.012741 | Elapsed: 11:25:51 | Time: 20:49
+Epoch 14/200 | Train Loss: 0.019473 | Test Loss: 0.010574 | Elapsed: 12:18:19 | Time: 21:41
+Epoch 15/200 | Train Loss: 0.018615 | Test Loss: 0.010948 | Elapsed: 13:10:39 | Time: 22:33
+Epoch 16/200 | Train Loss: 0.017839 | Test Loss: 0.009667 | Elapsed: 14:02:56 | Time: 23:26
+Epoch 17/200 | Train Loss: 0.017203 | Test Loss: 0.010680 | Elapsed: 14:55:17 | Time: 00:18
+Epoch 18/200 | Train Loss: 0.016592 | Test Loss: 0.009596 | Elapsed: 15:47:31 | Time: 01:10
+Epoch 19/200 | Train Loss: 0.016072 | Test Loss: 0.009387 | Elapsed: 16:39:47 | Time: 02:03
+Epoch 20/200 | Train Loss: 0.015622 | Test Loss: 0.011643 | Elapsed: 17:32:05 | Time: 02:55
+Epoch 21/200 | Train Loss: 0.015199 | Test Loss: 0.009057 | Elapsed: 18:24:18 | Time: 03:47
+Epoch 22/200 | Train Loss: 0.014829 | Test Loss: 0.008330 | Elapsed: 19:16:31 | Time: 04:39
+Epoch 23/200 | Train Loss: 0.014447 | Test Loss: 0.008069 | Elapsed: 20:08:44 | Time: 05:32
+Epoch 24/200 | Train Loss: 0.014130 | Test Loss: 0.007318 | Elapsed: 21:00:56 | Time: 06:24
+Epoch 25/200 | Train Loss: 0.013845 | Test Loss: 0.007597 | Elapsed: 21:53:07 | Time: 07:16
+Epoch 26/200 | Train Loss: 0.013579 | Test Loss: 0.007960 | Elapsed: 22:45:19 | Time: 08:08
+Epoch 27/200 | Train Loss: 0.013284 | Test Loss: 0.008927 | Elapsed: 23:40:19 | Time: 09:03
+Epoch 28/200 | Train Loss: 0.013025 | Test Loss: 0.007309 | Elapsed: 24:46:00 | Time: 10:09
+Epoch 29/200 | Train Loss: 0.012825 | Test Loss: 0.007111 | Elapsed: 25:38:21 | Time: 11:01
+Epoch 30/200 | Train Loss: 0.012603 | Test Loss: 0.007231 | Elapsed: 26:30:41 | Time: 11:54
+Epoch 31/200 | Train Loss: 0.012415 | Test Loss: 0.007445 | Elapsed: 27:23:03 | Time: 12:46
+Epoch 32/200 | Train Loss: 0.012214 | Test Loss: 0.006748 | Elapsed: 28:15:44 | Time: 13:39
+Epoch 33/200 | Train Loss: 0.012056 | Test Loss: 0.006148 | Elapsed: 29:08:09 | Time: 14:31
+Epoch 34/200 | Train Loss: 0.011856 | Test Loss: 0.006628 | Elapsed: 30:00:35 | Time: 15:23
+Epoch 35/200 | Train Loss: 0.011703 | Test Loss: 0.006956 | Elapsed: 30:53:01 | Time: 16:16
+Epoch 36/200 | Train Loss: 0.011551 | Test Loss: 0.006232 | Elapsed: 31:45:25 | Time: 17:08
+Epoch 37/200 | Train Loss: 0.011384 | Test Loss: 0.007294 | Elapsed: 32:37:49 | Time: 18:01
+Epoch 38/200 | Train Loss: 0.011274 | Test Loss: 0.006281 | Elapsed: 33:30:10 | Time: 18:53
+Epoch 39/200 | Train Loss: 0.011135 | Test Loss: 0.007600 | Elapsed: 34:22:30 | Time: 19:45
+Epoch 40/200 | Train Loss: 0.010999 | Test Loss: 0.006065 | Elapsed: 35:14:56 | Time: 20:38
+Epoch 41/200 | Train Loss: 0.010902 | Test Loss: 0.005967 | Elapsed: 36:07:25 | Time: 21:30
+Epoch 42/200 | Train Loss: 0.010786 | Test Loss: 0.005896 | Elapsed: 36:59:52 | Time: 22:23
+Epoch 43/200 | Train Loss: 0.010663 | Test Loss: 0.006802 | Elapsed: 37:52:16 | Time: 23:15
+Epoch 44/200 | Train Loss: 0.010549 | Test Loss: 0.006318 | Elapsed: 38:44:36 | Time: 00:07
+Epoch 45/200 | Train Loss: 0.010454 | Test Loss: 0.005927 | Elapsed: 39:36:56 | Time: 01:00
+Epoch 46/200 | Train Loss: 0.010332 | Test Loss: 0.005635 | Elapsed: 40:29:15 | Time: 01:52
+Epoch 47/200 | Train Loss: 0.010249 | Test Loss: 0.005566 | Elapsed: 41:21:34 | Time: 02:44
+Epoch 48/200 | Train Loss: 0.010137 | Test Loss: 0.006035 | Elapsed: 42:13:55 | Time: 03:37
+Epoch 49/200 | Train Loss: 0.010054 | Test Loss: 0.005569 | Elapsed: 43:06:15 | Time: 04:29
+Epoch 50/200 | Train Loss: 0.009992 | Test Loss: 0.006064 | Elapsed: 43:58:37 | Time: 05:21
+Epoch 51/200 | Train Loss: 0.009885 | Test Loss: 0.005445 | Elapsed: 44:50:57 | Time: 06:14
+Epoch 52/200 | Train Loss: 0.009833 | Test Loss: 0.005611 | Elapsed: 45:43:16 | Time: 07:06
+Epoch 53/200 | Train Loss: 0.009746 | Test Loss: 0.005436 | Elapsed: 46:35:38 | Time: 07:58
+Epoch 54/200 | Train Loss: 0.009663 | Test Loss: 0.005418 | Elapsed: 47:27:59 | Time: 08:51
+Epoch 55/200 | Train Loss: 0.009606 | Test Loss: 0.005109 | Elapsed: 48:20:15 | Time: 09:43
+Epoch 56/200 | Train Loss: 0.009516 | Test Loss: 0.005700 | Elapsed: 49:12:37 | Time: 10:35
+Epoch 57/200 | Train Loss: 0.009452 | Test Loss: 0.005927 | Elapsed: 50:04:55 | Time: 11:28
+Epoch 58/200 | Train Loss: 0.009381 | Test Loss: 0.005116 | Elapsed: 50:57:19 | Time: 12:20
+Epoch 59/200 | Train Loss: 0.009310 | Test Loss: 0.006167 | Elapsed: 51:49:42 | Time: 13:13
+Epoch 60/200 | Train Loss: 0.009247 | Test Loss: 0.005357 | Elapsed: 52:42:08 | Time: 14:05
+Epoch 61/200 | Train Loss: 0.009186 | Test Loss: 0.005801 | Elapsed: 53:34:33 | Time: 14:57
+Epoch 62/200 | Train Loss: 0.009145 | Test Loss: 0.005355 | Elapsed: 54:26:59 | Time: 15:50
+Epoch 63/200 | Train Loss: 0.009078 | Test Loss: 0.005326 | Elapsed: 55:19:23 | Time: 16:42
+Epoch 64/200 | Train Loss: 0.009022 | Test Loss: 0.005267 | Elapsed: 56:11:45 | Time: 17:35
+Epoch 65/200 | Train Loss: 0.008967 | Test Loss: 0.004850 | Elapsed: 57:04:06 | Time: 18:27
+Epoch 66/200 | Train Loss: 0.008911 | Test Loss: 0.004608 | Elapsed: 57:56:33 | Time: 19:19
+Epoch 67/200 | Train Loss: 0.008865 | Test Loss: 0.005841 | Elapsed: 58:49:07 | Time: 20:12
+Epoch 68/200 | Train Loss: 0.008823 | Test Loss: 0.004801 | Elapsed: 59:42:07 | Time: 21:05
+Epoch 69/200 | Train Loss: 0.008771 | Test Loss: 0.005688 | Elapsed: 60:35:07 | Time: 21:58
+Epoch 70/200 | Train Loss: 0.008702 | Test Loss: 0.004806 | Elapsed: 61:27:52 | Time: 22:51
+Epoch 71/200 | Train Loss: 0.008667 | Test Loss: 0.004942 | Elapsed: 62:20:33 | Time: 23:43
+Epoch 72/200 | Train Loss: 0.008649 | Test Loss: 0.005532 | Elapsed: 63:13:15 | Time: 00:36
+Epoch 73/200 | Train Loss: 0.008594 | Test Loss: 0.005311 | Elapsed: 64:05:56 | Time: 01:29
+Epoch 74/200 | Train Loss: 0.008547 | Test Loss: 0.004885 | Elapsed: 64:58:42 | Time: 02:22
+Epoch 75/200 | Train Loss: 0.008484 | Test Loss: 0.005193 | Elapsed: 65:51:23 | Time: 03:14
+Epoch 76/200 | Train Loss: 0.008458 | Test Loss: 0.004573 | Elapsed: 66:44:03 | Time: 04:07
+Epoch 77/200 | Train Loss: 0.008420 | Test Loss: 0.004639 | Elapsed: 67:36:45 | Time: 05:00
+Epoch 78/200 | Train Loss: 0.008373 | Test Loss: 0.005090 | Elapsed: 68:29:26 | Time: 05:52
+Epoch 79/200 | Train Loss: 0.008334 | Test Loss: 0.004510 | Elapsed: 69:22:07 | Time: 06:45
+Epoch 80/200 | Train Loss: 0.008288 | Test Loss: 0.004767 | Elapsed: 70:14:49 | Time: 07:38
+Epoch 81/200 | Train Loss: 0.008251 | Test Loss: 0.004764 | Elapsed: 71:07:31 | Time: 08:30
+Epoch 82/200 | Train Loss: 0.008223 | Test Loss: 0.004258 | Elapsed: 72:00:14 | Time: 09:23
+Epoch 83/200 | Train Loss: 0.008192 | Test Loss: 0.004938 | Elapsed: 72:52:54 | Time: 10:16
+Epoch 84/200 | Train Loss: 0.008139 | Test Loss: 0.004904 | Elapsed: 73:45:38 | Time: 11:08
+Epoch 85/200 | Train Loss: 0.008123 | Test Loss: 0.004252 | Elapsed: 74:38:23 | Time: 12:01
+Epoch 86/200 | Train Loss: 0.008092 | Test Loss: 0.004567 | Elapsed: 75:31:05 | Time: 12:54
+Epoch 87/200 | Train Loss: 0.008049 | Test Loss: 0.004491 | Elapsed: 76:23:47 | Time: 13:47
+Epoch 88/200 | Train Loss: 0.008016 | Test Loss: 0.004691 | Elapsed: 77:16:41 | Time: 14:40
+Epoch 89/200 | Train Loss: 0.007991 | Test Loss: 0.005248 | Elapsed: 78:09:44 | Time: 15:33
+Epoch 90/200 | Train Loss: 0.007955 | Test Loss: 0.004582 | Elapsed: 79:02:29 | Time: 16:25
+Epoch 91/200 | Train Loss: 0.007916 | Test Loss: 0.004549 | Elapsed: 79:55:13 | Time: 17:18
+Epoch 92/200 | Train Loss: 0.007897 | Test Loss: 0.004506 | Elapsed: 80:47:57 | Time: 18:11
+Epoch 93/200 | Train Loss: 0.007853 | Test Loss: 0.004465 | Elapsed: 81:41:07 | Time: 19:04
+Epoch 94/200 | Train Loss: 0.007843 | Test Loss: 0.004910 | Elapsed: 82:33:53 | Time: 19:57
+Epoch 95/200 | Train Loss: 0.007804 | Test Loss: 0.004233 | Elapsed: 83:26:38 | Time: 20:49
+Epoch 96/200 | Train Loss: 0.007769 | Test Loss: 0.004271 | Elapsed: 84:19:25 | Time: 21:42
+Epoch 97/200 | Train Loss: 0.007742 | Test Loss: 0.004282 | Elapsed: 85:12:10 | Time: 22:35
+Epoch 98/200 | Train Loss: 0.007721 | Test Loss: 0.004793 | Elapsed: 86:04:57 | Time: 23:28
+Epoch 99/200 | Train Loss: 0.007697 | Test Loss: 0.004292 | Elapsed: 86:57:42 | Time: 00:21
+Epoch 100/200 | Train Loss: 0.007666 | Test Loss: 0.004754 | Elapsed: 87:50:26 | Time: 01:13
+Epoch 101/200 | Train Loss: 0.007632 | Test Loss: 0.004416 | Elapsed: 88:43:12 | Time: 02:06
+Epoch 102/200 | Train Loss: 0.007626 | Test Loss: 0.004770 | Elapsed: 89:35:59 | Time: 02:59
+Epoch 103/200 | Train Loss: 0.007590 | Test Loss: 0.004811 | Elapsed: 90:28:43 | Time: 03:52
+Epoch 104/200 | Train Loss: 0.007558 | Test Loss: 0.004204 | Elapsed: 91:21:29 | Time: 04:44
+Epoch 105/200 | Train Loss: 0.007531 | Test Loss: 0.004595 | Elapsed: 92:14:15 | Time: 05:37
+Epoch 106/200 | Train Loss: 0.007515 | Test Loss: 0.004130 | Elapsed: 93:07:03 | Time: 06:30
+Epoch 107/200 | Train Loss: 0.007493 | Test Loss: 0.004298 | Elapsed: 93:59:47 | Time: 07:23
+Epoch 108/200 | Train Loss: 0.007475 | Test Loss: 0.004001 | Elapsed: 94:52:33 | Time: 08:15
+Epoch 109/200 | Train Loss: 0.007441 | Test Loss: 0.004537 | Elapsed: 95:45:37 | Time: 09:08
+Epoch 110/200 | Train Loss: 0.007425 | Test Loss: 0.004557 | Elapsed: 96:38:21 | Time: 10:01
+Epoch 111/200 | Train Loss: 0.007398 | Test Loss: 0.004192 | Elapsed: 97:31:10 | Time: 10:54
+Epoch 112/200 | Train Loss: 0.007370 | Test Loss: 0.004314 | Elapsed: 98:23:54 | Time: 11:47
+Epoch 113/200 | Train Loss: 0.007349 | Test Loss: 0.004771 | Elapsed: 99:16:40 | Time: 12:39
+Epoch 114/200 | Train Loss: 0.007331 | Test Loss: 0.004453 | Elapsed: 100:09:26 | Time: 13:32
+Epoch 115/200 | Train Loss: 0.007304 | Test Loss: 0.004362 | Elapsed: 101:02:10 | Time: 14:25
+Epoch 116/200 | Train Loss: 0.007288 | Test Loss: 0.004693 | Elapsed: 101:54:56 | Time: 15:18
+Epoch 117/200 | Train Loss: 0.007269 | Test Loss: 0.004375 | Elapsed: 102:47:42 | Time: 16:11
+Epoch 118/200 | Train Loss: 0.007254 | Test Loss: 0.004128 | Elapsed: 103:40:29 | Time: 17:03
+Early stopping at epoch 118; best test loss 0.004001 was at epoch 108.
+Restored best model state from epoch 108.
+Training Completed.
+Training took 6220 min 29.2 sec.
+Best test loss: 0.004001 at epoch 108
+
+Best-epoch model weights saved to ./models/ecoli_core_10M_signed_pfba_d128_h8_l3_ff640/ecoli_core_10M_signed_pfba_d128_h8_l3_ff640.pth (epoch 108)
+Full checkpoint saved to ./models/ecoli_core_10M_signed_pfba_d128_h8_l3_ff640/ecoli_core_10M_signed_pfba_d128_h8_l3_ff640_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap\2026-10-13_ecoli_core_training_data_10000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap\2026-10-13_ecoli_core_training_data_10000000_samples_y_tok.float32.mmap
