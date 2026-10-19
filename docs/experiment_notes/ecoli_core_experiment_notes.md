@@ -7,6 +7,13 @@ unless the user explicitly asks otherwise.
 
 ## Scope
 
+The separate `ecoli_core_model_testing_pFBA.ipynb` now selects checkpoint
+`ecoli_core_10M_signed_pfba_d128_h8_l3_ff640` and test CSV
+`data/2026-10-13_ecoli_core_test_data_100000_samples.csv` (2026-10-19).
+The checkpoint's training log records the corresponding signed-input 10M
+training CSV from 2026-10-13. Only the notebook's model/data selectors changed;
+preserved saved outputs describe the earlier run until the notebook is rerun.
+
 - Main model family: `FluxTransformer` trained on simulated E. coli core pFBA/FBA
   data.
 - Main evaluation notebook: `ecoli_core_model_testing.ipynb`.
