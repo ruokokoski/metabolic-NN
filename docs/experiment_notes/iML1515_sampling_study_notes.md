@@ -13,6 +13,18 @@ dataset, checkpoint, evaluation, result, and keep/reject decisions here.
 
 ## Research Question
 
+E's B-domain cross-distribution test now selects
+`data/iML1515_B_test_data_50000_samples.csv` (2026-10-19), replacing the legacy
+MINN/Tazza-named path. The user is generating this file with seed 9 and
+50,000 samples; evaluation and data validation remain pending completion.
+
+On 2026-10-19, E's A-domain cross-distribution test path was updated to
+`data/iML1515_A_test_data_50000_samples.csv`. Commit `53a08fc` renamed the old
+AMN generator to A without code changes; the previous AMN-named path was stale.
+The current A CSV has 38 inputs compatible with E and matching ordered output
+tokens. This selects current A data, not a claim that historical and current
+CSV contents are identical. No evaluation was rerun.
+
 How does the simulated nutrient and exchange-bound distribution used for
 FluxTransformer pretraining affect transfer to AMN growth prediction and MINN
 missing-flux prediction?
