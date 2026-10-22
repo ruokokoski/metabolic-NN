@@ -205,6 +205,7 @@ def load_amn(root, input_names=None, model_family="AB_union", feature_order="car
         "observed": np.zeros((len(frame), 2), np.float32),
         "ids": np.array([f"medium_{i:03d}" for i in range(len(frame))]),
         "features": features, "targets": [f"{OBJECTIVE}_flux"], "fixed": fixed,
+        "rate_parameterization": "softplus" if model_family == "E" else "bounded_sigmoid",
         "strata": frame[carbons].sum(axis=1).to_numpy(int),
         "growth_std": joined.GR_STD.to_numpy(float),
     }
@@ -273,6 +274,9 @@ class FrontReservoir(nn.Module):
         if task not in ("amn", "minn") or mode not in ("measured", "predicted"):
             raise ValueError("Unknown task/context mode.")
         self.reservoir, self.task, self.mode = reservoir, task, mode
+        self.rate_parameterization = data.get("rate_parameterization", "bounded_sigmoid")
+        if task == "amn" and self.rate_parameterization not in ("softplus", "bounded_sigmoid"):
+            raise ValueError("Unknown AMN rate parameterization.")
         self.reservoir.requires_grad_(False).eval()
         controlled = data["features"] if task == "amn" else list(MINN_CONTEXT_EXCHANGES)
         active_inputs = {outputs[i] for i in reservoir.input_token_indices.tolist()}
@@ -290,7 +294,8 @@ class FrontReservoir(nn.Module):
         count = len(controlled) if task == "amn" or mode == "predicted" else 3
         self.front = nn.Sequential(nn.Linear(data["X"].shape[1], hidden), nn.ReLU(),
                                    nn.Dropout(dropout), nn.Linear(hidden, count))
-        self.register_buffer("scales", torch.tensor([10.0 if s == "EX_o2_e" else 2.2 for s in controlled]))
+        if task == "amn" and self.rate_parameterization == "bounded_sigmoid":
+            self.register_buffer("scales", torch.tensor([10.0 if s == "EX_o2_e" else 2.2 for s in controlled]))
 
     def train(self, mode=True):
         super().train(mode)
@@ -300,7 +305,10 @@ class FrontReservoir(nn.Module):
     def medium(self, x, observed):
         raw = self.front(x)
         if self.task == "amn":
-            values = torch.sigmoid(raw) * self.scales * (x > 0)
+            if self.rate_parameterization == "softplus":
+                values = nn.functional.softplus(raw) * (x > 0)
+            else:
+                values = torch.sigmoid(raw) * self.scales * (x > 0)
         else:
             values = nn.functional.softplus(raw)
             if self.mode == "measured":
@@ -562,6 +570,7 @@ def run_amn(reservoir, outputs, data, settings, destination):
             torch.save(model.front.state_dict(), str(prefix) + "_front.pth")
             save_json(str(prefix) + "_fold.json", {"train": train.tolist(), "test": test.tolist(),
                 "validation_protocol": protocol,
+                "rate_parameterization": data.get("rate_parameterization", "bounded_sigmoid"),
                 "selection_validation": (test if protocol == "legacy_outer_early_stopping" else inner_val).tolist(),
                 "inner_train": inner_train.tolist(), "inner_validation": inner_val.tolist(),
                 "epochs": epochs, "params": params, "selection_history": history, "refit_history": refit_history})

@@ -1,5 +1,15 @@
 # Shared AMN/MINN Reservoir Notes
 
+## E-only AMN rate change in shared evaluation helper (2026-10-21)
+
+`iml1515_evaluation.load_amn` now selects unbounded nonnegative softplus rates
+for E's experimental AMN MLP. Presence masking and frozen-reservoir gradients
+are retained; the earlier learned-rate ceilings are removed. Fixed background
+medium, fold assignments, and early-stopping protocol are unchanged. The
+shared C/AB/D AMN parameterizations and all MINN behavior are unchanged. E's
+AMN outputs require rerunning; no new transfer scores are reported. Details
+are in the AMN and sampling-study notes.
+
 This file is the source of truth for the iML1515 FluxTransformer reservoir used
 across both AMN-style growth prediction and MINN-style flux/pFBA experiments.
 Keep task-specific implementation detail in `AMN_experiment_notes.md` and

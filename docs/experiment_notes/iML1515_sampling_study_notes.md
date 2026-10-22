@@ -1,5 +1,30 @@
 # iML1515 Sampling Study Notes
 
+## E AMN rate parameterization (2026-10-21)
+
+The current E notebook uses a trainable MLP with nonnegative, unbounded softplus
+carbon/oxygen outputs and presence masking, followed by frozen E. It no longer
+imposes the old learned-rate ceilings of carbon 2.2 and oxygen 10. The 72-input
+checkpoint, background basal caps 10, fixed glycerol/amino acids 2.2, and
+existing repeated-CV/held-out-fold early-stopping protocol are preserved.
+`load_amn` selects `rate_parameterization="softplus"` for E; other families
+retain `bounded_sigmoid`, and MINN is unchanged. AMN schema and fold exports
+record the parameterization. Rates may exceed the pretraining sampling range;
+they are latent growth-supervised inputs rather than measured uptake fluxes.
+
+Notebook descriptions now reflect the current checkpoint, A/B test paths,
+source-cap semantic differences, and independently specified sweep medium.
+Obsolete AMN outputs and dependent completion summaries are cleared; simulated
+and MINN outputs are preserved. No new repeated-CV scores are claimed.
+
+Verification: all six E evaluation tests passed, including unbounded-rate,
+presence-mask and frozen-gradient checks. The actual 72-input checkpoint also
+passed a one-medium growth-loss backward pass and front-MLP optimizer step.
+Notebook schema/code syntax and preserved unrelated outputs were checked.
+The combined E/shared evaluation test run had 30 passes and three legacy-medium
+contract failures; the same three failures were reproduced against the
+unchanged HEAD helper. Full AMN CV and MINN HPO/LOO were not run.
+
 This file is the source of truth for the planned comparison of iML1515
 FluxTransformer pretraining distributions across both downstream experimental
 tasks:

@@ -1,5 +1,23 @@
 # AMN Experiment Notes
 
+## E AMN front MLP without rate ceilings (2026-10-21)
+
+E's experimental growth test now learns the ten available carbon uptake caps
+and oxygen through masked softplus outputs rather than the inherited sigmoid
+caps of 2.2 and 10. Present-source rates are nonnegative with no upper bound or
+penalty toward simulated uptake values; absent-source rates remain zero.
+Experimental growth is the sole target, and gradients pass through frozen,
+evaluation-mode E to the front MLP. Basal uptake caps remain 10 and the fixed
+glycerol/four amino-acid background remains 2.2; these assumptions are distinct
+from the learned rates. Uptake rates need not be identifiable from growth alone.
+
+The shared helper selects this parameterization for model E only. Existing
+other-family AMN parameterizations, MINN behavior, seeds, and validation remain
+unchanged. In particular, E still uses held-out-fold targets for early stopping;
+its historical protocol does not provide an independent outer-test estimate.
+The E notebook records the parameterization and clears obsolete AMN outputs
+and dependent summaries. Full repeated-CV results require a rerun.
+
 This file collects the current working notes for the iML1515 AMN-style
 experiments. It is intentionally lighter than the MINN guide for now; expand it
 as the notebook stabilizes.

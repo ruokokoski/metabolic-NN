@@ -17,6 +17,51 @@ import iml1515_evaluation as ev
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def e_amn_front():
+    from flux_transformer import FluxTransformer
+    inputs = ev.input_contract("E")
+    outputs = [name + "_flux" for name in inputs] + [ev.OBJECTIVE + "_flux"]
+    reservoir = FluxTransformer(len(outputs), list(range(len(inputs))),
+        d_model=4, n_heads=2, n_layers=1, d_ff=8, dropout=0)
+    data = ev.load_amn(ROOT / "AMN_data", inputs, "E", feature_order="checkpoint")
+    return ev.FrontReservoir(reservoir, outputs, data, "amn", hidden=8), data
+
+
+def test_e_amn_rates_have_no_upper_cap_and_keep_presence_mask():
+    model, data = e_amn_front()
+    x = torch.from_numpy(data["X"][:2])
+    observed = torch.from_numpy(data["observed"][:2])
+    with torch.no_grad():
+        model.front[-1].weight.zero_()
+        model.front[-1].bias.fill_(100.0)
+    medium, rates = model.medium(x, observed)
+    assert torch.isfinite(rates).all()
+    assert torch.all(rates[x > 0] > 25)
+    assert torch.all(rates[x == 0] == 0)
+    torch.testing.assert_close(medium[:, model.controlled], rates)
+    with torch.no_grad():
+        model.front[-1].bias.fill_(-100.0)
+    _, small_rates = model.medium(x, observed)
+    assert torch.all(small_rates >= 0)
+    assert torch.all(small_rates[x > 0] < 0.05)
+
+
+def test_e_amn_growth_loss_updates_only_front_mlp():
+    model, data = e_amn_front()
+    before = {key: value.clone() for key, value in model.reservoir.state_dict().items()}
+    front_before = {key: value.clone() for key, value in model.front.state_dict().items()}
+    model.train()
+    prediction, _ = model(torch.from_numpy(data["X"][:2]),
+        torch.from_numpy(data["observed"][:2]))
+    torch.nn.functional.huber_loss(prediction, torch.from_numpy(data["y"][:2])).backward()
+    assert not model.reservoir.training
+    assert all(not p.requires_grad and p.grad is None for p in model.reservoir.parameters())
+    assert sum(p.grad.abs().sum() for p in model.front.parameters()) > 0
+    torch.optim.SGD(model.front.parameters(), lr=0.01).step()
+    assert any(not torch.equal(front_before[key], value) for key, value in model.front.state_dict().items())
+    assert all(torch.equal(before[key], value) for key, value in model.reservoir.state_dict().items())
+
+
 @pytest.mark.parametrize("legacy", [False, True])
 def test_e_minn_basal_contract_without_cobalamin(legacy):
     from cobra.io import read_sbml_model
