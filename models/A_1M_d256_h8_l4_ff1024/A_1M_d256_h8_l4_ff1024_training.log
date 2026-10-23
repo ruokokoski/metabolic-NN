@@ -1,0 +1,185 @@
+============================================================
+Training run started: 2026-10-16 09:07:50
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: A_1M
+model_name: A_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_A_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=10
+patience=4
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_A_training_data_1000000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 4
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+Epoch 1/10 | Train Loss: 0.014395 | Test Loss: 0.002528 | Elapsed: 03:13:26 | Time: 12:28
+Epoch 2/10 | Train Loss: 0.002297 | Test Loss: 0.001480 | Elapsed: 06:39:51 | Time: 15:54
+Epoch 3/10 | Train Loss: 0.001584 | Test Loss: 0.001080 | Elapsed: 09:52:09 | Time: 19:07
+Epoch 4/10 | Train Loss: 0.001306 | Test Loss: 0.001034 | Elapsed: 13:00:51 | Time: 22:15
+Epoch 5/10 | Train Loss: 0.001132 | Test Loss: 0.000983 | Elapsed: 16:12:45 | Time: 01:27
+Epoch 6/10 | Train Loss: 0.001004 | Test Loss: 0.000807 | Elapsed: 19:22:39 | Time: 04:37
+Epoch 7/10 | Train Loss: 0.000910 | Test Loss: 0.000733 | Elapsed: 22:35:00 | Time: 07:49
+Epoch 8/10 | Train Loss: 0.000833 | Test Loss: 0.000655 | Elapsed: 25:41:50 | Time: 10:56
+Epoch 9/10 | Train Loss: 0.000778 | Test Loss: 0.000636 | Elapsed: 28:46:15 | Time: 14:01
+Epoch 10/10 | Train Loss: 0.000730 | Test Loss: 0.000575 | Elapsed: 31:48:27 | Time: 17:03
+Restored best model state from epoch 10.
+Training Completed.
+Training took 1908 min 27.9 sec.
+Best test loss: 0.000575 at epoch 10
+
+Best-epoch model weights saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024.pth (epoch 10)
+Full checkpoint saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-10-19 18:00:03
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: A_1M
+model_name: A_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_A_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=20
+patience=4
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_A_training_data_1000000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 10. Target epoch: 20.
+Early stopping patience: 4
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 11/20 | Train Loss: 0.000690 | Test Loss: 0.000567 | Elapsed: 03:12:46 | Time: 21:18
+Epoch 12/20 | Train Loss: 0.000655 | Test Loss: 0.000613 | Elapsed: 06:19:10 | Time: 00:24
+Epoch 13/20 | Train Loss: 0.000626 | Test Loss: 0.000559 | Elapsed: 09:30:55 | Time: 03:36
+Epoch 14/20 | Train Loss: 0.000600 | Test Loss: 0.000534 | Elapsed: 12:46:04 | Time: 06:51
+Epoch 15/20 | Train Loss: 0.000577 | Test Loss: 0.000510 | Elapsed: 16:03:01 | Time: 10:08
+Epoch 16/20 | Train Loss: 0.000558 | Test Loss: 0.000479 | Elapsed: 19:09:46 | Time: 13:15
+Epoch 17/20 | Train Loss: 0.000540 | Test Loss: 0.000484 | Elapsed: 22:20:52 | Time: 16:26
+Epoch 18/20 | Train Loss: 0.000524 | Test Loss: 0.000537 | Elapsed: 25:44:49 | Time: 19:50
+Epoch 19/20 | Train Loss: 0.000509 | Test Loss: 0.000607 | Elapsed: 29:12:17 | Time: 23:17
+Epoch 20/20 | Train Loss: 0.000494 | Test Loss: 0.000374 | Elapsed: 32:38:51 | Time: 02:44
+Restored best model state from epoch 20.
+Training Completed.
+Training took 1958 min 52.0 sec.
+Best test loss: 0.000374 at epoch 20
+
+Best-epoch model weights saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024.pth (epoch 20)
+Full checkpoint saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-10-21 07:33:29
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: A_1M
+model_name: A_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_A_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=30
+patience=4
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_A_training_data_1000000_samples.csv
+Extracted input columns count:  38
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[40, 45, 86, 92, 104, 164, 304, 621, 700, 859, 913, 934, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 2243, 2320, 99, 108, 98, 1490, 217, 114, 1439, 288, 303, 206, 209, 106, 347, 112, 111]
+Training samples: 800000
+Test samples: 200000
+Found checkpoint at ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 20. Target epoch: 30.
+Early stopping patience: 4
+Allocated memory: 145.64 MB
+Reserved memory: 87100.00 MB
+Epoch 21/30 | Train Loss: 0.000483 | Test Loss: 0.000401 | Elapsed: 03:19:35 | Time: 11:03
+Epoch 22/30 | Train Loss: 0.000471 | Test Loss: 0.000419 | Elapsed: 06:44:50 | Time: 14:28
+Epoch 23/30 | Train Loss: 0.000461 | Test Loss: 0.000367 | Elapsed: 10:04:02 | Time: 17:47
+Epoch 24/30 | Train Loss: 0.000453 | Test Loss: 0.000382 | Elapsed: 13:15:01 | Time: 20:58
+Epoch 25/30 | Train Loss: 0.000444 | Test Loss: 0.000402 | Elapsed: 16:33:44 | Time: 00:17
+Epoch 26/30 | Train Loss: 0.000436 | Test Loss: 0.000335 | Elapsed: 19:52:34 | Time: 03:36
+Epoch 27/30 | Train Loss: 0.000429 | Test Loss: 0.000347 | Elapsed: 23:15:25 | Time: 06:59
+Epoch 28/30 | Train Loss: 0.000422 | Test Loss: 0.000410 | Elapsed: 26:41:10 | Time: 10:25
+Epoch 29/30 | Train Loss: 0.000416 | Test Loss: 0.000366 | Elapsed: 30:01:13 | Time: 13:45
+Epoch 30/30 | Train Loss: 0.000409 | Test Loss: 0.000384 | Elapsed: 33:27:37 | Time: 17:11
+Early stopping at epoch 30; best test loss 0.000335 was at epoch 26.
+Restored best model state from epoch 26.
+Training Completed.
+Training took 2007 min 38.1 sec.
+Best test loss: 0.000335 at epoch 26
+
+Best-epoch model weights saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024.pth (epoch 26)
+Full checkpoint saved to ./models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_A_training_data_1000000_samples_y_tok.float32.mmap

@@ -1,5 +1,23 @@
 # iML1515 Sampling Study Notes
 
+## A evaluation checkpoint selection (2026-10-22)
+
+`ecoli_iML1515_A_model_testing.ipynb` now selects
+`models/A_1M_d256_h8_l4_ff1024/A_1M_d256_h8_l4_ff1024_checkpoint.pth`
+and `data/iML1515_A_test_data_50000_samples.csv`, including the random-context
+t-SNE reference. The companion training log identifies
+`data/iML1515_A_training_data_1000000_samples.csv`; the A generation job
+specifies pFBA with fraction of optimum 0.999. The existing 50,000-row limit
+and 80/20 diagnostic split are unchanged. Saved notebook outputs predate this
+selection and remain historical; no evaluation was rerun.
+
+The A notebook's B distribution-shift path also now selects
+`data/iML1515_B_test_data_50000_samples.csv`. The legacy MINN/Tazza CSV has
+27 inputs including `EX_cbl1_e`, whereas the current B generator and CSV have
+26 inputs. The strict schema check is retained. Both current B and E headers
+were validated against their generators and the A checkpoint output order;
+the E test remains the current 72-input CSV. Full shift inference was not run.
+
 ## E AMN rate parameterization (2026-10-21)
 
 The current E notebook uses a trainable MLP with nonnegative, unbounded softplus
