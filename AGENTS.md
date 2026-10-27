@@ -75,7 +75,7 @@ basic structural summaries, baseline FBA feasibility, and permitted uptake bound
 `metabolic_models/Growth_data_for_ML_Helsinki_Uni.csv` contains accompanying
 growth summaries; model/strain mappings and interpretation limits are in the fungi note.
 `fungi_growth_data_exploration.ipynb` visualizes the experimental growth summaries,
-relative-control responses, and recorded medium chemistry, independently of SBML simulation.
+biomass, and recorded medium chemistry, independently of SBML simulation.
 
 ## Data Generator Routing
 
