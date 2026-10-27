@@ -1,5 +1,28 @@
 # iML1515 Sampling Study Notes
 
+## E three-panel article t-SNE figure (2026-10-27)
+
+The E notebook adds an article figure after the existing sweep plots, with
+sampled test media, fructose coloring, and oxygen coloring side by side. The
+original plots and their saved outputs are preserved. The rainbow helper now
+optionally returns its existing per-point color ranks, and its call retains the
+result for the new renderer. The renderer reuses that projection and the
+glycolysis sweep result without new inference or t-SNE fits; the sampled-media
+projection remains separate from the shared fructose/oxygen projection.
+
+All three plotting areas are equal squares with matching fonts, short titles,
+and aligned horizontal colorbars. Units are omitted from this figure for use
+in the article caption. The default font scale is 22 pt (26 pt titles, 20 pt
+ticks). Optimized PNG and PDF files use 150 dpi under `pic_dir`, with the PDF
+point clouds rasterized and text retained as vectors; export sizes are printed.
+The filename suffix is `_tsne_glycolysis_three_panel`.
+
+Verification: notebook schema/code syntax and preservation of every existing
+output were checked. A synthetic rendering with the full 56,000 sampled and
+140,000 sweep point counts verified identical panel dimensions, font sizes,
+shared sweep limits, and compact exports. The full data-based figure was not
+rerun because the independent E test and AMN sweep CSVs are absent locally.
+
 ## A evaluation checkpoint selection (2026-10-22)
 
 `ecoli_iML1515_A_model_testing.ipynb` now selects
