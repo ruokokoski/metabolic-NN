@@ -1,5 +1,16 @@
 # AMN Experiment Notes
 
+
+## D sampler alignment (2026-10-28)
+
+D generation now uses 80% current E broad conditions (the reviewed 48-source
+pool), 10% current A, and 10% current B, with matching cap distributions and
+basal uptake caps 10. Its new 72-input schema requires regenerated data and a
+new checkpoint; historical D outputs remain archival. Shared task loaders
+support the new schema with basal caps 10 and no cobalamin. See the
+[shared reservoir note](AMN_MINN_shared_reservoir_notes.md#revised-d-generation-and-evaluation-schema-2026-10-28)
+for compatibility and the sampling-study note for the full contract.
+
 ## E AMN front MLP without rate ceilings (2026-10-21)
 
 E's experimental growth test now learns the ten available carbon uptake caps

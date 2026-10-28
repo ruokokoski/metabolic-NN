@@ -12,8 +12,8 @@ projection remains separate from the shared fructose/oxygen projection.
 
 All three plotting areas are equal squares with matching fonts, short titles,
 and aligned horizontal colorbars. Units are omitted from this figure for use
-in the article caption. The default font scale is 22 pt (26 pt titles, 20 pt
-ticks). Optimized PNG and PDF files use 150 dpi under `pic_dir`, with the PDF
+in the article caption. Reaction labels use 18 pt; the other labels use 22 pt
+(26 pt titles, 20 pt ticks). Optimized PNG and PDF files use 150 dpi under `pic_dir`, with the PDF
 point clouds rasterized and text retained as vectors; export sizes are printed.
 The filename suffix is `_tsne_glycolysis_three_panel`.
 
@@ -313,23 +313,53 @@ through standard-library unittest discovery.
 
 ### D and E — broad distributions
 
-As of 2026-10-07, E uses the literature-reviewed 48-source pool and AMN
-basal/cap settings below. D retains its original standalone implementation.
-D and current E therefore differ in source identities, cardinality sampling,
-carbon/oxygen caps, and basal medium as well as task-aware density allocation.
-Their current comparison cannot isolate task-aware allocation alone.
+As of 2026-10-28, D and E share the exact reviewed 48-source pool and
+broad-regime sampling contract. D allocates 80% of accepted rows to this broad
+regime and 10% each to current A and B. This restores a matched broad component
+for future D-versus-E comparisons; existing datasets/checkpoints and saved
+results retain their historical distributions.
 
-#### D — unchanged original broad distribution
+#### D — task-aware mixture aligned with current E/A/B (2026-10-28)
 
-- Standalone generator: `generate_ecoli_iML1515_D_data.py`.
-- 31 selectable organic sources; one to eight per broad draw, with
-  truncated-geometric expected count three.
-- Broad carbon uptake caps loguniform 0.05--5; oxygen uniform 1--10.
-- 23 fixed base inputs at 50, including cobalamin. Broad CO2 is secretion-only
-  with upper cap 50.
-- Ordered 55-input vocabulary with five MINN context exchanges first.
-- Default `--task-fraction 0.2` is a configurable pilot: at 1M accepted rows,
-  exact quotas are 100k A, 100k B, and 800k broad. A/B regimes are unchanged.
+- Standalone generator: `generate_ecoli_iML1515_D_data.py`. The pool snapshot is
+  embedded in exactly the same CSV order as E and checked against
+  `data/reference/iML1515_broad_organic_source_pool.csv`.
+- Broad regime: the same 48 selectable sources as E, k=1,...,10 with
+  P(k) proportional to (2/3)^(k-1), uniform source identities without replacement,
+  organic uptake caps loguniform 0.05--10, and oxygen loguniform 1--25.
+- Broad basal medium matches E: 22 fixed basal uptake caps 10 including CO2,
+  model-default secretion upper bounds, and no cobalamin uptake.
+- A regime matches current A: one to four of its ten sources, uniform
+  count/subset selection, selected-carbon caps loguniform 0.05--10, oxygen
+  loguniform 1--25, fixed glycerol/four amino acids 2.2, and basal caps 10.
+- B regime matches current B: independent continuous-uniform glucose 1--15,
+  CO2 secretion 0--20, ethanol secretion 0--2, acetate secretion 0--8,
+  loguniform oxygen 1--25, basal caps 10, and cobalamin uptake closed.
+- Continuous cap draws are rounded to two decimals. All regimes use pFBA
+  with fraction of optimum 0.999.
+- The ordered vocabulary is identical to E's 72 inputs; ethanol remains a
+  context input outside the selectable organic pool.
+- `--task-fraction 0.2` retains exact accepted-row quotas of 100k A, 100k B,
+  and 800k broad at the default 1M rows. Failed attempts retry the scheduled
+  regime. The existing cluster job already specifies this fraction and needs
+  no additional files or changed arguments.
+- Historical D used 31 sources, k=1--8, broad basal caps 50 with cobalamin,
+  organic caps 0.05--5, uniform oxygen 1--10, and older A/B task settings.
+  Its 55-input checkpoints are rejected by the current strict schema check.
+  Regenerate/retrain before using revised D; the existing D evaluation
+  notebook's checkpoint and saved outputs remain historical.
+- Shared MINN loading uses basal 10 without cobalamin for revised D in both
+  protocol modes; explicit historical schemas retain their existing mapping.
+  AMN loading already uses D's A-regime basal caps 10 and supplements 2.2.
+
+Verification: 19 focused checks passed (five D sampler/schema tests, four A/B
+sampler regressions, and ten E/shared evaluator checks). These include all 48
+source identities, cap laws, 72-input order, actual pFBA mass balance/bounds and
+objective, rejection retries with exact accepted quotas, and old-D checkpoint
+rejection. A separate deployment check ran D alone outside the repository,
+without E or a reference CSV, and generated ten accepted rows (8 broad, 1 A,
+1 B). Syntax, cluster-shell syntax, and diff checks passed. No production
+dataset, checkpoint, or new transfer score was generated.
 
 #### E — curated task-agnostic distribution (2026-10-07)
 
@@ -366,8 +396,9 @@ Their current comparison cannot isolate task-aware allocation alone.
 
 Both active generators remain standalone. The original helper-module design
 failed on Roihu when the helper was absent from the deployed code directory.
-E's archived implementation and D preserve the old broad contract; future
-synchronization must be an explicit distribution change.
+E's archived implementation preserves the original broad contract. Regression
+checks now require D and current E to share the pool, input order, broad-medium
+bounds, and broad source-count distribution.
 
 Roihu jobs remain `scripts/roihu/samplejob_D.sh` and
 `scripts/roihu/samplejob_E.sh`, using one CPU, 72 hours and 16 GiB in `small`.
@@ -396,13 +427,13 @@ new-checkpoint evaluation and production generation remain unrun.
 | **B** | Glucose + variable CO2/ethanol/acetate secretion | MINN basal 10, cobalamin absent | Glucose uniform 1--15; O2 loguniform 1--25; CO2 uniform 0--20; ethanol/acetate uniform 0--2/0--8 | 1 |
 | **A ∪ B** | 10 AMN carbons or glucose (per regime) | Basal 10; 40 inputs, cobalamin absent | A loguniform 0.05--10, oxygen 1--25; B uniform glucose/secretion, oxygen loguniform 1--25 | 1--4 or 1 |
 | **C** | 10 AMN carbons in A-like; glucose in B-like/mixed, plus 1--3 non-acetate A sources in mixed | Shared basal 10; 40 inputs, cobalamin absent by default | A-like/additions loguniform 0.05--10; all oxygen loguniform 1--25; uniform glucose/secretion | A/B/mixed probabilities 0.40/0.40/0.20 |
-| **D** | Original 31-source general pool (glycerol variable) + A/B task regimes | 23 fixed base (incl. cobalamin); O2 variable 1--10 | G log-uniform 0.05--5.0; A/B task ranges | G 1--8, E[K]=3 |
+| **D** | Same 48-source broad pool as E + current A/B task regimes | Basal 10; 72 inputs, cobalamin absent | Broad and A carbons loguniform 0.05--10; all oxygen loguniform 1--25; current B continuous glucose/secretion caps | Broad 1--10 as E; accepted broad/A/B quotas 80/10/10 |
 | **E** | Curated 48-source pool, including glycerol/four AMN amino acids as selectable; no task regimes | AMN basal uptake caps 10, CO2 uptake allowed, no cobalamin; O2 loguniform 1--25 | loguniform 0.05--10 | 1--10, P(k) proportional to (2/3)^(k-1) |
 
 The 181 growth-capable organic-exchange pool was computed on
 `models/iML1515.xml` for the D-like base medium, close to the 185 carbon
-sources reported in `ecoli_iML1515_exploration.ipynb`. D and archived E use the original
-31-source subset; current E uses the separately reviewed 48-source CSV.
+sources reported in `ecoli_iML1515_exploration.ipynb`. Historical D and archived E
+used the original 31-source subset; current D and E use the reviewed 48-source CSV.
 
 ## Controlled Comparison Requirements
 
@@ -930,6 +961,11 @@ the 55-input D/E checkpoints. Notebook schema and code syntax were checked;
 the expensive C/D/E HPO/LOO evaluations were left for future runs.
 
 ## Model D notebook identity correction (2026-09-21)
+
+Historical checkpoint note: the description below concerns the original 55-input
+D. The revised 2026-10-28 generator uses 72 inputs; the notebook must select a
+newly trained compatible checkpoint before rerunning. Saved results remain
+historical.
 
 `ecoli_iML1515_D_model_testing.ipynb` now selects family D,
 `models/D_1M_d256_h8_l4_ff1024/D_1M_d256_h8_l4_ff1024_checkpoint.pth`,

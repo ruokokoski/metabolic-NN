@@ -247,9 +247,12 @@ def load_minn(root, outputs, mode="minn_fitted", input_names=None, model_family=
     observed = flux[CONTEXT_SOURCES[:2]].to_numpy(np.float32)
     if (observed < 0).any():
         raise ValueError("Glucose/O2 inputs must be positive split uptake magnitudes.")
-    base_rate = 10.0 if model_family == "E" else 50.0
+    # Explicit old D input lists retain their historical task-medium mapping.
+    revised_broad_medium = (model_family == "E" or
+                            (model_family == "D" and input_names == input_contract("D")))
+    base_rate = 10.0 if revised_broad_medium else 50.0
     fixed = {name: base_rate for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES if name in input_names}
-    if legacy_protocol and model_family != "E":
+    if legacy_protocol and not revised_broad_medium:
         # The original MINN trial injects basal cobalamin through the output token,
         # including for the historical 40-input C checkpoint.
         fixed = {name: 50.0 for name in COMMON_BASE_EXCHANGES + B_ONLY_BASE_EXCHANGES

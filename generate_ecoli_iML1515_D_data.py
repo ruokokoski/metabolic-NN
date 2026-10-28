@@ -1,3 +1,5 @@
+"""Task-aware D sampler: 80% current E, 10% current A, and 10% current B."""
+
 import argparse
 import csv
 import gc
@@ -71,7 +73,6 @@ FIXED_BASE_EXCHANGES = [
     "EX_cl_e",
     "EX_tungs_e",
     "EX_slnt_e",
-    "EX_cbl1_e",
 ]
 
 AMN_CARBON_EXCHANGES = [
@@ -94,42 +95,61 @@ AMINO_EXCHANGES = [
     "EX_gly_e",
 ]
 
+# Snapshot of data/reference/iML1515_broad_organic_source_pool.csv, in CSV order.
+# Embedded, as in E, so cluster jobs can deploy this generator alone.
 SELECTABLE_ORGANIC_EXCHANGES = [
-    "EX_glc__D_e",
-    "EX_xyl__D_e",
-    "EX_arab__L_e",
-    "EX_man_e",
-    "EX_gal_e",
-    "EX_fru_e",
-    "EX_malt_e",
-    "EX_tre_e",
-    "EX_cellb_e",
-    "EX_melib_e",
-    "EX_lcts_e",
-    "EX_rib__D_e",
-    "EX_sbt__D_e",
-    "EX_mnl_e",
-    "EX_glyc_e",
-    "EX_rmn_e",
-    "EX_ac_e",
-    "EX_lac__D_e",
+    "EX_acgam_e",
     "EX_lac__L_e",
+    "EX_glcn_e",
+    "EX_gln__L_e",
+    "EX_pro__L_e",
+    "EX_glyc_e",
+    "EX_man_e",
+    "EX_ac_e",
+    "EX_akg_e",
+    "EX_ala__L_e",
+    "EX_arg__L_e",
+    "EX_asp__L_e",
     "EX_pyr_e",
     "EX_succ_e",
+    "EX_rib__D_e",
+    "EX_cytd_e",
     "EX_fum_e",
-    "EX_cit_e",
-    "EX_etoh_e",
-    "EX_but_e",
-    "EX_ppa_e",
-    "EX_glcn_e",
-    "EX_ala__L_e",
-    "EX_pro__L_e",
-    "EX_thr__L_e",
+    "EX_sbt__D_e",
+    "EX_glu__L_e",
+    "EX_glc__D_e",
+    "EX_arab__L_e",
+    "EX_fru_e",
+    "EX_gal_e",
+    "EX_xyl__D_e",
     "EX_gly_e",
+    "EX_ser__L_e",
+    "EX_trp__L_e",
+    "EX_melib_e",
+    "EX_tre_e",
+    "EX_lac__D_e",
+    "EX_fuc__L_e",
+    "EX_maltpt_e",
+    "EX_rmn_e",
+    "EX_glyclt_e",
+    "EX_galur_e",
+    "EX_adn_e",
+    "EX_ins_e",
+    "EX_lcts_e",
+    "EX_malttr_e",
+    "EX_ppa_e",
+    "EX_mnl_e",
+    "EX_malt_e",
+    "EX_asn__L_e",
+    "EX_mal__L_e",
+    "EX_gam_e",
+    "EX_thr__L_e",
+    "EX_uri_e",
+    "EX_maltttr_e",
 ]
 
 DEFAULT_OBJECTIVE_REACTION = "BIOMASS_Ec_iML1515_core_75p37M"
-DEFAULT_G_K_BETA = 0.3152078146
+DEFAULT_G_K_BETA = math.log(3.0 / 2.0)
 
 A_REGIME = 0
 B_REGIME = 1
@@ -180,12 +200,12 @@ def create_parser(model_kind):
     parser.add_argument("--failure-reload-interval", type=int, default=100)
     parser.add_argument("--max-attempt-multiplier", type=float, default=20.0)
 
-    parser.add_argument("--g-base-rate", type=float, default=50.0)
+    parser.add_argument("--g-base-rate", type=float, default=10.0)
     parser.add_argument("--g-organic-rate-min", type=float, default=0.05)
-    parser.add_argument("--g-organic-rate-max", type=float, default=5.0)
+    parser.add_argument("--g-organic-rate-max", type=float, default=10.0)
     parser.add_argument("--g-oxygen-rate-min", type=float, default=1.0)
-    parser.add_argument("--g-oxygen-rate-max", type=float, default=10.0)
-    parser.add_argument("--g-max-organic-sources", type=int, default=8)
+    parser.add_argument("--g-oxygen-rate-max", type=float, default=25.0)
+    parser.add_argument("--g-max-organic-sources", type=int, default=10)
     parser.add_argument("--g-k-beta", type=float, default=DEFAULT_G_K_BETA)
 
     if task_aware:
@@ -195,29 +215,29 @@ def create_parser(model_kind):
             default=0.2,
             help=(
                 "Total accepted-sample fraction reserved equally for exact A "
-                "and B regimes. The documented 0.2 default is a pilot setting."
+                "and B regimes; the default gives 80% broad, 10% A, and 10% B."
             ),
         )
         parser.add_argument("--a-base-rate", type=float, default=10.0)
         parser.add_argument("--a-carbon-rate-min", type=float, default=0.05)
-        parser.add_argument("--a-carbon-rate-max", type=float, default=2.2)
+        parser.add_argument("--a-carbon-rate-max", type=float, default=10.0)
         parser.add_argument("--a-fixed-glycerol-rate", type=float, default=2.2)
         parser.add_argument("--a-amino-rate", type=float, default=2.2)
         parser.add_argument("--a-oxygen-rate-min", type=float, default=1.0)
-        parser.add_argument("--a-oxygen-rate-max", type=float, default=10.0)
+        parser.add_argument("--a-oxygen-rate-max", type=float, default=25.0)
         parser.add_argument("--a-max-carbon-sources", type=int, default=4)
 
-        parser.add_argument("--b-base-rate", type=float, default=50.0)
-        parser.add_argument("--b-glucose-cap-min", type=int, default=1)
-        parser.add_argument("--b-glucose-cap-max", type=int, default=15)
-        parser.add_argument("--b-oxygen-cap-min", type=int, default=1)
-        parser.add_argument("--b-oxygen-cap-max", type=int, default=20)
-        parser.add_argument("--b-co2-cap-min", type=int, default=0)
-        parser.add_argument("--b-co2-cap-max", type=int, default=15)
-        parser.add_argument("--b-ethanol-cap-min", type=int, default=0)
-        parser.add_argument("--b-ethanol-cap-max", type=int, default=1)
-        parser.add_argument("--b-acetate-cap-min", type=int, default=0)
-        parser.add_argument("--b-acetate-cap-max", type=int, default=3)
+        parser.add_argument("--b-base-rate", type=float, default=10.0)
+        parser.add_argument("--b-glucose-cap-min", type=float, default=1.0)
+        parser.add_argument("--b-glucose-cap-max", type=float, default=15.0)
+        parser.add_argument("--b-oxygen-cap-min", type=float, default=1.0)
+        parser.add_argument("--b-oxygen-cap-max", type=float, default=25.0)
+        parser.add_argument("--b-co2-cap-min", type=float, default=0.0)
+        parser.add_argument("--b-co2-cap-max", type=float, default=20.0)
+        parser.add_argument("--b-ethanol-cap-min", type=float, default=0.0)
+        parser.add_argument("--b-ethanol-cap-max", type=float, default=2.0)
+        parser.add_argument("--b-acetate-cap-min", type=float, default=0.0)
+        parser.add_argument("--b-acetate-cap-max", type=float, default=8.0)
 
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--progress-interval", type=int, default=1_000)
@@ -249,6 +269,7 @@ def draw_uniform_subset(rng, exchanges, count):
 
 
 def build_g_k_probabilities(max_sources, beta):
+    # Default beta gives P(k) proportional to (2/3) ** (k - 1).
     counts = np.arange(1, max_sources + 1, dtype=np.float64)
     weights = np.exp(-beta * counts)
     return weights / weights.sum()
@@ -335,7 +356,8 @@ def validate_setup(model, input_columns, output_columns):
 
 def validate_range(name, minimum, maximum, strictly_positive=False):
     invalid_minimum = minimum <= 0 if strictly_positive else minimum < 0
-    if invalid_minimum or maximum < minimum:
+    if (not math.isfinite(minimum) or not math.isfinite(maximum)
+            or invalid_minimum or maximum < minimum):
         qualifier = "positive" if strictly_positive else "non-negative"
         raise ValueError(
             f"Invalid {name} range [{minimum}, {maximum}]; values must be "
@@ -350,9 +372,9 @@ def validate_args(args, model_kind):
         raise ValueError("--batch-size must be positive")
     if not 0 < args.pfba_fraction_of_optimum <= 1:
         raise ValueError("--pfba-fraction-of-optimum must be in (0, 1]")
-    if args.g_base_rate < 0:
+    if not math.isfinite(args.g_base_rate) or args.g_base_rate < 0:
         raise ValueError("--g-base-rate must be non-negative")
-    if args.g_k_beta < 0:
+    if not math.isfinite(args.g_k_beta) or args.g_k_beta < 0:
         raise ValueError("--g-k-beta must be non-negative")
     if not 1 <= args.g_max_organic_sources <= len(SELECTABLE_ORGANIC_EXCHANGES):
         raise ValueError(
@@ -370,7 +392,13 @@ def validate_args(args, model_kind):
         "G oxygen uptake",
         args.g_oxygen_rate_min,
         args.g_oxygen_rate_max,
+        strictly_positive=True,
     )
+
+    for name, minimum in (("organic", args.g_organic_rate_min),
+                          ("oxygen", args.g_oxygen_rate_min)):
+        if round(minimum, 2) <= 0:
+            raise ValueError(f"G {name} minimum must remain positive after rounding")
 
     if model_kind == "e":
         return
@@ -392,13 +420,16 @@ def validate_args(args, model_kind):
             raise ValueError(f"{name} must be non-negative")
 
     validate_range(
-        "A carbon uptake", args.a_carbon_rate_min, args.a_carbon_rate_max
+        "A carbon uptake", args.a_carbon_rate_min, args.a_carbon_rate_max,
+        strictly_positive=True,
     )
     validate_range(
-        "A oxygen uptake", args.a_oxygen_rate_min, args.a_oxygen_rate_max
+        "A oxygen uptake", args.a_oxygen_rate_min, args.a_oxygen_rate_max,
+        strictly_positive=True,
     )
     for exchange_id, (minimum, maximum) in build_b_cap_config(args).items():
-        validate_range(f"B cap for {exchange_id}", minimum, maximum)
+        validate_range(f"B cap for {exchange_id}", minimum, maximum,
+                       strictly_positive=exchange_id == "EX_o2_e")
 
 
 def build_b_cap_config(args):
@@ -461,7 +492,7 @@ def apply_a_regime(model, data, rng, exchange_default_bounds, args):
         set_uptake(model, data, exchange_id, args.a_base_rate)
     set_uptake(model, data, "EX_co2_e", args.a_base_rate)
 
-    oxygen_rate = random_uniform_rate(
+    oxygen_rate = random_log_uniform_rate(
         rng, args.a_oxygen_rate_min, args.a_oxygen_rate_max
     )
     set_uptake(model, data, "EX_o2_e", oxygen_rate)
@@ -472,7 +503,7 @@ def apply_a_regime(model, data, rng, exchange_default_bounds, args):
     for exchange_id in draw_uniform_subset(
         rng, AMN_CARBON_EXCHANGES, carbon_count
     ):
-        rate = random_uniform_rate(
+        rate = random_log_uniform_rate(
             rng, args.a_carbon_rate_min, args.a_carbon_rate_max
         )
         set_uptake(model, data, exchange_id, rate)
@@ -491,16 +522,18 @@ def apply_b_regime(
     args,
 ):
     restore_default_medium(model, exchange_default_bounds)
+    model.reactions.get_by_id("EX_cbl1_e").lower_bound = 0.0
 
-    for exchange_id in COMMON_BASE_EXCHANGES + ["EX_cbl1_e"]:
+    for exchange_id in COMMON_BASE_EXCHANGES:
         set_uptake(model, data, exchange_id, args.b_base_rate)
 
     for exchange_id in ("EX_glc__D_e", "EX_o2_e"):
-        cap = random_integer_cap(rng, *b_cap_config[exchange_id])
+        draw = random_log_uniform_rate if exchange_id == "EX_o2_e" else random_uniform_rate
+        cap = draw(rng, *b_cap_config[exchange_id])
         set_uptake(model, data, exchange_id, cap)
 
     for exchange_id in ("EX_co2_e", "EX_etoh_e", "EX_ac_e"):
-        cap = random_integer_cap(rng, *b_cap_config[exchange_id])
+        cap = random_uniform_rate(rng, *b_cap_config[exchange_id])
         set_secretion_cap(model, data, exchange_id, cap)
 
 
@@ -515,12 +548,9 @@ def apply_g_regime(
     reset_closed_medium(model, exchange_default_bounds)
 
     for exchange_id in FIXED_BASE_EXCHANGES:
-        if exchange_id == "EX_co2_e":
-            set_secretion_cap(model, data, exchange_id, args.g_base_rate)
-        else:
-            set_uptake(model, data, exchange_id, args.g_base_rate)
+        set_uptake(model, data, exchange_id, args.g_base_rate)
 
-    oxygen_rate = random_uniform_rate(
+    oxygen_rate = random_log_uniform_rate(
         rng, args.g_oxygen_rate_min, args.g_oxygen_rate_max
     )
     set_uptake(model, data, "EX_o2_e", oxygen_rate)
@@ -692,7 +722,7 @@ def run_generation(args, model_kind):
         f"[{args.g_organic_rate_min:g}, {args.g_organic_rate_max:g}]"
     )
     print(
-        "G oxygen uptake: continuous "
+        "G oxygen uptake: log-uniform "
         f"[{args.g_oxygen_rate_min:g}, {args.g_oxygen_rate_max:g}]"
     )
     print(
@@ -854,12 +884,12 @@ def run_generation(args, model_kind):
     print(f"Saved to {final_filename}")
 
 
-def parse_args():
-    return create_parser("d").parse_args()
+def parse_args(argv=None):
+    return create_parser("d").parse_args(argv)
 
 
-def main():
-    run_generation(parse_args(), "d")
+def main(argv=None):
+    run_generation(parse_args(argv), "d")
 
 
 if __name__ == "__main__":

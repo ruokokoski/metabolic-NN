@@ -1,5 +1,22 @@
 # Shared AMN/MINN Reservoir Notes
 
+## Revised D generation and evaluation schema (2026-10-28)
+
+D now uses current E's exact 48-source pool and broad sampling rules for 80%
+of accepted rows, current A for 10%, and current B for 10%. Its standalone
+generator retains per-regime retries to meet these accepted-row quotas. All
+components use basal uptake caps 10 without cobalamin. The ordered vocabulary
+is the same 72 inputs as current E, so historical 55-input D checkpoints are
+incompatible and remain archival; no dataset/checkpoint was regenerated.
+
+The shared evaluator derives D's input contract from the revised generator.
+For the new D schema, AMN retains basal 10 and MINN now uses basal 10 without
+cobalamin in both protocol modes. Explicit historical MINN input schemas
+retain their existing basal-50 mapping. Other families' behavior is unchanged.
+The D evaluation notebook still selects its historical checkpoint and therefore
+requires a newly trained compatible checkpoint before rerunning. See the
+[sampling-study contract](iML1515_sampling_study_notes.md#d--task-aware-mixture-aligned-with-current-eab-2026-10-28).
+
 ## E-only AMN rate change in shared evaluation helper (2026-10-21)
 
 `iml1515_evaluation.load_amn` now selects unbounded nonnegative softplus rates

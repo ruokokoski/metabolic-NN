@@ -311,7 +311,7 @@ def test_shared_model_contracts_and_media(tmp_path, family, exclude):
     assert loaded_inputs == inputs
     amn = ev.load_amn(ROOT / "AMN_data", input_names=inputs, model_family=family)
     assert amn["fixed"]["EX_pi_e"] == (50 if family == "C" else 10)
-    if exclude or family == "E":
+    if exclude or family in ("D", "E"):
         assert "EX_cbl1_e" not in amn["fixed"]
     else:
         assert amn["fixed"]["EX_cbl1_e"] == (0 if family == "D" else 50)
