@@ -1,0 +1,60 @@
+============================================================
+Training run started: 2026-10-29 16:09:09
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: B_1M
+model_name: B_1M_d256_h8_l4_ff1024
+
+Data path: ./data/iML1515_B_training_data_1000000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=10
+patience=4
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 1000000 samples from ./data/iML1515_B_training_data_1000000_samples.csv
+Extracted input columns count:  26
+Extracted output columns count: 2712
+Medium constraints are injected into these token indices (in outputs order):
+[180, 1525, 106, 40, 45, 92, 104, 164, 304, 621, 700, 859, 913, 970, 1424, 1478, 1485, 1500, 1534, 1535, 1836, 1981, 86, 934, 2243, 2320]
+Training samples: 800000
+Test samples: 200000
+Early stopping patience: 4
+Allocated memory: 130.27 MB
+Reserved memory: 87056.00 MB
+Epoch 1/10 | Train Loss: 0.007875 | Test Loss: 0.000733 | Elapsed: 03:13:00 | Time: 19:30
+Epoch 2/10 | Train Loss: 0.000740 | Test Loss: 0.000273 | Elapsed: 06:29:54 | Time: 22:47
+Epoch 3/10 | Train Loss: 0.000422 | Test Loss: 0.000219 | Elapsed: 09:49:51 | Time: 02:07
+Epoch 4/10 | Train Loss: 0.000311 | Test Loss: 0.000173 | Elapsed: 13:07:12 | Time: 05:25
+Epoch 5/10 | Train Loss: 0.000247 | Test Loss: 0.000248 | Elapsed: 16:20:28 | Time: 08:38
+Epoch 6/10 | Train Loss: 0.000207 | Test Loss: 0.000166 | Elapsed: 19:35:48 | Time: 11:53
+Epoch 7/10 | Train Loss: 0.000181 | Test Loss: 0.000105 | Elapsed: 22:43:06 | Time: 15:00
+Epoch 8/10 | Train Loss: 0.000158 | Test Loss: 0.000095 | Elapsed: 26:04:47 | Time: 18:22
+Epoch 9/10 | Train Loss: 0.000144 | Test Loss: 0.000077 | Elapsed: 29:34:01 | Time: 21:51
+Epoch 10/10 | Train Loss: 0.000130 | Test Loss: 0.000091 | Elapsed: 33:05:12 | Time: 01:23
+Restored best model state from epoch 9.
+Training Completed.
+Training took 1985 min 12.7 sec.
+Best test loss: 0.000077 at epoch 9
+
+Best-epoch model weights saved to ./models/B_1M_d256_h8_l4_ff1024/B_1M_d256_h8_l4_ff1024.pth (epoch 9)
+Full checkpoint saved to ./models/B_1M_d256_h8_l4_ff1024/B_1M_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/iML1515_B_training_data_1000000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/iML1515_B_training_data_1000000_samples_y_tok.float32.mmap

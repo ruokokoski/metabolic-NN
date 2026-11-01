@@ -1,5 +1,39 @@
 # iML1515 Sampling Study Notes
 
+## B evaluation checkpoint refresh (2026-10-31)
+
+`ecoli_iML1515_B_model_testing.ipynb` now selects
+`models/B_1M_d256_h8_l4_ff1024/B_1M_d256_h8_l4_ff1024_checkpoint.pth`
+and `data/iML1515_B_test_data_50000_samples.csv`. The companion log records
+training on `iML1515_B_training_data_1000000_samples.csv`, ordinary Huber,
+d256/h8/l4/ff1024 and dropout 0.02. Current B has 26 inputs and 2,712 outputs;
+the old MINN checkpoint/test selection had 27 inputs including cobalamin.
+The existing 80/20 diagnostic split with random_state=42 is preserved.
+
+The notebook validates ordered generator/checkpoint/test inputs, outputs and
+injection indices. A/E distribution-shift tests select current letter-named
+CSVs (38/72 inputs) and retain full-source injection over all rows and outputs.
+A no longer selects the obsolete AMN-named CSV. Descriptions distinguish
+uptake from secretion caps and remove the old A-FBA target claim; current
+A/B/E jobs use pFBA at fraction 0.999.
+
+MINN experimental adaptation imports B's basal exchange list, removes the
+cobalamin context and uses 10 rather than 50 for its 21 fixed basal channels.
+Its five-channel context, nonnegative unbounded softplus learned controls,
+measured/predicted glucose-O2 variants, omics targets, HPO/LOO and downstream
+pFBA protocols are preserved. The AMN transfer control retains its 38-input
+medium and bounded sigmoid front MLP: 14 source inputs lie outside B's schema,
+and B-only glucose/ethanol remain zero. This control does not adopt E's
+unbounded AMN adaptation. Model-dependent saved outputs are cleared.
+
+Verification: all notebook code cells compile after IPython transformation;
+the actual checkpoint loads with the local model class. B/A/E ordered headers
+and one-row full-output finite forwards pass; MINN setup and mapping/sign/SBML
+assertions pass. A/E shift preflight and one-medium AMN front-MLP backward
+pass with frozen reservoir pass, as do both existing MINN metric tests. Full simulated inference, t-SNE, AMN repeated CV, MINN HPO/LOO
+and pFBA evaluations are pending rerun; no replacement scores are claimed.
+
+
 ## E three-panel article t-SNE figure (2026-10-27)
 
 The E notebook adds an article figure after the existing sweep plots, with

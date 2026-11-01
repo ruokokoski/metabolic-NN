@@ -1,5 +1,19 @@
 # MINN Training Notes
 
+## B reservoir checkpoint refresh (2026-10-31)
+
+The standalone B notebook now uses `B_1M_d256_h8_l4_ff1024` and the current
+`iML1515_B_test_data_50000_samples.csv` (26 inputs, no cobalamin). Its MINN
+wrapper uses 21 fixed basal channels at 10, matching current B rather than the
+legacy 50-unit context. A/E shift CSVs and descriptions are updated. The AMN
+control retains its original bounded-rate protocol and 38-input medium;
+MINN experimental protocols are unchanged. Model-dependent outputs are cleared.
+Checkpoint loading, ordered B/A/E schemas, finite full-output forwards and
+MINN context/mapping assertions passed; full evaluations remain pending.
+See `iML1515_sampling_study_notes.md`, B evaluation checkpoint refresh, for
+artifact paths and validation scope.
+
+
 
 ## D sampler alignment (2026-10-28)
 
