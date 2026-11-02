@@ -64,6 +64,9 @@ structural changes.
 - `ecoli_core_model_testing.ipynb`: main core evaluation;
   `ecoli_core_10M_ordinary_huber_eval.ipynb`: ordinary-Huber comparison;
   `ecoli_core_transformer.ipynb`: architecture-size sweep.
+- `candida_intermedia_model_testing.ipynb`: Candida pilot checkpoint evaluation
+  on independent pFBA test data; loss curves, five flux diagnostics, and final
+  pooled R2/MAE/RMSE across the full reaction vocabulary.
 - `yeast9_model_testing.ipynb`: main Yeast9 evaluation, with a local older
   non-injected model class required by its saved checkpoint.
 
