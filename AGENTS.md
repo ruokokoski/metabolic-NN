@@ -92,6 +92,10 @@ biomass, and recorded medium chemistry, independently of SBML simulation.
 - Experimental-pattern AMN: `generate_ecoli_iML1515_AMN_data.py`, condition-based
   allocation; separate from A. `generate_AMN_sweep.py` generates diagnostic sweeps.
 - Yeast9: `generate_yeast9_data.py`.
+- Candida intermedia pilot: `generate_candida_intermedia_data.py`, 17 signed
+  exchange-bound inputs and full signed net-flux targets. `--dataset training`
+  and `--dataset test` select separate generation defaults; consult the private
+  fungi note and the notebook's final Candida mapping tables.
 
 ## Model, Data, and Constraint Contracts
 
