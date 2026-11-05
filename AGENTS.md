@@ -64,6 +64,9 @@ structural changes.
 - `ecoli_core_model_testing.ipynb`: main core evaluation;
   `ecoli_core_10M_ordinary_huber_eval.ipynb`: ordinary-Huber comparison;
   `ecoli_core_transformer.ipynb`: architecture-size sweep.
+- `candida_intermedia_model_testing.ipynb`: Candida pilot checkpoint evaluation
+  on independent pFBA test data; loss curves, five flux diagnostics, and final
+  pooled R2/MAE/RMSE across the full reaction vocabulary.
 - `yeast9_model_testing.ipynb`: main Yeast9 evaluation, with a local older
   non-injected model class required by its saved checkpoint.
 
@@ -92,6 +95,10 @@ biomass, and recorded medium chemistry, independently of SBML simulation.
 - Experimental-pattern AMN: `generate_ecoli_iML1515_AMN_data.py`, condition-based
   allocation; separate from A. `generate_AMN_sweep.py` generates diagnostic sweeps.
 - Yeast9: `generate_yeast9_data.py`.
+- Candida intermedia pilot: `generate_candida_intermedia_data.py`, 17 signed
+  exchange-bound inputs and full signed net-flux targets. `--dataset training`
+  and `--dataset test` select separate generation defaults; consult the private
+  fungi note and the notebook's final Candida mapping tables.
 
 ## Model, Data, and Constraint Contracts
 
