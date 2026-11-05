@@ -31,6 +31,8 @@ structural changes.
 - `data/`: simulated datasets; `AMN_data/` and `MINN_data/`: experimental inputs.
 - `models/`: checkpoints and training logs; `tests/`: focused regression checks.
 - `scripts/`: utilities and cluster jobs, including `scripts/roihu/`.
+- `scripts/fit_minn_fluxomics_euclidean.py`: separate, equal-weight L2
+  projection of measured MINN fluxes into the iML1515 feasible space.
 - `insights/` and `pics/`: generated analyses and figures; `old/`: historical code.
   Generated artifacts, caches, and environments are not implementation authority.
 

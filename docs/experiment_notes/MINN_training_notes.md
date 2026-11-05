@@ -1,5 +1,55 @@
 # MINN Training Notes
 
+## Separate Euclidean fluxomics fitter (2026-11-05)
+
+`scripts/fit_minn_fluxomics_euclidean.py` fits the **unfitted** split measurements
+in `MINN_data/fluxomics_iAF1260_reduced_split.csv` to `models/iML1515.xml` by
+minimizing the unweighted sum of squared errors over all mapped measured fluxes.
+Minimizing this objective gives the same projection as minimizing Euclidean
+distance. The earlier weighted-L1 script and its output are unchanged.
+
+Biomass stays fixed by default, preserving the earlier local fitting policy;
+`--biomass-mode free` instead includes biomass as an adjustable, equal-weight
+target. Glucose/O2 are allowed to move within the SBML bounds. Split directions
+are enforced by default using the existing sign/mapping helpers; they can be
+disabled explicitly. No growth maximization or condition-specific knockout is
+added. These declared choices do not establish the unreleased historical
+Tazza fitting settings. The fit depends on iML1515, not on B's neural weights.
+
+The script uses the existing COBRA LP solver with successive tangent bounds on
+each squared error. Each LP supplies a global lower bound on the quadratic
+minimum; a feasible full flux vector supplies an upper bound. Acceptance requires
+gap <= `1e-6 + 1e-7 * SSE` and full-vector mass-balance/bound errors <= `1e-6`
+by default. This new fit explicitly sets COBRA's LP tolerance to `1e-12`
+(`--solver-tolerance`), because the usual GLPK tolerance can stall the tangent
+refinement for some conditions. Existing experiment solvers are not
+changed. A failed numerical fit is retried with the installed GLPK exact-LP
+interface; diagnostics record the actual solver and retry reason. Each LP has
+a configurable 10-second timeout. `--solver glpk_exact` selects exact LP from
+the start. Nonconvergence or any failed condition prevents writing a partial
+fitted CSV. Existing outputs require explicit `--overwrite`.
+
+Run from the repository root:
+
+```bash
+python scripts/fit_minn_fluxomics_euclidean.py
+```
+
+Default output: `MINN_data/fluxomics_iML1515_euclidean_fit.csv`, with
+`.diagnostics.csv` and `.metadata.json` sidecars recording objective gaps,
+feasibility checks, source/model hashes, mapping order and fitting settings.
+No notebook is switched to this file automatically. A downstream comparison
+requires a matched pFBA baseline and a newly fitted front MLP on these targets;
+the pretrained B reservoir remains frozen. No new downstream metrics are claimed.
+
+Verification: four focused tests, Ruff and Python syntax checks passed. A full
+default-policy validation to temporary files solved all 29 conditions in 14-20
+refinements, preserving all 47 columns and condition order with finite values
+and unchanged biomass. All objective gaps passed; maximum mass-balance and bound
+errors were `1.04e-13` and `5.91e-16`. Exact-LP fitting was also checked separately
+on `rpe`. Temporary fit outputs were removed; the default dataset has not been
+generated in `MINN_data/` by this change.
+
 ## B reservoir checkpoint refresh (2026-10-31)
 
 The standalone B notebook now uses `B_1M_d256_h8_l4_ff1024` and the current

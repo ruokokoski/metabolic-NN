@@ -1,0 +1,397 @@
+{
+  "objective": "unweighted sum of squared deviations over mapped measured fluxes",
+  "algorithm": "LP tangent outer approximation with feasible upper and LP lower bounds",
+  "arguments": {
+    "source_csv": "MINN_data\\fluxomics_iAF1260_reduced_split.csv",
+    "output_csv": "MINN_data\\fluxomics_iML1515_euclidean_fit.csv",
+    "model_sbml": "models\\iML1515.xml",
+    "objective_reaction": "BIOMASS_Ec_iML1515_core_75p37M",
+    "biomass_column": "R_BIOMASS_Ec_iAF1260_core_59p81M",
+    "biomass_mode": "fixed",
+    "enforce_split_directions": true,
+    "absolute_gap": 1e-06,
+    "relative_gap": 1e-07,
+    "feasibility_tolerance": 1e-06,
+    "solver_tolerance": 1e-12,
+    "solver": "glpk",
+    "solver_timeout": 10,
+    "max_iterations": 250,
+    "overwrite": false
+  },
+  "source_sha256": "ca993710e03e6e8a49cedb2e7fd508f733c1187c84e6076012f764e25de0eeb6",
+  "model_sha256": "4bf6e2bca10e921b017ccf86b420349ea2ce7f42851c161f6fdcbb467e2aaf31",
+  "python_version": "3.11.0 (main, Oct 24 2022, 18:26:48) [MSC v.1933 64 bit (AMD64)]",
+  "cobra_version": "0.29.1",
+  "solver": "optlang.glpk_interface",
+  "fallback_solver": null,
+  "solver_tolerance": 1e-12,
+  "flux_columns": [
+    "R_GLCptspp",
+    "R_PGI_fwd",
+    "R_PFK",
+    "R_FBA_fwd",
+    "R_TPI_fwd",
+    "R_PGK_rev",
+    "R_GAPD_fwd",
+    "R_ENO_fwd",
+    "R_PGM_rev",
+    "R_PYK",
+    "R_PDH",
+    "R_G6PDH2r_fwd",
+    "R_PGL",
+    "R_GND",
+    "R_RPE_fwd",
+    "R_RPI_rev",
+    "R_TKT1_fwd",
+    "R_TALA_fwd",
+    "R_TKT2_fwd",
+    "R_CS",
+    "R_ACONTb_fwd",
+    "R_ACONTa_fwd",
+    "R_ICDHyr_fwd",
+    "R_SUCOAS_rev",
+    "R_AKGDH",
+    "R_SUCDi",
+    "R_FUM_fwd",
+    "R_MDH_fwd",
+    "R_PPC",
+    "R_ME2",
+    "R_ICL",
+    "R_MALS",
+    "R_ACKr_rev",
+    "R_PTAr_fwd",
+    "R_LDH_D_rev",
+    "R_ACALD_rev",
+    "R_ALCD2x_rev",
+    "R_EX_glc__D_e_rev",
+    "R_EX_o2_e_rev",
+    "R_EX_co2_e_fwd",
+    "R_EX_etoh_e",
+    "R_EX_ac_e",
+    "R_EX_lac__D_e",
+    "R_EX_succ_e",
+    "R_EX_pyr_e",
+    "R_EX_for_e",
+    "R_BIOMASS_Ec_iAF1260_core_59p81M"
+  ],
+  "mappings": {
+    "R_GLCptspp": {
+      "column": "R_GLCptspp",
+      "reaction_id": "GLCptspp",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_PGI_fwd": {
+      "column": "R_PGI_fwd",
+      "reaction_id": "PGI",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_PFK": {
+      "column": "R_PFK",
+      "reaction_id": "PFK",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_FBA_fwd": {
+      "column": "R_FBA_fwd",
+      "reaction_id": "FBA",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_TPI_fwd": {
+      "column": "R_TPI_fwd",
+      "reaction_id": "TPI",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_PGK_rev": {
+      "column": "R_PGK_rev",
+      "reaction_id": "PGK",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_GAPD_fwd": {
+      "column": "R_GAPD_fwd",
+      "reaction_id": "GAPD",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_ENO_fwd": {
+      "column": "R_ENO_fwd",
+      "reaction_id": "ENO",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_PGM_rev": {
+      "column": "R_PGM_rev",
+      "reaction_id": "PGM",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_PYK": {
+      "column": "R_PYK",
+      "reaction_id": "PYK",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_PDH": {
+      "column": "R_PDH",
+      "reaction_id": "PDH",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_G6PDH2r_fwd": {
+      "column": "R_G6PDH2r_fwd",
+      "reaction_id": "G6PDH2r",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_PGL": {
+      "column": "R_PGL",
+      "reaction_id": "PGL",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_GND": {
+      "column": "R_GND",
+      "reaction_id": "GND",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_RPE_fwd": {
+      "column": "R_RPE_fwd",
+      "reaction_id": "RPE",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_RPI_rev": {
+      "column": "R_RPI_rev",
+      "reaction_id": "RPI",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_TKT1_fwd": {
+      "column": "R_TKT1_fwd",
+      "reaction_id": "TKT1",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_TALA_fwd": {
+      "column": "R_TALA_fwd",
+      "reaction_id": "TALA",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_TKT2_fwd": {
+      "column": "R_TKT2_fwd",
+      "reaction_id": "TKT2",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_CS": {
+      "column": "R_CS",
+      "reaction_id": "CS",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_ACONTb_fwd": {
+      "column": "R_ACONTb_fwd",
+      "reaction_id": "ACONTb",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_ACONTa_fwd": {
+      "column": "R_ACONTa_fwd",
+      "reaction_id": "ACONTa",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_ICDHyr_fwd": {
+      "column": "R_ICDHyr_fwd",
+      "reaction_id": "ICDHyr",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_SUCOAS_rev": {
+      "column": "R_SUCOAS_rev",
+      "reaction_id": "SUCOAS",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_AKGDH": {
+      "column": "R_AKGDH",
+      "reaction_id": "AKGDH",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_SUCDi": {
+      "column": "R_SUCDi",
+      "reaction_id": "SUCDi",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_FUM_fwd": {
+      "column": "R_FUM_fwd",
+      "reaction_id": "FUM",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_MDH_fwd": {
+      "column": "R_MDH_fwd",
+      "reaction_id": "MDH",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_PPC": {
+      "column": "R_PPC",
+      "reaction_id": "PPC",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_ME2": {
+      "column": "R_ME2",
+      "reaction_id": "ME2",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_ICL": {
+      "column": "R_ICL",
+      "reaction_id": "ICL",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_MALS": {
+      "column": "R_MALS",
+      "reaction_id": "MALS",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_ACKr_rev": {
+      "column": "R_ACKr_rev",
+      "reaction_id": "ACKr",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_PTAr_fwd": {
+      "column": "R_PTAr_fwd",
+      "reaction_id": "PTAr",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_LDH_D_rev": {
+      "column": "R_LDH_D_rev",
+      "reaction_id": "LDH_D",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_ACALD_rev": {
+      "column": "R_ACALD_rev",
+      "reaction_id": "ACALD",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_ALCD2x_rev": {
+      "column": "R_ALCD2x_rev",
+      "reaction_id": "ALCD2x",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_EX_glc__D_e_rev": {
+      "column": "R_EX_glc__D_e_rev",
+      "reaction_id": "EX_glc__D_e",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_EX_o2_e_rev": {
+      "column": "R_EX_o2_e_rev",
+      "reaction_id": "EX_o2_e",
+      "sign": -1.0,
+      "exact_split_reaction": false
+    },
+    "R_EX_co2_e_fwd": {
+      "column": "R_EX_co2_e_fwd",
+      "reaction_id": "EX_co2_e",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    },
+    "R_EX_etoh_e": {
+      "column": "R_EX_etoh_e",
+      "reaction_id": "EX_etoh_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_EX_ac_e": {
+      "column": "R_EX_ac_e",
+      "reaction_id": "EX_ac_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_EX_lac__D_e": {
+      "column": "R_EX_lac__D_e",
+      "reaction_id": "EX_lac__D_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_EX_succ_e": {
+      "column": "R_EX_succ_e",
+      "reaction_id": "EX_succ_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_EX_pyr_e": {
+      "column": "R_EX_pyr_e",
+      "reaction_id": "EX_pyr_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_EX_for_e": {
+      "column": "R_EX_for_e",
+      "reaction_id": "EX_for_e",
+      "sign": 1.0,
+      "exact_split_reaction": true
+    },
+    "R_BIOMASS_Ec_iAF1260_core_59p81M": {
+      "column": "R_BIOMASS_Ec_iAF1260_core_59p81M",
+      "reaction_id": "BIOMASS_Ec_iML1515_core_75p37M",
+      "sign": 1.0,
+      "exact_split_reaction": false
+    }
+  },
+  "experiments": [
+    "REF",
+    "WT_0.1h-1",
+    "WT_0.4h-1",
+    "WT_0.5h-1",
+    "WT_0.7h-1",
+    "galM",
+    "glk",
+    "pgm",
+    "pgi",
+    "pfkA",
+    "pfkB",
+    "fbp",
+    "fbaB",
+    "gapC",
+    "gpmA",
+    "gpmB",
+    "pykA",
+    "pykF",
+    "ppsA",
+    "zwf",
+    "pgl",
+    "gnd",
+    "rpe",
+    "rpiA",
+    "rpiB",
+    "tktA",
+    "tktB",
+    "talA",
+    "talB"
+  ],
+  "successful_conditions": 29,
+  "total_conditions": 29,
+  "fitted_csv_written": true,
+  "knockout_constraints": false,
+  "growth_maximization": false
+}
