@@ -8,6 +8,7 @@
     "objective_reaction": "BIOMASS_Ec_iML1515_core_75p37M",
     "biomass_column": "R_BIOMASS_Ec_iAF1260_core_59p81M",
     "biomass_mode": "fixed",
+    "glucose_uptake_cap": 1000.0,
     "enforce_split_directions": true,
     "absolute_gap": 1e-06,
     "relative_gap": 1e-07,
@@ -16,7 +17,7 @@
     "solver": "glpk",
     "solver_timeout": 10,
     "max_iterations": 250,
-    "overwrite": false
+    "overwrite": true
   },
   "source_sha256": "ca993710e03e6e8a49cedb2e7fd508f733c1187c84e6076012f764e25de0eeb6",
   "model_sha256": "4bf6e2bca10e921b017ccf86b420349ea2ce7f42851c161f6fdcbb467e2aaf31",
@@ -393,5 +394,11 @@
   "total_conditions": 29,
   "fitted_csv_written": true,
   "knockout_constraints": false,
-  "growth_maximization": false
+  "growth_maximization": false,
+  "exchange_bound_overrides": {
+    "EX_glc__D_e": {
+      "sbml_lower_bound": -10.0,
+      "fit_lower_bound": -1000.0
+    }
+  }
 }

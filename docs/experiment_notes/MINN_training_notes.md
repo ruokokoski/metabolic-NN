@@ -10,8 +10,12 @@ distance. The earlier weighted-L1 script and its output are unchanged.
 
 Biomass stays fixed by default, preserving the earlier local fitting policy;
 `--biomass-mode free` instead includes biomass as an adjustable, equal-weight
-target. Glucose/O2 are allowed to move within the SBML bounds. Split directions
-are enforced by default using the existing sign/mapping helpers; they can be
+target. Glucose uptake uses an explicit broad cap of 1000 by default
+(`--glucose-uptake-cap`), overriding the inherited SBML cap of 10. That inherited
+cap incorrectly restricted `WT_0.7h-1`, whose measured glucose uptake is 13.34.
+The requested cap and the original/overridden glucose lower bounds are recorded
+in metadata. Oxygen retains its SBML bounds. Split directions are enforced by
+default using the existing sign/mapping helpers; they can be
 disabled explicitly. No growth maximization or condition-specific knockout is
 added. These declared choices do not establish the unreleased historical
 Tazza fitting settings. The fit depends on iML1515, not on B's neural weights.
@@ -42,13 +46,20 @@ No notebook is switched to this file automatically. A downstream comparison
 requires a matched pFBA baseline and a newly fitted front MLP on these targets;
 the pretrained B reservoir remains frozen. No new downstream metrics are claimed.
 
-Verification: four focused tests, Ruff and Python syntax checks passed. A full
-default-policy validation to temporary files solved all 29 conditions in 14-20
+Initial verification (before the glucose-cap correction): four focused tests,
+Ruff and Python syntax checks passed. A full validation with the inherited
+glucose cap of 10 to temporary files solved all 29 conditions in 14-20
 refinements, preserving all 47 columns and condition order with finite values
 and unchanged biomass. All objective gaps passed; maximum mass-balance and bound
 errors were `1.04e-13` and `5.91e-16`. Exact-LP fitting was also checked separately
-on `rpe`. Temporary fit outputs were removed; the default dataset has not been
-generated in `MINN_data/` by this change.
+on `rpe`. Those values describe the earlier restricted fit. The existing saved
+fit must be regenerated with `--overwrite` to use the corrected glucose cap.
+
+Glucose-cap correction checks: six focused tests, Ruff and syntax checks pass.
+An in-memory `WT_0.7h-1` fit using the corrected defaults gives glucose uptake
+13.450251 and SSE 193.005775, with biomass retained at 0.7. Its convergence and
+feasibility checks pass. The full corrected dataset remains for the user to
+regenerate; the existing fitted CSV and sidecars were verified unchanged.
 
 ## B reservoir checkpoint refresh (2026-10-31)
 

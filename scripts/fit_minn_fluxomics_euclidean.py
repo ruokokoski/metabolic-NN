@@ -5,8 +5,10 @@ Minimize sum_j (sign_j * v_j - measured_j)**2 over the mapped measured
 fluxes, subject to steady state and the SBML reaction bounds. All errors have
 equal weight. Biomass is fixed to its measured value by default, matching the
 earlier local fitter; --biomass-mode free includes it as an adjustable target.
-Glucose and oxygen can move within the model bounds. No knockout constraints
-or growth-maximization objective are added.
+Glucose uptake has an explicit broad cap of 1000 by default, overriding the
+SBML medium's cap of 10; --glucose-uptake-cap sets another value. Oxygen retains
+its SBML bounds. No knockout constraints or growth-maximization objective are
+added.
 
 The installed GLPK solver handles linear objectives only. Successive tangent
 planes underestimate each squared error, giving a sequence of LP lower bounds
@@ -86,6 +88,9 @@ def solve_sample(base_model, row, mappings, fieldnames, args):
     }
     try:
         with base_model as model:
+            if "EX_glc__D_e" in model.reactions:
+                model.reactions.get_by_id("EX_glc__D_e").lower_bound = -args.glucose_uptake_cap
+
             if args.enforce_split_directions:
                 for mapping in mappings.values():
                     apply_direction_bound(model, mapping)
@@ -210,6 +215,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
                         help="iML1515 reaction used to map the biomass column; not maximized.")
     parser.add_argument("--biomass-column", default=DEFAULT_BIOMASS_COLUMN)
     parser.add_argument("--biomass-mode", choices=("fixed", "free"), default="fixed")
+    parser.add_argument("--glucose-uptake-cap", type=float, default=1000.0,
+                        help="Glucose uptake cap in mmol/gDW/h; overrides the SBML default of 10.")
     parser.add_argument("--no-enforce-split-directions", dest="enforce_split_directions",
                         action="store_false", help="Allow the mapped net flux to change direction.")
     parser.set_defaults(enforce_split_directions=True)
@@ -245,7 +252,8 @@ def run_with_args(args: argparse.Namespace) -> int:
     import cobra
     from cobra.io import read_sbml_model
 
-    for name in ("absolute_gap", "relative_gap", "feasibility_tolerance", "solver_tolerance"):
+    for name in ("absolute_gap", "relative_gap", "feasibility_tolerance", "solver_tolerance",
+                 "glucose_uptake_cap"):
         value = getattr(args, name)
         if not math.isfinite(value) or value < 0:
             raise ValueError(f"{name} must be finite and nonnegative.")
@@ -333,6 +341,12 @@ def run_with_args(args: argparse.Namespace) -> int:
         "fitted_csv_written": complete,
         "knockout_constraints": False,
         "growth_maximization": False,
+        "exchange_bound_overrides": {
+            "EX_glc__D_e": {
+                "sbml_lower_bound": model.reactions.get_by_id("EX_glc__D_e").lower_bound,
+                "fit_lower_bound": -args.glucose_uptake_cap,
+            }
+        } if "EX_glc__D_e" in model.reactions else {},
     }
     _write_csv_atomic(diagnostics_path, list(diagnostics[0]), diagnostics)
     if complete:
