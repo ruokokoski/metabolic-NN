@@ -1,0 +1,247 @@
+============================================================
+Training run started: 2026-11-04 13:21:56
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: CI_100k
+model_name: CI_100k_d256_h8_l4_ff1024
+
+Data path: ./data/2026-11-202_candida_intermedia_training_data_100000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=50
+patience=10
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+Traceback (most recent call last):
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 833, in <module>
+    X, y, inputs, outputs, input_token_indices, out_indices = load_data(DATA_PATH, cache_dir=cache_dir)
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projappl/project_2013496/fluxformer/train_flux_transformer_with_cache.py", line 295, in load_data
+    columns = list(pd.read_csv(filepath, nrows=0).columns)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/usr/local/lib64/python3.12/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: './data/2026-11-202_candida_intermedia_training_data_100000_samples.csv'
+============================================================
+Training run started: 2026-11-04 13:46:30
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: CI_100k
+model_name: CI_100k_d256_h8_l4_ff1024
+
+Data path: ./data/2026-11-02_candida_intermedia_training_data_100000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=50
+patience=10
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 100000 samples from ./data/2026-11-02_candida_intermedia_training_data_100000_samples.csv
+Extracted input columns count:  17
+Extracted output columns count: 1971
+Medium constraints are injected into these token indices (in outputs order):
+[981, 1017, 1073, 1324, 1369, 1436, 1516, 1532, 1441, 1251, 1343, 1337, 1567, 1418, 1332, 1047, 1226]
+Training samples: 80000
+Test samples: 20000
+Early stopping patience: 10
+Allocated memory: 126.42 MB
+Reserved memory: 46846.00 MB
+Epoch 1/50 | Train Loss: 3.338775 | Test Loss: 0.151026 | Elapsed: 00:13:12 | Time: 14:00
+Epoch 2/50 | Train Loss: 0.110276 | Test Loss: 0.074907 | Elapsed: 00:26:41 | Time: 14:13
+Epoch 3/50 | Train Loss: 0.077451 | Test Loss: 0.063882 | Elapsed: 00:39:42 | Time: 14:26
+Epoch 4/50 | Train Loss: 0.047404 | Test Loss: 0.028168 | Elapsed: 00:51:42 | Time: 14:38
+Epoch 5/50 | Train Loss: 0.032888 | Test Loss: 0.024573 | Elapsed: 01:04:44 | Time: 14:51
+Epoch 6/50 | Train Loss: 0.025232 | Test Loss: 0.014522 | Elapsed: 01:17:39 | Time: 15:04
+Epoch 7/50 | Train Loss: 0.019251 | Test Loss: 0.012750 | Elapsed: 01:30:53 | Time: 15:17
+Epoch 8/50 | Train Loss: 0.016665 | Test Loss: 0.012192 | Elapsed: 01:44:05 | Time: 15:31
+Epoch 9/50 | Train Loss: 0.014815 | Test Loss: 0.008598 | Elapsed: 01:57:19 | Time: 15:44
+Epoch 10/50 | Train Loss: 0.013495 | Test Loss: 0.009119 | Elapsed: 02:10:33 | Time: 15:57
+Epoch 11/50 | Train Loss: 0.012543 | Test Loss: 0.010221 | Elapsed: 02:23:38 | Time: 16:10
+Epoch 12/50 | Train Loss: 0.011566 | Test Loss: 0.008306 | Elapsed: 02:36:48 | Time: 16:23
+Epoch 13/50 | Train Loss: 0.010645 | Test Loss: 0.007893 | Elapsed: 02:49:54 | Time: 16:36
+Epoch 14/50 | Train Loss: 0.008612 | Test Loss: 0.005192 | Elapsed: 03:03:05 | Time: 16:50
+Epoch 15/50 | Train Loss: 0.007125 | Test Loss: 0.004431 | Elapsed: 03:16:10 | Time: 17:03
+Epoch 16/50 | Train Loss: 0.006365 | Test Loss: 0.005788 | Elapsed: 03:29:16 | Time: 17:16
+Epoch 17/50 | Train Loss: 0.005950 | Test Loss: 0.004409 | Elapsed: 03:42:26 | Time: 17:29
+Epoch 18/50 | Train Loss: 0.005471 | Test Loss: 0.002782 | Elapsed: 03:55:26 | Time: 17:42
+Epoch 19/50 | Train Loss: 0.005136 | Test Loss: 0.003794 | Elapsed: 04:08:36 | Time: 17:55
+Epoch 20/50 | Train Loss: 0.004867 | Test Loss: 0.002564 | Elapsed: 04:21:39 | Time: 18:08
+Epoch 21/50 | Train Loss: 0.004518 | Test Loss: 0.002555 | Elapsed: 04:35:04 | Time: 18:22
+Epoch 22/50 | Train Loss: 0.004357 | Test Loss: 0.003115 | Elapsed: 04:48:45 | Time: 18:35
+Epoch 23/50 | Train Loss: 0.003927 | Test Loss: 0.001605 | Elapsed: 05:01:53 | Time: 18:48
+Epoch 24/50 | Train Loss: 0.003623 | Test Loss: 0.002592 | Elapsed: 05:15:03 | Time: 19:02
+Epoch 25/50 | Train Loss: 0.003373 | Test Loss: 0.003052 | Elapsed: 05:28:09 | Time: 19:15
+Epoch 26/50 | Train Loss: 0.003194 | Test Loss: 0.001893 | Elapsed: 05:41:11 | Time: 19:28
+Epoch 27/50 | Train Loss: 0.002964 | Test Loss: 0.001646 | Elapsed: 05:54:19 | Time: 19:41
+Epoch 28/50 | Train Loss: 0.002791 | Test Loss: 0.001702 | Elapsed: 06:07:19 | Time: 19:54
+Epoch 29/50 | Train Loss: 0.002684 | Test Loss: 0.002184 | Elapsed: 06:20:18 | Time: 20:07
+Epoch 30/50 | Train Loss: 0.002488 | Test Loss: 0.001718 | Elapsed: 06:33:26 | Time: 20:20
+Epoch 31/50 | Train Loss: 0.002355 | Test Loss: 0.001339 | Elapsed: 06:46:26 | Time: 20:33
+Epoch 32/50 | Train Loss: 0.002235 | Test Loss: 0.001137 | Elapsed: 06:59:25 | Time: 20:46
+Epoch 33/50 | Train Loss: 0.002081 | Test Loss: 0.001096 | Elapsed: 07:12:34 | Time: 20:59
+Epoch 34/50 | Train Loss: 0.001964 | Test Loss: 0.001026 | Elapsed: 07:25:42 | Time: 21:12
+Epoch 35/50 | Train Loss: 0.001850 | Test Loss: 0.000900 | Elapsed: 07:38:55 | Time: 21:25
+Epoch 36/50 | Train Loss: 0.001739 | Test Loss: 0.001117 | Elapsed: 07:52:01 | Time: 21:39
+Epoch 37/50 | Train Loss: 0.001676 | Test Loss: 0.001495 | Elapsed: 08:05:10 | Time: 21:52
+Epoch 38/50 | Train Loss: 0.001553 | Test Loss: 0.001314 | Elapsed: 08:18:10 | Time: 22:05
+Epoch 39/50 | Train Loss: 0.001504 | Test Loss: 0.001486 | Elapsed: 08:31:09 | Time: 22:18
+Epoch 40/50 | Train Loss: 0.001436 | Test Loss: 0.001020 | Elapsed: 08:44:18 | Time: 22:31
+Epoch 41/50 | Train Loss: 0.001382 | Test Loss: 0.001051 | Elapsed: 08:57:20 | Time: 22:44
+Epoch 42/50 | Train Loss: 0.001349 | Test Loss: 0.001150 | Elapsed: 09:10:23 | Time: 22:57
+Epoch 43/50 | Train Loss: 0.001284 | Test Loss: 0.000750 | Elapsed: 09:23:46 | Time: 23:10
+Epoch 44/50 | Train Loss: 0.001252 | Test Loss: 0.000557 | Elapsed: 09:36:58 | Time: 23:23
+Epoch 45/50 | Train Loss: 0.001191 | Test Loss: 0.000779 | Elapsed: 09:49:51 | Time: 23:36
+Epoch 46/50 | Train Loss: 0.001151 | Test Loss: 0.000458 | Elapsed: 10:01:22 | Time: 23:48
+Epoch 47/50 | Train Loss: 0.001129 | Test Loss: 0.000602 | Elapsed: 10:12:35 | Time: 23:59
+Epoch 48/50 | Train Loss: 0.001089 | Test Loss: 0.000942 | Elapsed: 10:23:56 | Time: 00:10
+Epoch 49/50 | Train Loss: 0.001038 | Test Loss: 0.000784 | Elapsed: 10:35:08 | Time: 00:22
+Epoch 50/50 | Train Loss: 0.000995 | Test Loss: 0.000679 | Elapsed: 10:46:22 | Time: 00:33
+Restored best model state from epoch 46.
+Training Completed.
+Training took 646 min 22.9 sec.
+Best test loss: 0.000458 at epoch 46
+
+Best-epoch model weights saved to ./models/CI_100k_d256_h8_l4_ff1024/CI_100k_d256_h8_l4_ff1024.pth (epoch 46)
+Full checkpoint saved to ./models/CI_100k_d256_h8_l4_ff1024/CI_100k_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/2026-11-02_candida_intermedia_training_data_100000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/2026-11-02_candida_intermedia_training_data_100000_samples_y_tok.float32.mmap
+============================================================
+Training run started: 2026-11-05 10:44:07
+Training file: train_flux_transformer_with_cache.py
+MODEL_NAME: CI_100k
+model_name: CI_100k_d256_h8_l4_ff1024
+
+Data path: ./data/2026-11-02_candida_intermedia_training_data_100000_samples.csv
+Device: cuda
+
+Architecture:
+d_model=256
+n_heads=8
+n_layers=4
+d_ff=1024
+dropout=0.02
+
+Training settings:
+batch_size=32
+num_epochs=200
+patience=20
+learning_rate=0.0001
+output_sample_ratio=1.0
+
+Loss settings:
+loss_type=huber
+
+============================================================
+
+Using device: cuda
+
+Loaded data with 100000 samples from ./data/2026-11-02_candida_intermedia_training_data_100000_samples.csv
+Extracted input columns count:  17
+Extracted output columns count: 1971
+Medium constraints are injected into these token indices (in outputs order):
+[981, 1017, 1073, 1324, 1369, 1436, 1516, 1532, 1441, 1251, 1343, 1337, 1567, 1418, 1332, 1047, 1226]
+Training samples: 80000
+Test samples: 20000
+Found checkpoint at ./models/CI_100k_d256_h8_l4_ff1024/CI_100k_d256_h8_l4_ff1024_checkpoint.pth. Trying to resume training.
+Resumed from epoch 46. Target epoch: 200.
+Early stopping patience: 20
+Allocated memory: 138.87 MB
+Reserved memory: 46870.00 MB
+Epoch 47/200 | Train Loss: 0.001139 | Test Loss: 0.000885 | Elapsed: 00:12:06 | Time: 10:56
+Epoch 48/200 | Train Loss: 0.001058 | Test Loss: 0.000577 | Elapsed: 00:24:22 | Time: 11:08
+Epoch 49/200 | Train Loss: 0.001059 | Test Loss: 0.000822 | Elapsed: 00:36:43 | Time: 11:21
+Epoch 50/200 | Train Loss: 0.001030 | Test Loss: 0.000755 | Elapsed: 00:49:11 | Time: 11:33
+Epoch 51/200 | Train Loss: 0.001032 | Test Loss: 0.000675 | Elapsed: 01:01:24 | Time: 11:45
+Epoch 52/200 | Train Loss: 0.000974 | Test Loss: 0.000531 | Elapsed: 01:13:35 | Time: 11:58
+Epoch 53/200 | Train Loss: 0.000943 | Test Loss: 0.000506 | Elapsed: 01:25:37 | Time: 12:10
+Epoch 54/200 | Train Loss: 0.000910 | Test Loss: 0.000680 | Elapsed: 01:37:45 | Time: 12:22
+Epoch 55/200 | Train Loss: 0.000917 | Test Loss: 0.000528 | Elapsed: 01:49:57 | Time: 12:34
+Epoch 56/200 | Train Loss: 0.000907 | Test Loss: 0.000593 | Elapsed: 02:02:05 | Time: 12:46
+Epoch 57/200 | Train Loss: 0.000879 | Test Loss: 0.000556 | Elapsed: 02:14:15 | Time: 12:58
+Epoch 58/200 | Train Loss: 0.000855 | Test Loss: 0.000738 | Elapsed: 02:26:14 | Time: 13:10
+Epoch 59/200 | Train Loss: 0.000874 | Test Loss: 0.000599 | Elapsed: 02:38:33 | Time: 13:23
+Epoch 60/200 | Train Loss: 0.000835 | Test Loss: 0.001040 | Elapsed: 02:50:43 | Time: 13:35
+Epoch 61/200 | Train Loss: 0.000794 | Test Loss: 0.000453 | Elapsed: 03:02:49 | Time: 13:47
+Epoch 62/200 | Train Loss: 0.000783 | Test Loss: 0.000624 | Elapsed: 03:14:59 | Time: 13:59
+Epoch 63/200 | Train Loss: 0.000821 | Test Loss: 0.000514 | Elapsed: 03:27:09 | Time: 14:11
+Epoch 64/200 | Train Loss: 0.000721 | Test Loss: 0.000721 | Elapsed: 03:39:21 | Time: 14:23
+Epoch 65/200 | Train Loss: 0.000733 | Test Loss: 0.000467 | Elapsed: 03:51:33 | Time: 14:36
+Epoch 66/200 | Train Loss: 0.000739 | Test Loss: 0.000427 | Elapsed: 04:03:59 | Time: 14:48
+Epoch 67/200 | Train Loss: 0.000749 | Test Loss: 0.000768 | Elapsed: 04:16:08 | Time: 15:00
+Epoch 68/200 | Train Loss: 0.000685 | Test Loss: 0.000299 | Elapsed: 04:28:04 | Time: 15:12
+Epoch 69/200 | Train Loss: 0.000665 | Test Loss: 0.000381 | Elapsed: 04:40:11 | Time: 15:24
+Epoch 70/200 | Train Loss: 0.000652 | Test Loss: 0.000358 | Elapsed: 04:52:27 | Time: 15:37
+Epoch 71/200 | Train Loss: 0.000642 | Test Loss: 0.000462 | Elapsed: 05:04:35 | Time: 15:49
+Epoch 72/200 | Train Loss: 0.000625 | Test Loss: 0.000341 | Elapsed: 05:16:50 | Time: 16:01
+Epoch 73/200 | Train Loss: 0.000627 | Test Loss: 0.000311 | Elapsed: 05:28:49 | Time: 16:13
+Epoch 74/200 | Train Loss: 0.000623 | Test Loss: 0.000523 | Elapsed: 05:41:10 | Time: 16:25
+Epoch 75/200 | Train Loss: 0.000592 | Test Loss: 0.000636 | Elapsed: 05:53:19 | Time: 16:37
+Epoch 76/200 | Train Loss: 0.000584 | Test Loss: 0.000370 | Elapsed: 06:05:23 | Time: 16:49
+Epoch 77/200 | Train Loss: 0.000584 | Test Loss: 0.000316 | Elapsed: 06:17:31 | Time: 17:02
+Epoch 78/200 | Train Loss: 0.000619 | Test Loss: 0.000522 | Elapsed: 06:29:38 | Time: 17:14
+Epoch 79/200 | Train Loss: 0.000563 | Test Loss: 0.000309 | Elapsed: 06:41:53 | Time: 17:26
+Epoch 80/200 | Train Loss: 0.000560 | Test Loss: 0.000588 | Elapsed: 06:54:01 | Time: 17:38
+Epoch 81/200 | Train Loss: 0.000555 | Test Loss: 0.000422 | Elapsed: 07:06:06 | Time: 17:50
+Epoch 82/200 | Train Loss: 0.000638 | Test Loss: 0.000699 | Elapsed: 07:18:15 | Time: 18:02
+Epoch 83/200 | Train Loss: 0.000528 | Test Loss: 0.000417 | Elapsed: 07:30:23 | Time: 18:14
+Epoch 84/200 | Train Loss: 0.000532 | Test Loss: 0.000465 | Elapsed: 07:42:34 | Time: 18:27
+Epoch 85/200 | Train Loss: 0.000502 | Test Loss: 0.000417 | Elapsed: 07:54:49 | Time: 18:39
+Epoch 86/200 | Train Loss: 0.000516 | Test Loss: 0.000419 | Elapsed: 08:06:54 | Time: 18:51
+Epoch 87/200 | Train Loss: 0.000504 | Test Loss: 0.000417 | Elapsed: 08:18:59 | Time: 19:03
+Epoch 88/200 | Train Loss: 0.000493 | Test Loss: 0.000678 | Elapsed: 08:31:16 | Time: 19:15
+Early stopping at epoch 88; best test loss 0.000299 was at epoch 68.
+Restored best model state from epoch 68.
+Training Completed.
+Training took 511 min 16.4 sec.
+Best test loss: 0.000299 at epoch 68
+
+Best-epoch model weights saved to ./models/CI_100k_d256_h8_l4_ff1024/CI_100k_d256_h8_l4_ff1024.pth (epoch 68)
+Full checkpoint saved to ./models/CI_100k_d256_h8_l4_ff1024/CI_100k_d256_h8_l4_ff1024_checkpoint.pth
+Removed memmap cache files:
+  - ./tmp_memmap/2026-11-02_candida_intermedia_training_data_100000_samples_X_tok.float32.mmap
+  - ./tmp_memmap/2026-11-02_candida_intermedia_training_data_100000_samples_y_tok.float32.mmap
