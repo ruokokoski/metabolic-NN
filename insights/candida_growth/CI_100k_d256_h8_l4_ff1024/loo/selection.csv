@@ -1,0 +1,117 @@
+fold,method,alpha,epochs
+0,Ridge,0.1,
+0,Direct MLP,,6.0
+0,FluxFormer + nutrients,,9.0
+0,FluxFormer + chemistry,,13.0
+1,Ridge,0.1,
+1,Direct MLP,,8.0
+1,FluxFormer + nutrients,,38.0
+1,FluxFormer + chemistry,,18.0
+2,Ridge,10.0,
+2,Direct MLP,,33.0
+2,FluxFormer + nutrients,,32.0
+2,FluxFormer + chemistry,,11.0
+3,Ridge,0.1,
+3,Direct MLP,,32.0
+3,FluxFormer + nutrients,,30.0
+3,FluxFormer + chemistry,,8.0
+4,Ridge,100.0,
+4,Direct MLP,,22.0
+4,FluxFormer + nutrients,,3.0
+4,FluxFormer + chemistry,,3.0
+5,Ridge,10.0,
+5,Direct MLP,,5.0
+5,FluxFormer + nutrients,,7.0
+5,FluxFormer + chemistry,,16.0
+6,Ridge,1.0,
+6,Direct MLP,,28.0
+6,FluxFormer + nutrients,,24.0
+6,FluxFormer + chemistry,,28.0
+7,Ridge,10.0,
+7,Direct MLP,,7.0
+7,FluxFormer + nutrients,,8.0
+7,FluxFormer + chemistry,,10.0
+8,Ridge,0.1,
+8,Direct MLP,,31.0
+8,FluxFormer + nutrients,,9.0
+8,FluxFormer + chemistry,,18.0
+9,Ridge,100.0,
+9,Direct MLP,,30.0
+9,FluxFormer + nutrients,,4.0
+9,FluxFormer + chemistry,,4.0
+10,Ridge,1.0,
+10,Direct MLP,,29.0
+10,FluxFormer + nutrients,,71.0
+10,FluxFormer + chemistry,,35.0
+11,Ridge,10.0,
+11,Direct MLP,,36.0
+11,FluxFormer + nutrients,,21.0
+11,FluxFormer + chemistry,,19.0
+12,Ridge,1.0,
+12,Direct MLP,,27.0
+12,FluxFormer + nutrients,,13.0
+12,FluxFormer + chemistry,,10.0
+13,Ridge,100.0,
+13,Direct MLP,,67.0
+13,FluxFormer + nutrients,,4.0
+13,FluxFormer + chemistry,,1.0
+14,Ridge,1.0,
+14,Direct MLP,,13.0
+14,FluxFormer + nutrients,,64.0
+14,FluxFormer + chemistry,,34.0
+15,Ridge,10.0,
+15,Direct MLP,,13.0
+15,FluxFormer + nutrients,,1.0
+15,FluxFormer + chemistry,,8.0
+16,Ridge,1.0,
+16,Direct MLP,,59.0
+16,FluxFormer + nutrients,,14.0
+16,FluxFormer + chemistry,,11.0
+17,Ridge,1.0,
+17,Direct MLP,,13.0
+17,FluxFormer + nutrients,,11.0
+17,FluxFormer + chemistry,,7.0
+18,Ridge,10.0,
+18,Direct MLP,,40.0
+18,FluxFormer + nutrients,,49.0
+18,FluxFormer + chemistry,,12.0
+19,Ridge,1.0,
+19,Direct MLP,,2.0
+19,FluxFormer + nutrients,,10.0
+19,FluxFormer + chemistry,,9.0
+20,Ridge,10.0,
+20,Direct MLP,,35.0
+20,FluxFormer + nutrients,,20.0
+20,FluxFormer + chemistry,,24.0
+21,Ridge,10.0,
+21,Direct MLP,,103.0
+21,FluxFormer + nutrients,,1.0
+21,FluxFormer + chemistry,,2.0
+22,Ridge,10.0,
+22,Direct MLP,,26.0
+22,FluxFormer + nutrients,,9.0
+22,FluxFormer + chemistry,,9.0
+23,Ridge,100.0,
+23,Direct MLP,,8.0
+23,FluxFormer + nutrients,,6.0
+23,FluxFormer + chemistry,,4.0
+24,Ridge,100.0,
+24,Direct MLP,,33.0
+24,FluxFormer + nutrients,,3.0
+24,FluxFormer + chemistry,,12.0
+25,Ridge,1.0,
+25,Direct MLP,,21.0
+25,FluxFormer + nutrients,,1.0
+25,FluxFormer + chemistry,,4.0
+26,Ridge,10.0,
+26,Direct MLP,,11.0
+26,FluxFormer + nutrients,,9.0
+26,FluxFormer + chemistry,,7.0
+27,Ridge,0.1,
+27,Direct MLP,,35.0
+27,FluxFormer + nutrients,,101.0
+27,FluxFormer + chemistry,,55.0
+28,Ridge,10.0,
+28,Direct MLP,,34.0
+28,FluxFormer + nutrients,,18.0
+28,FluxFormer + chemistry,,7.0
