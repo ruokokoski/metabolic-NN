@@ -1,5 +1,72 @@
 # iML1515 Sampling Study Notes
 
+## Model F uncurated exchange sampling (2026-11-11)
+
+`generate_ecoli_iML1515_F_data.py` adds an uncurated distribution control.
+Each proposal draws an integer source count uniformly from 1 through 10,
+then selects that many distinct exchanges uniformly without replacement from
+**all** SBML exchanges except E's 22 fixed basal exchanges and `EX_o2_e`.
+The local `models/iML1515.xml` has 331 exchanges, giving 308 selectable sources.
+There is no carbon-content, transport, single-source-growth, or curated-pool
+filter. Inorganic exchanges, ethanol, and cobalamin are selectable; cobalamin
+is not a fixed basal nutrient. Glucose and glycerol are not guaranteed.
+
+The fixed basal uptake caps match current E at 10, including CO2. Oxygen is
+drawn independently from log-uniform 1--25. Each selected source has an
+independent log-uniform uptake cap of 0.05--10. Variable caps are rounded to
+two decimals, as in E. All other uptake is closed. Secretion upper bounds
+retain E's policy, `max(0, SBML upper bound)`; sampled ethanol and acetate
+inputs therefore represent uptake caps, not the B secretion-cap convention.
+F's source count is uniform rather than E's decreasing geometric weighting.
+
+CSV inputs are positive uptake-cap magnitudes for all 331 exchanges. The five
+shared context exchanges come first, then the remaining fixed basal exchanges,
+then remaining selectable exchanges in SBML order. Targets are the 2,712 signed
+net reaction fluxes in SBML order, with the existing `*_flux` naming. F reuses
+E's model loading, basal definition, and rate/bound helpers; deploy both Python
+files together. Existing A--E generators and evaluation consumers are unchanged.
+
+Targets use biomass-maximizing pFBA at fraction of optimum 0.999. Failed solves
+are retried, with timeout/reset controls and a default attempt budget of 20
+times the requested row count. Finite optimal solutions are retained without
+a positive-biomass threshold. The uniform distribution describes proposals;
+feasibility rejection can change the accepted source-count/source distribution.
+Partial accepted batches remain in the temporary CSV if generation stops early.
+Final outputs require explicit `--overwrite-existing` to replace an existing file.
+
+Training defaults are 1,000,000 accepted rows, seed 42, and prefix
+`iML1515_F_training_data`. `--dataset test` selects 50,000 rows, seed 9, and
+`iML1515_F_test_data`. Both use the same sampling distribution; arguments can
+override row count, seed, and prefix. The standard independent test command is:
+
+```bash
+python generate_ecoli_iML1515_F_data.py --dataset test
+```
+
+`scripts/roihu/samplejob_F.sh` requests the same account, CPU partition,
+72-hour limit, one CPU, 16 GiB, Python module, virtual environment, and
+project/scratch layout as `samplejob_E.sh`. It explicitly selects training,
+1,000,000 rows, seed 42, and pFBA 0.999. Submit from the Roihu CPU login node:
+
+```bash
+cd /projappl/project_2013496/fluxformer
+sbatch scripts/roihu/samplejob_F.sh
+```
+
+Verification: all six focused F sampler tests pass. Eight-row training and
+test runs, each repeated, reproduce their CSV bytes with separate seed defaults.
+The 32 accepted pFBA solves pass mass-balance, reaction-bound, finite-value,
+and biomass-objective checks. Tests also cover uniform proposal counts, source
+coverage, E-compatible bounds, schema order, overwrite protection, solver
+reload after failure, and preservation of partial batches. Python compilation,
+Bash syntax for the Roihu script, and diff whitespace checks pass. Validation
+used the existing local Python 3.11 / COBRApy 0.29.1 environment; the Roihu
+Python environment has not been exercised.
+
+Full dataset generation, Roihu submission, F training, and downstream
+distribution comparisons remain pending. This addition establishes a sampling
+control, not evidence of improved coverage or predictive performance.
+
 ## B evaluation checkpoint refresh (2026-10-31)
 
 `ecoli_iML1515_B_model_testing.ipynb` now selects
@@ -143,6 +210,7 @@ it is allowed to be evaluated.
 | **C** | Task-relevant AMN/MINN distribution with a bridge regime | `generate_ecoli_iML1515_C_data.py` | Implemented |
 | **D** | Broad distribution with explicit A- and B-like coverage | `generate_ecoli_iML1515_D_data.py` | Implemented |
 | **E** | Broad task-agnostic distribution | `generate_ecoli_iML1515_E_data.py` | Implemented |
+| **F** | Uncurated uniform subsets of all non-basal, non-oxygen exchanges | `generate_ecoli_iML1515_F_data.py` | Implemented |
 
 As of 2026-10-06, Model A's generator is named
 `generate_ecoli_iML1515_A_data.py`. The rename preserves its generation behavior

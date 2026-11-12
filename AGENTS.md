@@ -19,7 +19,7 @@ structural changes.
 - Root Python files and notebooks: models, training, generation, and evaluation.
 - `docs/experiment_notes/README.md`: experiment-note index. Relevant notes:
   - `ecoli_core_experiment_notes.md`: core training and evaluation.
-  - `iML1515_sampling_study_notes.md`: A/B/A ∪ B/C/D/E distributions and transfer.
+  - `iML1515_sampling_study_notes.md`: A/B/A ∪ B/C/D/E/F distributions and transfer.
   - `AMN_experiment_notes.md`: AMN growth prediction and experimental-pattern data.
   - `MINN_training_notes.md`: MINN flux prediction, context, and pFBA protocols.
   - `AMN_MINN_shared_reservoir_notes.md`: shared C and cross-task workflows;
@@ -94,6 +94,9 @@ biomass, and recorded medium chemistry, independently of SBML simulation.
 - iML1515 D: `generate_ecoli_iML1515_D_data.py`, broad task-aware distribution.
 - iML1515 E: `generate_ecoli_iML1515_E_data.py`, curated broad task-agnostic
   distribution. `generate_ecoli_iML1515_E_data_old.py` is archival.
+- iML1515 F: `generate_ecoli_iML1515_F_data.py`, uncurated uniform selection of
+  1--10 non-basal, non-oxygen exchanges; reuses E's basal and bound helpers.
+  `--dataset training` (default) and `--dataset test` select separate defaults.
 - Experimental-pattern AMN: `generate_ecoli_iML1515_AMN_data.py`, condition-based
   allocation; separate from A. `generate_AMN_sweep.py` generates diagnostic sweeps.
 - Yeast9: `generate_yeast9_data.py`.

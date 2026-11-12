@@ -59,7 +59,7 @@ class CandidaGrowthNotebookTest(unittest.TestCase):
             input_cols=list(INPUT_EXCHANGES), device=torch.device('cpu'), model=TinyReservoir(),
             GROWTH_SETTINGS=dict(hidden=(8, 4), dropout=0.1, learning_rate=0.01,
                 weight_decay=0.001, epochs=2, patience=2, min_delta=1e-7,
-                batch_size=2, inner_fraction=0.25, seed=42))
+                batch_size=2, inner_fraction=0.25, seed=42, inner_repeats=3, ensemble_size=3))
         for cell in self.notebook['cells'][14:]:
             if cell['cell_type'] == 'code':
                 nodes = [node for node in ast.parse(''.join(cell['source'])).body
@@ -151,19 +151,103 @@ class CandidaGrowthNotebookTest(unittest.TestCase):
             self.assertEqual(provenance['target'], 'growth_max_sandra')
             self.assertEqual(provenance['n_conditions'], 6)
             self.assertEqual(provenance['folds'], result['folds'])
+            self.assertEqual(provenance['epoch_selection'], 'median_inner_best_epochs')
+            self.assertEqual(provenance['prediction_aggregation'], 'mean_over_initializations')
             exported = pd.read_csv(Path(temporary) / 'test/predictions.csv')
             self.assertEqual(len(exported), 30)
+            self.assertEqual(len(pd.read_csv(Path(temporary) / 'test/member_predictions.csv')), 54)
+            self.assertEqual(len(pd.read_csv(Path(temporary) / 'test/member_uptake_bounds.csv')), 36)
         predictions = result['predictions']
         self.assertEqual(len(predictions), 30)
         self.assertTrue(predictions.groupby(['method', 'row']).size().eq(1).all())
         self.assertTrue(np.isfinite(predictions.prediction).all())
         self.assertEqual(len(result['contexts']), 12)
+        for _, row in result['selection'].dropna(subset=['epochs']).iterrows():
+            self.assertEqual(row.epochs, np.median(json.loads(row.inner_epochs)))
+            self.assertEqual(row.ensemble_size, 3)
+        member_means = result['member_predictions'].groupby(['method', 'row']).prediction.mean()
+        member_sd = result['member_predictions'].groupby(['method', 'row']).prediction.std()
+        neural = predictions[predictions.method.isin(member_means.index.get_level_values('method'))]
+        neural = neural.set_index(['method', 'row']).sort_index()
+        np.testing.assert_allclose(neural.prediction, member_means.sort_index())
+        np.testing.assert_allclose(neural.prediction_sd, member_sd.sort_index())
+        mean_contexts = result['member_contexts'].groupby(['row', 'fold', 'method'])[
+            [*CARBON_EXCHANGES, 'oxygen']].mean()
+        pd.testing.assert_frame_equal(result['contexts'].set_index(['row', 'fold', 'method']), mean_contexts)
+        fits_per_fold = 3 * (self.ns['GROWTH_SETTINGS']['inner_repeats'] + self.ns['GROWTH_SETTINGS']['ensemble_size'])
         for fold in result['folds']:
             held_out = set(fold['test'])
-            for train, validation in calls[fold['fold'] * 6:(fold['fold'] + 1) * 6]:
+            for train, validation in calls[fold['fold'] * fits_per_fold:(fold['fold'] + 1) * fits_per_fold]:
                 self.assertFalse(held_out & (train | validation))
-            self.assertFalse(set(fold['inner_train']) & set(fold['inner_validation']))
+            for split in fold['inner_splits']:
+                self.assertFalse(set(split['train']) & set(split['validation']))
+                self.assertEqual(set(split['train']) | set(split['validation']), set(fold['train']))
+            self.assertEqual(len(set(fold['ensemble_seeds'])), 3)
         self.assertFalse(self.ns['model'].weight.requires_grad)
+
+    def test_epoch_median_and_member_predictions_are_aggregated_separately(self):
+        epochs = iter([2, 7, 4])
+        seeds, refit_epochs = [], []
+
+        def fit(x, y, presence, train, validation_ids=None, epochs=None, hybrid=False, seed=42):
+            seeds.append(seed)
+            if epochs is None:
+                return object(), None, next(selected_epochs), []
+            refit_epochs.append(epochs)
+            return seed, StandardScaler().fit(x[train]), epochs, []
+
+        def predict(network, x, presence):
+            return np.full(len(x), float(network)), np.full((len(x), 9), float(network))
+
+        selected_epochs = epochs
+        x = np.arange(12, dtype=np.float32).reshape(6, 2)
+        splits = [dict(train=[0, 1, 2], validation=[3, 4], seed=s) for s in [10, 11, 12]]
+        with patch.dict(self.ns, fit_growth_mlp=fit, predict_growth_mlp=predict):
+            result = self.ns['fit_growth_ensemble'](
+                x, np.zeros(6), np.ones((6, 9)), np.arange(5), [5], splits, [20, 30, 40], hybrid=True)
+        self.assertEqual(result['epochs'], 4)
+        self.assertEqual(refit_epochs, [4, 4, 4])
+        self.assertEqual(seeds, [10, 11, 12, 20, 30, 40])
+        np.testing.assert_allclose(result['prediction'], [30])
+        np.testing.assert_allclose(result['prediction_sd'], [10])
+        self.assertEqual(result['member_contexts'].shape, (3, 1, 9))
+
+    def test_pfba_diagnostic_solves_each_member_before_averaging(self):
+        class MetabolicModel:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        method = 'FluxFormer + chemistry'
+        features = list(CARBON_EXCHANGES)
+        members = pd.DataFrame([dict(row=0, member=i, method=method, prediction=float(i + 1))
+                                for i in range(3)])
+        contexts = pd.DataFrame([dict(row=0, member=i, method=method,
+            **dict.fromkeys([*features, 'oxygen'], float(i + 1))) for i in range(3)])
+        solved = []
+
+        def solve(model, bounds, reactions, args):
+            rate = -bounds[CARBON_EXCHANGES['glucose']]
+            solved.append(rate)
+            values = np.zeros(len(reactions))
+            values[reactions.index('BIOMASS_C')] = rate ** 2
+            return values, 'optimal'
+
+        cell = next(c for c in self.notebook['cells'] if c['id'] == 'ci-growth-pfba')
+        with tempfile.TemporaryDirectory() as temporary:
+            self.ns.update(growth=pd.DataFrame({'medium_id': ['test medium']}), growth_y=np.array([0.1]),
+                growth_loo=dict(predictions=pd.DataFrame([dict(row=0, method=method, truth=0.1, prediction=2.)]),
+                                member_predictions=members, member_contexts=contexts),
+                MODEL_PATH=Path('test.sbml'), growth_dir=Path(temporary), display=lambda frame: None,
+                validate_model=lambda model: None, parse_args=lambda flags: None, solve_medium=solve)
+            with patch('cobra.io.read_sbml_model', return_value=MetabolicModel()):
+                exec(''.join(cell['source']), self.ns)
+            self.assertEqual(solved, [1., 2., 3.])
+            self.assertAlmostEqual(self.ns['pfba_check'].pFBA.iloc[0], (1 + 4 + 9) / 3)
+            self.assertNotEqual(self.ns['pfba_check'].pFBA.iloc[0], np.mean(solved) ** 2)
+            self.assertEqual(len(pd.read_csv(Path(temporary) / 'loo/pfba_member_check.csv')), 3)
 
 
 if __name__ == '__main__':
